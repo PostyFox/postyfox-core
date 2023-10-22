@@ -1,0 +1,50 @@
+
+name: 'Terraform'
+
+on:
+  workflow_dispatch:
+    inputs:
+      targetEnvironment:
+        description: 'Environment to Target'     
+        required: true
+        default: 'dev'
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    # environment: production
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Login using az login and a service principal, allowing Terrform to access the account
+    - name: Azure Login
+      shell: pwsh
+      run: |
+        az login --service-principal -u "$env:appId" -p "$env:principalPassword" --tenant "$env:tenantId"
+      env:
+          appId: ${{ secrets.AzureAppId }}
+          principalPassword: ${{ secrets.AzureAppPassword }}
+          tenantId: ${{ secrets.AzureTenantId }}
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Plan
+      run: terraform plan -var environment="${{inputs.targetEnvironment}}"
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -var environment="${{inputs.targetEnvironment}}"

@@ -1,0 +1,1 @@
+# Deploy a DotNet Core runtime Linux Function App
