@@ -1,0 +1,17 @@
+<mat-card class="card-section" *ngIf="!loginDisplay">
+    <mat-card-title>PostyFox</mat-card-title>
+    <mat-card-subtitle>A posting extension for PostyBirb</mat-card-subtitle>
+    <mat-card-content>This platform will allow you to curate and schedule posts without needing your PC to be online!<br/><br/>
+      PostyFox utilises Microsoft Azure AD for authentication, and you can find further information about our security here.
+    </mat-card-content>
+</mat-card>
+
+
+<mat-card class="card-section" *ngIf="loginDisplay">
+    <mat-card-title>PostyFox</mat-card-title>
+    <mat-card-content>Nice to see you {{claimName}}<br/><br/>
+      In order to use the PostyFox platform at present you need to have the latest version of <a href="https://postybirb.com" target="_blank">PostyBirb</a>. PostyBirb is a tool which you can run on your Windows, Linux or Apple Mac PC to write a post for multiple platforms to safe yourself some work; PostyFox makes things a little easier by allowing you to upload these posts to our online service and schedule the posts from the cloud, so you don't need to leave your computer on.<br/><br/>
+      We currently only support a limited number of platforms, but will extend these in due course; please feel free to submit requests to us so we know what you'd like! You can join our Discord <a href="https://discord.gg/Nr9SCtU3sg" target="_blank">here</a>.<br/><br/>
+      Please activate the supported platforms below to enable posting.
+    </mat-card-content>
+</mat-card>
