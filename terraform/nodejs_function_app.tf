@@ -14,7 +14,7 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
   site_config {
     application_stack {
       node_version = 18
-    } 
+    }
   }
 
   # app_settings = {
