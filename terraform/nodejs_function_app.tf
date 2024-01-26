@@ -15,11 +15,7 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
     application_stack {
       node_version = 18
     }
-  }
 
-  # app_settings = {
-  #   FUNCTIONS_EXTENSION_VERSION = "~4",
-  #   FUNCTIONS_WORKER_RUNTIME = "node",
-  #   WEBSITE_NODE_DEFAULT_VERSION = "~18"
-  # }
+    application_insights_key = azurerm_application_insights.application_insights-node.instrumentation_key
+  }
 }
