@@ -1,7 +1,10 @@
 using System.Net;
+using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using PostyFox_NetCore.Helpers;
 
 namespace PostyFox_NetCore
@@ -9,27 +12,41 @@ namespace PostyFox_NetCore
     public class Services
     {
         private readonly ILogger _logger;
+        private readonly TableServiceClient _configTable;
 
-        public Services(ILoggerFactory loggerFactory)
+        public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
         {
             _logger = loggerFactory.CreateLogger<Services>();
+            _configTable = clientFactory.CreateClient("ConfigTable");
         }
 
         [Function("Services")]
-        public HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req)
+        public HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
             // Check if authenticated on AAD; if not, return 403 Unauthorized.
             // To do this need to extract the claim and see - this is done on the headers - detailed here
             if (AuthHelper.ValidateAuth(req))
             {
+                _configTable.CreateTableIfNotExists("ConfigTable");
+                string userId = AuthHelper.GetAuthId(req);
 
-                _logger.LogInformation("C# HTTP trigger function processed a request.");
+                // Check what services the user has enabled, and return a config object
+                List<ServiceDTO> ls = new List<ServiceDTO>();
+                var client = _configTable.GetTableClient("ConfigTable");
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId);
+                foreach(var service in query.AsEnumerable())
+                {
+                    ServiceDTO dto = new ServiceDTO();
+                    dto.ServiceID = service.ServiceID;
+                    dto.ServiceName = service.ServiceName; 
+                    dto.IsEnabled = service.IsEnabled; 
+                    ls.Add(dto);
+                }
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+                var valueTask = response.WriteAsJsonAsync(ls);
+                valueTask.AsTask().GetAwaiter().GetResult();    
 
-
-                response.WriteString("Welcome to Azure Functions!");
                 return response;
             }
             else
