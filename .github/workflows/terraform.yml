@@ -24,7 +24,7 @@ jobs:
         shell: bash
 
     steps:
-    # Login using az login and a service principal, allowing Terrform to access the account
+    # Login using az login and a service principal, allowing Terraform to access the account
     - name: Azure Login
       shell: pwsh
       run: |
@@ -48,3 +48,18 @@ jobs:
 
     - name: Terraform Apply
       run: terraform apply -auto-approve -var environment="${{inputs.targetEnvironment}}"
+
+    # Build the .NET core Function App
+    - name: Setup .NET Core 7.x
+      uses: actions/setup-dotnet@v3
+      with:
+        # Semantic version range syntax or exact version of a dotnet version
+        dotnet-version: '7.x'
+
+    - name: Install dotnet Core dependencies
+      run: dotnet restore
+
+    - name: Build dotnet Core Function App
+      run: dotnet build
+      
+    # Deploy .NET core Function App

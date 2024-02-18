@@ -4,7 +4,6 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using PostyFox_NetCore.Helpers;
 
 namespace PostyFox_NetCore
@@ -31,15 +30,17 @@ namespace PostyFox_NetCore
                 string userId = AuthHelper.GetAuthId(req);
 
                 // Check what services the user has enabled, and return a config object
-                List<ServiceDTO> ls = new List<ServiceDTO>();
+                List<ServiceDTO> ls = new();
                 var client = _configTable.GetTableClient("ConfigTable");
                 var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId);
                 foreach(var service in query.AsEnumerable())
                 {
-                    ServiceDTO dto = new ServiceDTO();
-                    dto.ServiceID = service.ServiceID;
-                    dto.ServiceName = service.ServiceName; 
-                    dto.IsEnabled = service.IsEnabled; 
+                    ServiceDTO dto = new()
+                    {
+                        ServiceID = service.ServiceID,
+                        ServiceName = service.ServiceName,
+                        IsEnabled = service.IsEnabled
+                    };
                     ls.Add(dto);
                 }
 
