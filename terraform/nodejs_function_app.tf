@@ -11,6 +11,10 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
   storage_uses_managed_identity = true
   service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
 
+  identity {
+    type = "SystemAssigned"
+  }
+
   site_config {
     application_stack {
       node_version = 18
