@@ -94,14 +94,14 @@ jobs:
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Publish dotnet Core Function App
-      run: dotnet publish -o ../dotnet-fa
+      run: dotnet publish -o /home/runner/work/output/dotnet-fa
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - uses: actions/upload-artifact@v4
       id: upload-dotnet-fa
       with:
         name: dotnet-fa
-        path: ../dotnet-fa
+        path: /home/runner/work/output/dotnet-fa
 
   deploy:
     needs: [terraform, codebuild]
@@ -110,5 +110,5 @@ jobs:
 
     steps:
       - uses: actions/download-artifact@v4
-      
+
       # Deploy .NET core Function App
