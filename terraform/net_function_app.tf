@@ -23,3 +23,10 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     application_insights_key = azurerm_application_insights.application_insights-net.instrumentation_key
   }
 }
+
+// Add application identity to Storage Blob Contributor on storage account
+resource "azurerm_role_assignment" "example" {
+  scope                = azurerm_storage_account.linux_funcnet_storage.id
+  role_definition_name = "Storage Blob Contributor"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+}
