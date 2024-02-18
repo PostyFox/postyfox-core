@@ -42,6 +42,7 @@ jobs:
 
     - name: Terraform Init
       run: terraform init
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
 
     - name: Terraform Plan
       run: terraform plan -var environment="${{inputs.targetEnvironment}}"
