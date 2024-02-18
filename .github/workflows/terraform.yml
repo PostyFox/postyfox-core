@@ -71,6 +71,8 @@ jobs:
   codebuild:
     name: 'Code Build'
     runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.upload-dotnet-fa.outputs.artifact-id }}
 
     steps:
     - name: Checkout
@@ -91,10 +93,22 @@ jobs:
       run: dotnet build
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
-  # deploy:
-  #   name: 'Code Deployment'
-  #   runs-on: ubuntu-latest
+    - name: Publish dotnet Core Function App
+      run: dotnet publish -o ../dotnet-fa
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
-  #   steps:
+    - uses: actions/upload-artifact@v4
+      id: upload-dotnet-fa
+      with:
+        name: dotnet-fa
+        path: ../dotnet-fa
 
-    # Deploy .NET core Function App
+  deploy:
+    needs: [terraform, codebuild]
+    name: 'Code Deployment'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+      
+      # Deploy .NET core Function App
