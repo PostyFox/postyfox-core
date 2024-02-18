@@ -33,6 +33,7 @@ jobs:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
     - name: Checkout
       uses: actions/checkout@v3
@@ -47,6 +48,7 @@ jobs:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
     - name: Terraform Plan
       run: terraform plan -var environment="${{inputs.targetEnvironment}}"
@@ -55,6 +57,7 @@ jobs:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
     - name: Terraform Apply
       run: terraform apply -auto-approve -var environment="${{inputs.targetEnvironment}}"
@@ -63,6 +66,7 @@ jobs:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
   codebuild:
     name: 'Code Build'
