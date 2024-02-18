@@ -25,10 +25,10 @@ jobs:
 
     steps:
     # Login using az login and a service principal, allowing Terraform to access the account
-    # - name: Azure Login
-    #   shell: pwsh
-    #   run: |
-    #     az login --service-principal
+    - name: Azure Login
+      shell: pwsh
+      run: |
+        az login --service-principal -u $env:ARM_CLIENT_ID -p $env:ARM_CLIENT_SECRET --tenant $env:ARM_TENANT_ID
 
     - name: Checkout
       uses: actions/checkout@v3
