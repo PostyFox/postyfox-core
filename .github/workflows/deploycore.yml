@@ -121,4 +121,4 @@ jobs:
         with:
           app-name: ${{ vars.AZURE_DOTNET_FA }}
           package: '/home/runner/work/postyfox-core/postyfox-core/dotnet-fa'
-          publish-profile: ${{ secrets.DOTNET_FA_PUB_PROFILE }}
+          # publish-profile: ${{ secrets.DOTNET_FA_PUB_PROFILE }}
