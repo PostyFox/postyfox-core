@@ -79,18 +79,18 @@ jobs:
       uses: actions/checkout@v3
 
     # Build the .NET core Function App
-    - name: Setup .NET Core 7.x
+    - name: Setup .NET Core 8.x
       uses: actions/setup-dotnet@v3
       with:
         # Semantic version range syntax or exact version of a dotnet version
-        dotnet-version: '7.x'
+        dotnet-version: '8.x'
 
     - name: Install dotnet Core dependencies
       run: dotnet restore
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Core Function App
-      run: dotnet build
+      run: dotnet build -v d
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Publish dotnet Core Function App
