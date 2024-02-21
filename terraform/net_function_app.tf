@@ -24,9 +24,9 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   }
 }
 
-// Add application identity to Storage Blob Contributor on storage account
-resource "azurerm_role_assignment" "example" {
+// Add application identity to Storage Blob Owner on storage account
+resource "azurerm_role_assignment" "dotnetfuncapp-dataowner" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id
-  role_definition_name = "Storage Blob Data Contributor"
+  role_definition_name = "Storage Blob Data Owner"
   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
