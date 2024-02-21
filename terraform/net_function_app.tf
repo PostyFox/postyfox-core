@@ -15,7 +15,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   }
 
   app_settings = {
-    "ConfigTable" = azurerm_storage_account.data_storage.primary_connection_string
+    "ConfigTable" = azurerm_storage_account.data_storage.primary_table_endpoint
   }
 
   site_config {
