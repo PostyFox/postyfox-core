@@ -1,4 +1,4 @@
-# postfox-core
+# postyfox-core
 
 ## Repository Purpose
 
