@@ -16,6 +16,10 @@ Github actions exist here which manage full deployment pipelines for all compone
 
 Visual Studio Code or Visual Studio 2022
 
+### Using the Function App Runtime
+
+You can spin up a Function App host locally, once the FA functions are compiled (dotnet build or yarn etc); go into the output folder and then simply run func start to kick the host into life.  This gives you a way to debug things locally, and it should work from within VS Core and VS.  Note that VS Core needs the Function App Extension installed (strongly recommended).
+
 ### Specific requirements for projects
 
 #### C# Dot Net Core Function App
