@@ -90,11 +90,11 @@ jobs:
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Core Function App
-      run: dotnet build -v d
+      run: dotnet build -c Release -v d
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Publish dotnet Core Function App
-      run: dotnet publish -o /home/runner/work/output/dotnet-fa
+      run: dotnet publish -v d -o /home/runner/work/output/dotnet-fa
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - uses: actions/upload-artifact@v4
