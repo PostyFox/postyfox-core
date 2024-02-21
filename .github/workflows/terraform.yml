@@ -1,5 +1,5 @@
 
-name: 'Terraform'
+name: 'Terraform Plan'
 
 on:
   workflow_dispatch:
@@ -58,67 +58,3 @@ jobs:
         ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
-
-    - name: Terraform Apply
-      run: terraform apply -auto-approve -var environment="${{inputs.targetEnvironment}}"
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
-      env:
-        ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-        ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
-
-  codebuild:
-    name: 'Code Build'
-    runs-on: ubuntu-latest
-    outputs:
-      output1: ${{ steps.upload-dotnet-fa.outputs.artifact-id }}
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    # Build the .NET core Function App
-    - name: Setup .NET Core 7.x
-      uses: actions/setup-dotnet@v3
-      with:
-        # Semantic version range syntax or exact version of a dotnet version
-        dotnet-version: '7.x'
-
-    - name: Install dotnet Core dependencies
-      run: dotnet restore
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
-
-    - name: Build dotnet Core Function App
-      run: dotnet build
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
-
-    - name: Publish dotnet Core Function App
-      run: dotnet publish -o /home/runner/work/output/dotnet-fa
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
-
-    - uses: actions/upload-artifact@v4
-      id: upload-dotnet-fa
-      with:
-        name: dotnet-fa
-        path: /home/runner/work/output/dotnet-fa
-
-  deploy:
-    needs: [terraform, codebuild]
-    name: 'Code Deployment'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/download-artifact@v4
-
-      - uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 'Upload Azure Functions'
-        uses: Azure/functions-action@v1
-        id: fa
-        with:
-          app-name: ${{ vars.AZURE_DOTNET_FA }}
-          package: '/home/runner/work/postyfox-core/postyfox-core/dotnet-fa'
-          publish-profile: ${{ secrets.DOTNET_FA_PUB_PROFILE }}
