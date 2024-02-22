@@ -5,6 +5,12 @@ resource "azurerm_storage_account" "spa_storage" {
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-}
 
-# Deploy a container for Static Storage
+  static_website {
+    index_document = "index.html"
+  }
+
+  custom_domain {
+    name = "${local.portal-prefix}${local.portal-address}"
+  }
+}
