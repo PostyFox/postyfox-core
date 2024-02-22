@@ -40,9 +40,3 @@ resource "azurerm_role_assignment" "dotnetfuncapp-table" {
   role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
-
-resource "azurerm_role_assignment" "dotnetfuncapp-datacontributor" {
-  scope                = azurerm_resource_group.rg.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
-}
