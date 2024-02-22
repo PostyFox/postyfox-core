@@ -42,7 +42,7 @@ jobs:
       uses: hashicorp/setup-terraform@v1
 
     - name: Terraform Init
-      run: terraform init -upgrade
+      run: terraform init -upgrade -backend-config="key=${{inputs.targetEnvironment}}.tfstate" -reconfigure
       working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
       env:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
@@ -119,6 +119,5 @@ jobs:
         uses: Azure/functions-action@v1
         id: fa
         with:
-          app-name: ${{ vars.AZURE_DOTNET_FA }}
+          app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
           package: '/home/runner/work/postyfox-core/postyfox-core/dotnet-fa'
-          # publish-profile: ${{ secrets.DOTNET_FA_PUB_PROFILE }}

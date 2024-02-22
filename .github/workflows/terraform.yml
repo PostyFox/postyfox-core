@@ -42,7 +42,7 @@ jobs:
       uses: hashicorp/setup-terraform@v1
 
     - name: Terraform Init
-      run: terraform init -upgrade
+      run: terraform init -upgrade -backend-config="key=${{inputs.targetEnvironment}}.tfstate" -reconfigure
       working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
       env:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
