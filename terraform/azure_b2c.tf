@@ -1,5 +1,5 @@
 resource "azurerm_aadb2c_directory" "b2c_tenant" {
-  # country_code            = "GB"
+  country_code            = "GB"
   data_residency_location = "Europe"
   # display_name            = "${local.appname}"
   domain_name             = "${local.appname}${var.environment}.onmicrosoft.com"
