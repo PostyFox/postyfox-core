@@ -6,4 +6,6 @@ locals {
   portal-prefix = var.environment == "prod" ? "" : "${var.environment}."
 
   portal-address = "cp.postyfox.com"
+
+  b2ctenant = var.environment == "prod" ? "postyfox" : "postyfox${var.environment}"
 }
