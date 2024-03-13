@@ -1,4 +1,5 @@
 ﻿using Microsoft.Azure.Functions.Worker.Http;
+using System.Diagnostics.Eventing.Reader;
 using System.Security.Claims;
 
 namespace PostyFox_NetCore.Helpers
@@ -15,31 +16,52 @@ namespace PostyFox_NetCore.Helpers
 
         public static string GetAuthId(HttpRequestData request)
         {
-            if (request.Headers.Contains(AUTH_HEADER_ID))
-            {
-                return request.Headers.GetValues(AUTH_HEADER_ID).First();
+            if (Environment.GetEnvironmentVariable("PostyFoxDevMode") == null)
+            { 
+                if (request.Headers.Contains(AUTH_HEADER_ID))
+                {
+                    return request.Headers.GetValues(AUTH_HEADER_ID).First();
+                }
             }
+            else
+            {
+                if (Environment.GetEnvironmentVariable("PostyFoxUserID") != null)
+                {
+#pragma warning disable CS8603 // Possible null reference return.
+                    return Environment.GetEnvironmentVariable("PostyFoxUserID");
+#pragma warning restore CS8603 // Possible null reference return.
+                }
+            }
+
             return string.Empty;
         }
 
         public static bool ValidateAuth(HttpRequestData request)
         {
-            if (request.Headers.Contains(AUTH_HEADER))
+            if (Environment.GetEnvironmentVariable("PostyFoxDevMode") == null)
             {
-                // Auth_header will contain a human readable version of the logged in name
-                ClaimsPrincipal principal = ClaimsPrincipalParser.Parse(request);
-                if (principal.Identity != null && principal.Identity.IsAuthenticated) 
+                if (request.Headers.Contains(AUTH_HEADER))
                 {
-                    return true;
-                } 
+                    // Auth_header will contain a human readable version of the logged in name
+                    ClaimsPrincipal principal = ClaimsPrincipalParser.Parse(request);
+                    if (principal.Identity != null && principal.Identity.IsAuthenticated)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
                 else
                 {
                     return false;
                 }
             } 
-            else
+            else 
             {
-                return false;
+                // Running locally / dev environment
+                return true;
             }
         }
     }

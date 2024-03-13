@@ -2,8 +2,11 @@ using System.Net;
 using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi.Models;
 using PostyFox_NetCore.Helpers;
 
 namespace PostyFox_NetCore
@@ -18,6 +21,9 @@ namespace PostyFox_NetCore
             _logger = loggerFactory.CreateLogger<Services>();
             _configTable = clientFactory.CreateClient("ConfigTable");
         }
+
+        [OpenApiOperation(operationId: "getUserStatus", tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
 
         [Function("Services")]
         public HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)

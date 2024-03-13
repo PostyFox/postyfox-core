@@ -2,9 +2,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Azure;
 using Azure.Identity;
+using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults()
+    .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
     {
         services.AddAzureClients(clientBuilder =>
