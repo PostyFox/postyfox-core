@@ -24,7 +24,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
       use_dotnet_isolated_runtime = true
     }
 
-    application_insights_key = azurerm_application_insights.application_insights-net.instrumentation_key
+    application_insights_connection_string = azurerm_application_insights.application_insights-net.connection_string
   }
 }
 
