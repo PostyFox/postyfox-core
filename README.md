@@ -29,3 +29,26 @@ You will need to set the Environment Variable ConfigTable to the Connection Stri
 #### NodeJS Core Function App
 
 TBD
+
+### Testing against the API with Postman
+
+Postman is one of the easiest ways to experiment with the API's that are deployed. But in order to do this you need to authenticate and get a Bearer Token or you will receive 401's.
+
+The process to receive a token is fairly straight forward. [Click here](https://postyfoxdev.b2clogin.com/postyfoxdev.onmicrosoft.com/oauth2/v2.0/authorize?p=B2C_1_Signin&client_id=2b89259d-3cc3-41fe-adbf-5f9acb15e622&nonce=defaultNonce&redirect_uri=https%3A%2F%2Fjwt.ms&scope=openid&response_type=id_token&prompt=login), and login.  You will be presented with a token in the test JWT.MS application, copy this into your clipboard.
+
+Open up Postman, and start a request to an API - for example - https://postyfox-func-app-dotnet-dev.azurewebsites.net/api/Services? - and formulate it with the correct parameters. Switch to the Authentication tab, select Bearer Token and paste your token into the box. Click Send. And that is it! If you have provided all the right parameters, and everything is working, you will get a response.
+
+If you encounter an error, you should get an error back, or you may need to do some debugging.
+
+If you are running the Function App stack locally, set two environment variables locally on your machine.
+
+|Environment Variable|Value|
+|---|---|
+|PostyFoxDevMode|true|
+|PostyFoxUserID|*Username*|
+
+Replace username with a username for display and processing in the UI.
+
+### Testing the API / Checking the Swagger Docs
+
+Point your browser at a deployed instance, such as the [dev one](https://postyfox-func-app-dotnet-dev.azurewebsites.net/api/swagger/ui) and login. You will be able to send test requests to the API and review the responses. Note that this functionality is not enabled on all deployments.

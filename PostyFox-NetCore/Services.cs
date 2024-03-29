@@ -28,7 +28,7 @@ namespace PostyFox_NetCore
         [Function("Services")]
         public HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
-            // Check if authenticated on AAD; if not, return 403 Unauthorized.
+            // Check if authenticated on AAD; if not, return 401 Unauthorized.
             // To do this need to extract the claim and see - this is done on the headers - detailed here
             if (AuthHelper.ValidateAuth(req))
             {
