@@ -48,3 +48,7 @@ If you are running the Function App stack locally, set two environment variables
 |PostyFoxUserID|*Username*|
 
 Replace username with a username for display and processing in the UI.
+
+### Testing the API / Checking the Swagger Docs
+
+Point your browser at a deployed instance, such as the (dev one)[https://postyfox-func-app-dotnet-dev.azurewebsites.net/api/swagger/ui] and login. You will be able to send test requests to the API and review the responses. Note that this functionality is not enabled on all deployments.
