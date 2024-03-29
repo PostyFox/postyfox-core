@@ -14,3 +14,7 @@ variable "func_app_tenant_endpoint" {
   type        = string
   description = "(Required) The B2C tenant endpoint address"
 }
+
+variable "openid_configuration_endpoint" {
+  type = string
+}

@@ -16,6 +16,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
 
   app_settings = {
     "ConfigTable" = azurerm_storage_account.data_storage.primary_table_endpoint
+    "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
   }
 
   site_config {
@@ -35,15 +36,23 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     require_https            = true
     runtime_version          = "~1"
     unauthenticated_action   = "Return401"
+    default_provider         = "AAD_B2C"
 
-    active_directory_v2 {
-      allowed_applications = [
-        var.func_app_registered_client_id
-      ]
-      client_id                   = var.func_app_registered_client_id
-      client_secret_setting_name  = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)" # Reference this in KeyVault
-      tenant_auth_endpoint        = var.func_app_tenant_endpoint
-      www_authentication_disabled = false
+    # active_directory_v2 {
+    #   allowed_applications = [
+    #     var.func_app_registered_client_id
+    #   ]
+    #   client_id                   = var.func_app_registered_client_id
+    #   client_secret_setting_name  = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)" # Reference this in KeyVault
+    #   tenant_auth_endpoint        = var.func_app_tenant_endpoint
+    #   www_authentication_disabled = false
+    # }
+
+    custom_oidc_v2 {
+      name = "AAD_B2C"
+      client_id = var.func_app_registered_client_id
+      openid_configuration_endpoint = var.openid_configuration_endpoint
+      
     }
 
     login {

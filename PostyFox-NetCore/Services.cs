@@ -22,8 +22,8 @@ namespace PostyFox_NetCore
             _configTable = clientFactory.CreateClient("ConfigTable");
         }
 
-        // [OpenApiOperation(operationId: "getUserStatus", tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
-        // [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
+        [OpenApiOperation(operationId: "getUserStatus", tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
 
         [Function("Services")]
         public HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
