@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Azure;
 using Azure.Identity;
 using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;

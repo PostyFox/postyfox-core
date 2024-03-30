@@ -1,5 +1,4 @@
 ﻿using Microsoft.Azure.Functions.Worker.Http;
-using System.Diagnostics.Eventing.Reader;
 using System.Security.Claims;
 
 namespace PostyFox_NetCore.Helpers
