@@ -25,7 +25,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
       use_dotnet_isolated_runtime = true
     }
 
-    application_insights_connection_string = azurerm_application_insights.application_insights-net.connection_string
+    application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
   }
 
   auth_settings_v2 {
@@ -38,21 +38,10 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     unauthenticated_action   = "Return401"
     default_provider         = "AAD_B2C"
 
-    # active_directory_v2 {
-    #   allowed_applications = [
-    #     var.func_app_registered_client_id
-    #   ]
-    #   client_id                   = var.func_app_registered_client_id
-    #   client_secret_setting_name  = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)" # Reference this in KeyVault
-    #   tenant_auth_endpoint        = var.func_app_tenant_endpoint
-    #   www_authentication_disabled = false
-    # }
-
     custom_oidc_v2 {
       name = "AAD_B2C"
       client_id = var.func_app_registered_client_id
       openid_configuration_endpoint = var.openid_configuration_endpoint
-      
     }
 
     login {

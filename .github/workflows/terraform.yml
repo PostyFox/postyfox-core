@@ -51,7 +51,7 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
     - name: Terraform Plan
-      run: terraform plan -var environment="${{inputs.targetEnvironment}}"
+      run: "terraform plan --var-file=./envs/${{inputs.targetEnvironment}}.tfvars"
       working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
       env:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
