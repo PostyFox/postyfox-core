@@ -35,6 +35,8 @@ namespace PostyFox_NetCore
                 _configTable.CreateTableIfNotExists("ConfigTable");
                 string userId = AuthHelper.GetAuthId(req);
 
+                _logger.LogInformation("Request for user services received", userId);
+
                 // Check what services the user has enabled, and return a config object
                 List<ServiceDTO> ls = new();
                 var client = _configTable.GetTableClient("ConfigTable");
