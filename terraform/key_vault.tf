@@ -6,17 +6,22 @@ resource "azurerm_key_vault" "key_vault" {
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   soft_delete_retention_days  = 7
   purge_protection_enabled    = false
+  enable_rbac_authorization   = true
 
   sku_name = "standard"
-
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azurerm_client_config.current.object_id
-
-    secret_permissions = [
-      "Get", "Set", "List"
-    ]
-  }
 }
 
 # A secret called client secret should be added to this vault :)
+
+
+resource "azurerm_role_assignment" "dotnetfuncapp-secret_permissions" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "nodejsfuncapp-secret_permissions" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
+}
