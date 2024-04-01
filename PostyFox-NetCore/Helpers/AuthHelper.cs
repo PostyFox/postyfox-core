@@ -1,4 +1,5 @@
 ﻿using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace PostyFox_NetCore.Helpers
@@ -10,7 +11,7 @@ namespace PostyFox_NetCore.Helpers
 
         // HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req)
 
-        const string AUTH_HEADER = "X-MS-CLIENT-PRINCIPAL-NAME";
+        const string AUTH_HEADER = "X-MS-CLIENT-PRINCIPAL";
         const string AUTH_HEADER_ID = "X-MS-CLIENT-PRINCIPAL-ID";
 
         public static string GetAuthId(HttpRequestData request)
@@ -35,7 +36,7 @@ namespace PostyFox_NetCore.Helpers
             return string.Empty;
         }
 
-        public static bool ValidateAuth(HttpRequestData request)
+        public static bool ValidateAuth(HttpRequestData request, ILogger logger)
         {
             if (Environment.GetEnvironmentVariable("PostyFoxDevMode") == null)
             {
@@ -43,17 +44,20 @@ namespace PostyFox_NetCore.Helpers
                 {
                     // Auth_header will contain a human readable version of the logged in name
                     ClaimsPrincipal principal = ClaimsPrincipalParser.Parse(request);
-                    if (principal.Identity != null && principal.Identity.IsAuthenticated)
+                    if (principal.Claims.Any())
                     {
+                        logger.LogInformation("Found header, have claims");
                         return true;
                     }
                     else
                     {
+                        logger.LogWarning("Found header, have NO claims");
                         return false;
                     }
                 }
                 else
                 {
+                    logger.LogError("NO auth header found");
                     return false;
                 }
             } 
