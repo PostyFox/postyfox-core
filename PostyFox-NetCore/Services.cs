@@ -22,11 +22,11 @@ namespace PostyFox_NetCore
             _configTable = clientFactory.CreateClient("ConfigTable");
         }
 
-        [Function("ServicesPing")]
-        public HttpResponseData ServicePing([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        [Function("Services_Ping")]
+        public HttpResponseData Ping([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
             var response = req.CreateResponse(HttpStatusCode.OK);
-            var valueTask = response.WriteAsJsonAsync("Pong");
+            var valueTask = response.WriteAsJsonAsync(req.Headers.ToString());
             valueTask.AsTask().GetAwaiter().GetResult();
 
             _logger.LogInformation("ServicesPing", req.Headers);
@@ -35,12 +35,10 @@ namespace PostyFox_NetCore
         }
 
 
-            [OpenApiOperation(operationId: "getUserStatus", tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
-        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
-        //[OpenApiSecurity("bearer_auth", SecuritySchemeType.Http, Scheme = OpenApiSecuritySchemeType.Bearer, BearerFormat = "JWT")]
-
-        [Function("Services")]
-        public HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        [OpenApiOperation(tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
+        [Function("Services_GetUser")]
+        public HttpResponseData GetUser([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
             // Check if authenticated on AAD; if not, return 401 Unauthorized.
             // To do this need to extract the claim and see - this is done on the headers - detailed here
@@ -74,9 +72,7 @@ namespace PostyFox_NetCore
             }
             else
             {
-                _logger.LogDebug("Unauthenticated or invalid function execution", req.Headers);
-                var response = req.CreateResponse(HttpStatusCode.Unauthorized);
-                return response;
+                return req.CreateResponse(HttpStatusCode.Unauthorized);
             }
         }
     }
