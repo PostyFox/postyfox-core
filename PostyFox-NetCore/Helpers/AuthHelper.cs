@@ -1,4 +1,5 @@
 ﻿using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace PostyFox_NetCore.Helpers
@@ -35,7 +36,7 @@ namespace PostyFox_NetCore.Helpers
             return string.Empty;
         }
 
-        public static bool ValidateAuth(HttpRequestData request)
+        public static bool ValidateAuth(HttpRequestData request, ILogger logger)
         {
             if (Environment.GetEnvironmentVariable("PostyFoxDevMode") == null)
             {
@@ -45,15 +46,18 @@ namespace PostyFox_NetCore.Helpers
                     ClaimsPrincipal principal = ClaimsPrincipalParser.Parse(request);
                     if (principal.Claims.Any())
                     {
+                        logger.LogInformation("Found header, have claims");
                         return true;
                     }
                     else
                     {
+                        logger.LogWarning("Found header, have NO claims");
                         return false;
                     }
                 }
                 else
                 {
+                    logger.LogError("NO auth header found");
                     return false;
                 }
             } 

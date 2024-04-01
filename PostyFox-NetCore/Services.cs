@@ -39,7 +39,7 @@ namespace PostyFox_NetCore
         {
             // Check if authenticated on AAD; if not, return 401 Unauthorized.
             // To do this need to extract the claim and see - this is done on the headers - detailed here
-            if (AuthHelper.ValidateAuth(req))
+            if (AuthHelper.ValidateAuth(req, _logger))
             {
                 _configTable.CreateTableIfNotExists("ConfigTable");
                 string userId = AuthHelper.GetAuthId(req);
@@ -69,8 +69,6 @@ namespace PostyFox_NetCore
             else
             {
                 var response = req.CreateResponse(HttpStatusCode.Unauthorized);
-                var valueTask = response.WriteAsJsonAsync(req.Headers.ToString());
-                valueTask.AsTask().GetAwaiter().GetResult();
                 return response;
             }
         }
