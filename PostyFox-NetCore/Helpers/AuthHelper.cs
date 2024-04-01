@@ -11,7 +11,7 @@ namespace PostyFox_NetCore.Helpers
 
         // HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req)
 
-        const string AUTH_HEADER = "X-MS-CLIENT-PRINCIPAL-NAME";
+        const string AUTH_HEADER = "X-MS-CLIENT-PRINCIPAL";
         const string AUTH_HEADER_ID = "X-MS-CLIENT-PRINCIPAL-ID";
 
         public static string GetAuthId(HttpRequestData request)
