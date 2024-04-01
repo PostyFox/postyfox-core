@@ -24,6 +24,7 @@ namespace PostyFox_NetCore
 
         [OpenApiOperation(operationId: "getUserStatus", tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
+        [OpenApiSecurity("bearer_auth", SecuritySchemeType.Http, Scheme = OpenApiSecuritySchemeType.Bearer, BearerFormat = "JWT")]
 
         [Function("Services")]
         public HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
