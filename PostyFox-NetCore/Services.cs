@@ -60,7 +60,7 @@ namespace PostyFox_NetCore
             }
             else
             {
-                _logger.LogDebug('Unauthenticated or invalid function execution', req.Headers);
+                _logger.LogDebug("Unauthenticated or invalid function execution", req.Headers);
                 var response = req.CreateResponse(HttpStatusCode.Unauthorized);
                 return response;
             }
