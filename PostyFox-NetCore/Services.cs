@@ -28,9 +28,6 @@ namespace PostyFox_NetCore
             var response = req.CreateResponse(HttpStatusCode.OK);
             var valueTask = response.WriteAsJsonAsync(req.Headers.ToString());
             valueTask.AsTask().GetAwaiter().GetResult();
-
-            _logger.LogInformation("ServicesPing", req.Headers);
-
             return response;
         }
 
@@ -67,12 +64,14 @@ namespace PostyFox_NetCore
                 var response = req.CreateResponse(HttpStatusCode.OK);
                 var valueTask = response.WriteAsJsonAsync(ls);
                 valueTask.AsTask().GetAwaiter().GetResult();    
-
                 return response;
             }
             else
             {
-                return req.CreateResponse(HttpStatusCode.Unauthorized);
+                var response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                var valueTask = response.WriteAsJsonAsync(req.Headers.ToString());
+                valueTask.AsTask().GetAwaiter().GetResult();
+                return response;
             }
         }
     }

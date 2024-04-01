@@ -43,7 +43,7 @@ namespace PostyFox_NetCore.Helpers
                 {
                     // Auth_header will contain a human readable version of the logged in name
                     ClaimsPrincipal principal = ClaimsPrincipalParser.Parse(request);
-                    if (principal.Identity != null && principal.Identity.IsAuthenticated)
+                    if (principal.Claims.Any())
                     {
                         return true;
                     }
