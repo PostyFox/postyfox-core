@@ -22,9 +22,22 @@ namespace PostyFox_NetCore
             _configTable = clientFactory.CreateClient("ConfigTable");
         }
 
-        [OpenApiOperation(operationId: "getUserStatus", tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
+        [Function("ServicesPing")]
+        public HttpResponseData ServicePing([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        {
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            var valueTask = response.WriteAsJsonAsync("Pong");
+            valueTask.AsTask().GetAwaiter().GetResult();
+
+            _logger.LogInformation("ServicesPing", req.Headers);
+
+            return response;
+        }
+
+
+            [OpenApiOperation(operationId: "getUserStatus", tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
-        [OpenApiSecurity("bearer_auth", SecuritySchemeType.Http, Scheme = OpenApiSecuritySchemeType.Bearer, BearerFormat = "JWT")]
+        //[OpenApiSecurity("bearer_auth", SecuritySchemeType.Http, Scheme = OpenApiSecuritySchemeType.Bearer, BearerFormat = "JWT")]
 
         [Function("Services")]
         public HttpResponseData GetUserStatus([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
