@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using Newtonsoft.Json;
 using PostyFox_NetCore.Helpers;
 
 namespace PostyFox_NetCore
@@ -31,9 +32,44 @@ namespace PostyFox_NetCore
             return response;
         }
 
+        [OpenApiOperation(tags: ["services"], Summary = "Fetch All Available Services", Description = "Fetch all available services a user can configure on the platform", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "List of services", Description = "This returns the response")]
+        [Function("Services_GetAvailable")]
+        public HttpResponseData GetAvailable([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        {
+            if (AuthHelper.ValidateAuth(req, _logger))
+            {
+                _configTable.CreateTableIfNotExists("AvailableServices");
+                string userId = AuthHelper.GetAuthId(req);
 
-        [OpenApiOperation(tags: new[] { "services" }, Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
-        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
+                List<ServiceDTO> ls = new();
+                var client = _configTable.GetTableClient("AvailableServices");
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId);
+                foreach (var service in query.AsEnumerable())
+                {
+                    ServiceDTO dto = new()
+                    {
+                        ServiceID = service.RowKey,
+                        ServiceName = service.ServiceName,
+                        IsEnabled = service.IsEnabled
+                    };
+                    ls.Add(dto);
+                }
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                var valueTask = response.WriteAsJsonAsync(ls);
+                valueTask.AsTask().GetAwaiter().GetResult();
+                return response;
+            }
+            else
+            {
+                var response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                return response;
+            }
+        }
+
+        [OpenApiOperation(tags: ["services"], Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "List of user configured services", Description = "This returns the response")]
         [Function("Services_GetUser")]
         public HttpResponseData GetUser([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
@@ -54,7 +90,7 @@ namespace PostyFox_NetCore
                 {
                     ServiceDTO dto = new()
                     {
-                        ServiceID = service.ServiceID,
+                        ServiceID = service.RowKey,
                         ServiceName = service.ServiceName,
                         IsEnabled = service.IsEnabled
                     };
@@ -64,6 +100,46 @@ namespace PostyFox_NetCore
                 var response = req.CreateResponse(HttpStatusCode.OK);
                 var valueTask = response.WriteAsJsonAsync(ls);
                 valueTask.AsTask().GetAwaiter().GetResult();    
+                return response;
+            }
+            else
+            {
+                var response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                return response;
+            }
+        }
+
+        [OpenApiOperation(tags: ["services"], Summary = "Set Details for a user service", Description = "Saves the configuration for a services for a given user", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
+        [Function("Services_SetUser")]
+        public HttpResponseData SetUser([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+        {
+            if (AuthHelper.ValidateAuth(req, _logger))
+            {
+                _configTable.CreateTableIfNotExists("ConfigTable");
+                var client = _configTable.GetTableClient("ConfigTable");
+                string userId = AuthHelper.GetAuthId(req);
+
+                _logger.LogInformation("SetUser Called", userId);
+
+                string requestBody = new StreamReader(req.Body).ReadToEnd();
+                dynamic data = JsonConvert.DeserializeObject(requestBody);
+
+                if (data != null)
+                {
+                    // Unpack and do an upsert
+                    ServiceTableEntity tableEntity = new()
+                    {
+                        PartitionKey = userId,
+                        ServiceName = data.ServiceName,
+                        Timestamp = DateTime.UtcNow,
+                        IsEnabled = data.Enabled,
+                        RowKey = data.ServiceID
+                    };
+                    client.UpsertEntity(tableEntity);
+                }
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
                 return response;
             }
             else

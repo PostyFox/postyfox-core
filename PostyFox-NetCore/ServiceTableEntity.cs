@@ -8,10 +8,10 @@ namespace PostyFox_NetCore
     public class ServiceTableEntity : ITableEntity
     {
         public string ServiceName { get; set; }
-        public string ServiceID { get; set; }
         public bool IsEnabled { get; set; }
         [Description("User ID")]
         public string PartitionKey { get; set; }
+        [Description("Service ID")]
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
