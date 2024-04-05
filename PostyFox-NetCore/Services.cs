@@ -70,8 +70,8 @@ namespace PostyFox_NetCore
 
         [OpenApiOperation(tags: ["services"], Summary = "Fetch User Services", Description = "Fetches the state of configured and available user services", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "List of user configured services", Description = "This returns the response")]
-        [Function("Services_GetUser")]
-        public HttpResponseData GetUser([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        [Function("Services_GetUserService")]
+        public HttpResponseData GetUserService([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
             // Check if authenticated on AAD; if not, return 401 Unauthorized.
             // To do this need to extract the claim and see - this is done on the headers - detailed here
@@ -111,8 +111,8 @@ namespace PostyFox_NetCore
 
         [OpenApiOperation(tags: ["services"], Summary = "Set Details for a user service", Description = "Saves the configuration for a services for a given user", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
-        [Function("Services_SetUser")]
-        public HttpResponseData SetUser([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+        [Function("Services_SetUserService")]
+        public HttpResponseData SetUserService([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
             if (AuthHelper.ValidateAuth(req, _logger))
             {
@@ -137,6 +137,35 @@ namespace PostyFox_NetCore
                         RowKey = data.ServiceID
                     };
                     client.UpsertEntity(tableEntity);
+                }
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                return response;
+            }
+            else
+            {
+                var response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                return response;
+            }
+        }
+
+        [OpenApiOperation(tags: ["services"], Summary = "Delete a service a user has configured", Description = "Delete a user that a user has already configured and no longer wants to use", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "The response", Description = "This returns the response")]
+        [Function("Services_DeleteUserService")]
+        public HttpResponseData DeleteUserService([HttpTrigger(AuthorizationLevel.Anonymous, "delete")] HttpRequestData req)
+        {
+            if (AuthHelper.ValidateAuth(req, _logger))
+            {
+                _configTable.CreateTableIfNotExists("ConfigTable");
+                var client = _configTable.GetTableClient("ConfigTable");
+                string userId = AuthHelper.GetAuthId(req);
+
+                string requestBody = new StreamReader(req.Body).ReadToEnd();
+                dynamic data = JsonConvert.DeserializeObject(requestBody);
+
+                if (data != null)
+                {
+                    client.DeleteEntity(userId, data.ServiceID);
                 }
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
