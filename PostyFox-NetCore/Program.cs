@@ -12,6 +12,7 @@ var host = new HostBuilder()
             // Register clients for each service
 #pragma warning disable CS8604
             clientBuilder.AddTableServiceClient(new Uri(Environment.GetEnvironmentVariable("ConfigTable"))).WithName("ConfigTable");
+            clientBuilder.AddSecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore"))).WithName("SecretStore");
 #pragma warning restore CS8604
             clientBuilder.UseCredential(new DefaultAzureCredential());
         });

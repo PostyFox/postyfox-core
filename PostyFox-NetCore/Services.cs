@@ -44,14 +44,15 @@ namespace PostyFox_NetCore
 
                 List<ServiceDTO> ls = new();
                 var client = _configTable.GetTableClient("AvailableServices");
-                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId);
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == "Service");
                 foreach (var service in query.AsEnumerable())
                 {
                     ServiceDTO dto = new()
                     {
                         ServiceID = service.RowKey,
                         ServiceName = service.ServiceName,
-                        IsEnabled = service.IsEnabled
+                        IsEnabled = service.IsEnabled, // Not sure if this will actually have a use for the "Available" definition? 
+                        Configuration = service.Configuration // In this context, configuration will define what needs to be provided
                     };
                     ls.Add(dto);
                 }
@@ -92,7 +93,8 @@ namespace PostyFox_NetCore
                     {
                         ServiceID = service.RowKey,
                         ServiceName = service.ServiceName,
-                        IsEnabled = service.IsEnabled
+                        IsEnabled = service.IsEnabled,
+                        Configuration = service.Configuration
                     };
                     ls.Add(dto);
                 }
@@ -132,6 +134,7 @@ namespace PostyFox_NetCore
                     {
                         PartitionKey = userId,
                         ServiceName = data.ServiceName,
+                        Configuration = data.Configuration,
                         Timestamp = DateTime.UtcNow,
                         IsEnabled = data.Enabled,
                         RowKey = data.ServiceID
