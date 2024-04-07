@@ -16,6 +16,12 @@ Github actions exist here which manage full deployment pipelines for all compone
 
 Visual Studio Code or Visual Studio 2022
 
+### Setting up Azurite
+
+By far the easiest way of using / configuring Azurite is to use the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=Azurite.azurite). This will add a number of options along the bottom of your VS Code instance - such as Azurite Table Service, Azurite Queue Service etc, and simply clicking on these will start the relevant service. 
+
+The local.settings.json file for each project should *already* be configured correctly for working off the Azurite storage emulator and not require any changes, unless you are using different ports.
+
 ### Using the Function App Runtime
 
 You can spin up a Function App host locally, once the FA functions are compiled (dotnet build or yarn etc); go into the output folder and then simply run func start to kick the host into life.  This gives you a way to debug things locally, and it should work from within VS Core and VS.  Note that VS Core needs the Function App Extension installed (strongly recommended).
