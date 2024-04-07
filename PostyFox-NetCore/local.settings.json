@@ -1,8 +1,13 @@
 {
-    "IsEncrypted": false,
-    "Values": {
-        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-        "ConfigTable": "http://127.0.0.1:10002/devstoreaccount1"
-    }
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "ConfigTable": "https://127.0.0.1:10002/devstoreaccount1",
+    "SecretStore": "",
+    "Telegram_ApiID": 23772970,
+    "Telegram_ApiHash": "",
+    "PostyFoxDevMode": true,
+    "PostyFoxUserID": "Womble"
+  }
 }

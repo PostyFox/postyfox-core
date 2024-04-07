@@ -28,11 +28,23 @@ namespace PostyFox_NetCore.Integrations
         {
             _logger = loggerFactory.CreateLogger<Services>();
             _configTable = clientFactory.CreateClient("ConfigTable");
+
             _secretStore = secretClientFactory.CreateClient("SecretStore");
 
             // Load the configuration for Telegram from KeyVault
             apiId = int.Parse(_secretStore.GetSecret("Telegram_ApiID").Value.Value);
             apiHash = _secretStore.GetSecret("Telegram_ApiHash").Value.Value;
+        }
+
+        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
+        {
+            // This constructor will be used when there is no secretStore provided by dependency injection - i.e. we are running locally.
+
+            _logger = loggerFactory.CreateLogger<Services>();
+            _configTable = clientFactory.CreateClient("ConfigTable");
+
+            apiId = int.Parse(Environment.GetEnvironmentVariable("Telegram_ApiId"));
+            apiHash = Environment.GetEnvironmentVariable("Telegram_ApiHash");
         }
 
         [Function("Telegram_Ping")]
@@ -44,8 +56,9 @@ namespace PostyFox_NetCore.Integrations
             return response;
         }
 
-        [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
-        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "", Description = "")]
+        [OpenApiOperation(tags: ["telegram"], Summary = "Identifies if the user is authenticated with Telegram", Description = "", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(bool), Summary = "true if a valid session is held", Description = "If no valid session, call authentication flow")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [Function("Telegram_IsAuthenticated")]
         public HttpResponseData IsAuthenticated([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
@@ -54,9 +67,12 @@ namespace PostyFox_NetCore.Integrations
                 string userId = AuthHelper.GetAuthId(req);
                 using (WTelegram.Client client = new WTelegram.Client(apiId, apiHash, userId))
                 {
-                    client.LoginUserIfNeeded().RunSynchronously();
+                    if (client.TLConfig != null)
+                    {
+                        client.LoginUserIfNeeded().Wait();
+                    }
                     var response = req.CreateResponse(HttpStatusCode.OK);
-                    var valueTask = response.WriteAsJsonAsync(client.User == null);
+                    var valueTask = response.WriteAsJsonAsync(client.User != null);
                     valueTask.AsTask().GetAwaiter().GetResult();
                     return response;
                 }
@@ -69,7 +85,10 @@ namespace PostyFox_NetCore.Integrations
         }
 
         [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
-        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/json", bodyType: typeof(string), Summary = "", Description = "")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(string), Summary = "", Description = "")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
+        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(string), Required = false)]
         [Function("Telegram_DoLogin")]
         public HttpResponseData DoLogin([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
@@ -90,16 +109,20 @@ namespace PostyFox_NetCore.Integrations
                     string loginPayload = serviceConfig.PhoneNumber;
                     if (!string.IsNullOrEmpty(requestBody)) {
                         dynamic postBody = JsonConvert.DeserializeObject(requestBody);
-                        if (postBody != null && postBody.Value != null)
+                        if (postBody != null)
                         {
-                            loginPayload = postBody.Value;
+                            if (postBody.Value != null)
+                            {
+                                loginPayload = postBody.Value;
+                            }
                         }
                     }
 
                     using (WTelegram.Client telegramClient = new WTelegram.Client(apiId, apiHash, userId))
                     {
+                        telegramClient.OnOther += TelegramClient_OnOther;
                         var t = telegramClient.Login(loginPayload);
-                        t.RunSynchronously();
+                        t.Wait();
                         var response = req.CreateResponse(HttpStatusCode.OK);
                         switch (t.Result) // returns which config is needed to continue login
                         {
@@ -130,6 +153,10 @@ namespace PostyFox_NetCore.Integrations
             }
         }
 
-
+        private Task TelegramClient_OnOther(IObject arg)
+        {
+            Console.WriteLine(arg);
+            return Task.CompletedTask;
+        }
     }
 }
