@@ -38,11 +38,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1
+    - name: Setup OpenTofu
+      uses: opentofu/setup-opentofu@v1
 
-    - name: Terraform Init
-      run: terraform init -upgrade -backend-config="key=${{inputs.targetEnvironment}}.tfstate" -reconfigure
+    - name: Tofu Init
+      run: tofu init -upgrade -backend-config="key=${{inputs.targetEnvironment}}.tfstate" -reconfigure
       working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
       env:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
@@ -50,8 +50,8 @@ jobs:
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
-    - name: Terraform Plan
-      run: "terraform plan --var-file=./envs/${{inputs.targetEnvironment}}.tfvars"
+    - name: Tofu Plan
+      run: "tofu plan --var-file=./envs/${{inputs.targetEnvironment}}.tfvars"
       working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
       env:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
