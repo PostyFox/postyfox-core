@@ -13,6 +13,7 @@ var host = new HostBuilder()
             // Register clients for each service
 #pragma warning disable CS8604
             clientBuilder.AddTableServiceClient(new Uri(Environment.GetEnvironmentVariable("ConfigTable"))).WithName("ConfigTable");
+            clientBuilder.AddBlobServiceClient(new Uri(Environment.GetEnvironmentVariable("StorageAccount"))).WithName("StorageAccount");
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
             {
                 clientBuilder.AddSecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore"))).WithName("SecretStore");

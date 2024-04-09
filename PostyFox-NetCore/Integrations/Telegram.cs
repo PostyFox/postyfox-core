@@ -20,7 +20,7 @@ namespace PostyFox_NetCore.Integrations
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
-        private readonly SecretClient _secretStore;
+        private readonly SecretClient? _secretStore;
         private int apiId = 0;
         private string apiHash = string.Empty;
 
@@ -59,21 +59,51 @@ namespace PostyFox_NetCore.Integrations
         [OpenApiOperation(tags: ["telegram"], Summary = "Identifies if the user is authenticated with Telegram", Description = "", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(bool), Summary = "true if a valid session is held", Description = "If no valid session, call authentication flow")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
         [Function("Telegram_IsAuthenticated")]
         public HttpResponseData IsAuthenticated([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
             if (AuthHelper.ValidateAuth(req, _logger))
             {
                 string userId = AuthHelper.GetAuthId(req);
-                using (WTelegram.Client client = new WTelegram.Client(apiId, apiHash, userId))
+                _configTable.CreateTableIfNotExists("ConfigTable");
+                var client = _configTable.GetTableClient("ConfigTable");
+
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == "Telegram");
+
+                // Trigger the login flow, and see if we need more information - pass this back to client in response.
+                ServiceTableEntity? entity = query.FirstOrDefault();
+                if (entity != null)
                 {
-                    if (client.TLConfig != null)
+                    dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
+                    string requestBody = new StreamReader(req.Body).ReadToEnd();
+                    string loginPayload = serviceConfig.PhoneNumber;
+
+                    using (WTelegram.Client telegramClient = new WTelegram.Client(apiId, apiHash, userId))
                     {
-                        client.LoginUserIfNeeded().Wait();
+                        var response = req.CreateResponse(HttpStatusCode.OK);
+                        ValueTask valueTask;
+                        if (telegramClient.UserId != 0)
+                        {
+                            var t = telegramClient.Login(loginPayload);
+                            t.Wait();
+                            if (t.Result == null)
+                            {
+                                valueTask = response.WriteAsJsonAsync(true);
+                                valueTask.AsTask().GetAwaiter().GetResult();
+                            }
+                        }
+                        else
+                        {
+                            valueTask = response.WriteAsJsonAsync(false);
+                            valueTask.AsTask().GetAwaiter().GetResult();
+                        }
+                        return response;
                     }
-                    var response = req.CreateResponse(HttpStatusCode.OK);
-                    var valueTask = response.WriteAsJsonAsync(client.User != null);
-                    valueTask.AsTask().GetAwaiter().GetResult();
+                }
+                else
+                {
+                    var response = req.CreateResponse(HttpStatusCode.NotFound); // No configuration saved
                     return response;
                 }
             }
@@ -85,7 +115,7 @@ namespace PostyFox_NetCore.Integrations
         }
 
         [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
-        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(string), Summary = "", Description = "")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(string), Summary = "Returns with details for authentication flow", Description = "Returns with a JSON object detailing the Value required to proceed with authentication; submit via POST as a JSON body to continue.")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(string), Required = false)]
