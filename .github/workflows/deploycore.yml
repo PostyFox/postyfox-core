@@ -36,7 +36,7 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup OpenTofu
       uses: opentofu/setup-opentofu@v1
@@ -76,7 +76,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # Build the .NET core Function App
     - name: Setup .NET Core 8.x
