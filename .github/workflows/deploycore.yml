@@ -80,7 +80,7 @@ jobs:
 
     # Build the .NET core Function App
     - name: Setup .NET Core 8.x
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         # Semantic version range syntax or exact version of a dotnet version
         dotnet-version: '8.x'
