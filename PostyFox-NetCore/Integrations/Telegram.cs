@@ -118,27 +118,25 @@ namespace PostyFox_NetCore.Integrations
                         }
                     }
 
-                    using (WTelegram.Client telegramClient = new WTelegram.Client(apiId, apiHash, userId))
+                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId);
+                    telegramClient.OnOther += TelegramClient_OnOther;
+                    var t = telegramClient.Login(loginPayload);
+                    t.Wait();
+                    var response = req.CreateResponse(HttpStatusCode.OK);
+                    switch (t.Result) // returns which config is needed to continue login
                     {
-                        telegramClient.OnOther += TelegramClient_OnOther;
-                        var t = telegramClient.Login(loginPayload);
-                        t.Wait();
-                        var response = req.CreateResponse(HttpStatusCode.OK);
-                        switch (t.Result) // returns which config is needed to continue login
-                        {
-                            case "verification_code":
-                                response.WriteAsJsonAsync("{\"Status\":\"InProgress\", \"Input\":\"Value\", \"Label\":\"Verification Code\"}").GetAwaiter().GetResult();
-                                break;
-                            case "password":
-                                response.WriteAsJsonAsync("{\"Status\":\"InProgress\", \"Input\":\"Value\", \"Label\":\"2FA Password\"}").GetAwaiter().GetResult();
-                                break;
-                            default:
-                                response.WriteAsJsonAsync("{\"Status\":\"Complete\", \"LoggedIn\": " + (telegramClient.User != null) + " }").GetAwaiter().GetResult();
-                                break;
-                        }
-                        return response;
+                        case "verification_code":
+                            response.WriteAsJsonAsync("{\"Status\":\"InProgress\", \"Input\":\"Value\", \"Label\":\"Verification Code\"}").GetAwaiter().GetResult();
+                            break;
+                        case "password":
+                            response.WriteAsJsonAsync("{\"Status\":\"InProgress\", \"Input\":\"Value\", \"Label\":\"2FA Password\"}").GetAwaiter().GetResult();
+                            break;
+                        default:
+                            response.WriteAsJsonAsync("{\"Status\":\"Complete\", \"LoggedIn\": " + (telegramClient.User != null) + " }").GetAwaiter().GetResult();
+                            StaticState.DisposeTelegramClient(userId);
+                            break;
                     }
-
+                    return response;
                 }
                 else
                 {
