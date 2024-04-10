@@ -34,8 +34,8 @@ namespace PostyFox_NetCore.Integrations
             _secretStore = secretClientFactory.CreateClient("SecretStore");
 
             // Load the configuration for Telegram from KeyVault
-            apiId = int.Parse(_secretStore.GetSecret("Telegram_ApiID").Value.Value);
-            apiHash = _secretStore.GetSecret("Telegram_ApiHash").Value.Value;
+            apiId = int.Parse(_secretStore.GetSecret("TelegramApiID").Value.Value);
+            apiHash = _secretStore.GetSecret("TelegramApiHash").Value.Value;
         }
 
         public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
@@ -45,8 +45,8 @@ namespace PostyFox_NetCore.Integrations
             _logger = loggerFactory.CreateLogger<Services>();
             _configTable = clientFactory.CreateClient("ConfigTable");
 
-            apiId = int.Parse(Environment.GetEnvironmentVariable("Telegram_ApiId"));
-            apiHash = Environment.GetEnvironmentVariable("Telegram_ApiHash");
+            apiId = int.Parse(Environment.GetEnvironmentVariable("TelegramApiID"));
+            apiHash = Environment.GetEnvironmentVariable("TelegramApiHash");
         }
 
         [Function("Telegram_Ping")]
