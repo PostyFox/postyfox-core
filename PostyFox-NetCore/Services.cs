@@ -149,11 +149,12 @@ namespace PostyFox_NetCore
                     ServiceTableEntity tableEntity = new()
                     {
                         PartitionKey = userId,
+                        ServiceID = data.ServiceID,
                         ServiceName = data.ServiceName,
                         Configuration = data.Configuration,
                         Timestamp = DateTime.UtcNow,
                         IsEnabled = data.Enabled,
-                        RowKey = data.ServiceID
+                        RowKey = data.ID
                     };
                     client.UpsertEntity(tableEntity);
 
@@ -162,9 +163,8 @@ namespace PostyFox_NetCore
                         // We have secure configuration data to unwrap and save to Key Vault
                         if (_secretStore != null)
                         {
-                            string secretName = "";
-                            KeyVaultSecret secret = new KeyVaultSecret(secretName, data.SecureConfiguration);
-
+                            // Key Vault Secrets have a max of 127 chars in length.  This should be around 73 / 74 chars.
+                            KeyVaultSecret secret = new KeyVaultSecret(data.ID+"-"+userId, data.SecureConfiguration);
                             _secretStore.SetSecret(secret);
                         }
                     }
