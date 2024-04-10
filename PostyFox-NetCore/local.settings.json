@@ -6,8 +6,8 @@
     "ConfigTable": "https://127.0.0.1:10002/devstoreaccount1",
     "StorageAccount": "https://127.0.0.1:10000/devstoreaccount1",
     "SecretStore": "",
-    "Telegram_ApiID": 23772970,
-    "Telegram_ApiHash": "",
+    "TelegramApiID": 23772970,
+    "TelegramApiHash": "",
     "PostyFoxDevMode": true,
     "PostyFoxUserID": "Womble"
   }
