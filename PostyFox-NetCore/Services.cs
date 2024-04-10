@@ -1,5 +1,6 @@
 using System.Net;
 using Azure.Data.Tables;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -16,6 +17,14 @@ namespace PostyFox_NetCore
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
+        private readonly SecretClient? _secretStore;
+
+        public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory)
+        {
+            _logger = loggerFactory.CreateLogger<Services>();
+            _configTable = clientFactory.CreateClient("ConfigTable");
+            _secretStore = secretClientFactory.CreateClient("SecretStore");
+        }
 
         public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
         {
@@ -147,6 +156,18 @@ namespace PostyFox_NetCore
                         RowKey = data.ServiceID
                     };
                     client.UpsertEntity(tableEntity);
+
+                    if (data.SecureConfiguration != null)
+                    {
+                        // We have secure configuration data to unwrap and save to Key Vault
+                        if (_secretStore != null)
+                        {
+                            string secretName = "";
+                            KeyVaultSecret secret = new KeyVaultSecret(secretName, data.SecureConfiguration);
+
+                            _secretStore.SetSecret(secret);
+                        }
+                    }
                 }
 
                 var response = req.CreateResponse(HttpStatusCode.OK);

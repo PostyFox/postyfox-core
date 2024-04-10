@@ -28,7 +28,7 @@ namespace PostyFox_NetCore
         /// JSON structure representing Secure Configuration properties for the service; will be only populated on GetAvailable and empty on UserService.  Values are stored seperately and encrypted.
         /// </summary>
         [OpenApiPropertyAttribute(Description = "JSON structure representing Secure Configuration properties for the service; will be only populated on GetAvailable and empty on UserService.")]
-        public string SecureConfiguration { get; set; }
+        public string? SecureConfiguration { get; set; }
         /// <summary>
         /// Identifies if the service is available for use, or enabled by the user for posting / interaction
         /// </summary>
