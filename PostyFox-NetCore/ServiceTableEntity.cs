@@ -12,7 +12,8 @@ namespace PostyFox_NetCore
         public string Configuration { get; set; }
         [Description("User ID")]
         public string PartitionKey { get; set; }
-        [Description("Service ID")]
+        public string? ServiceID { get; set; }
+        [Description("ID")]
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }

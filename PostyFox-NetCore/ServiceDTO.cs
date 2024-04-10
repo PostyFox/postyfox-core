@@ -5,14 +5,19 @@ namespace PostyFox_NetCore
     public class ServiceDTO
     {
         /// <summary>
-        /// The Service name; friendly presentable to the end user
+        /// The Service name; friendly presentable to the end user (defined by the user)
         /// </summary>
-        [OpenApiPropertyAttribute(Description = "The Service name; friendly presentable to the end user")]
+        [OpenApiPropertyAttribute(Description = "The Service name; friendly presentable to the end user (defined by the user)")]
         public string? ServiceName { get; set; }
         /// <summary>
         /// The internal identifier of the service. In combination with the User ID is a unique value.
         /// </summary>
         [OpenApiPropertyAttribute(Description = "The internal identifier of the service. In combination with the User ID is a unique value.")]
+        public string? ID { get; set; }
+        /// <summary>
+        /// Reference to the Service definition (ID)
+        /// </summary>
+        [OpenApiPropertyAttribute(Description = "Reference to the Service definition (ID)")]
         public string? ServiceID { get; set; }
         /// <summary>
         /// JSON structure representing the Configuration of the Service; if on GetAvailable, this is the *required* configuration for the Service, if on the UserService this is the *saved* configuration

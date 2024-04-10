@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
 using PostyFox_NetCore.Helpers;
-using static PostyFox_NetCore.Integrations.Telegram;
 
 namespace PostyFox_NetCore
 {
@@ -51,7 +50,8 @@ namespace PostyFox_NetCore
                 {
                     ServiceDTO dto = new()
                     {
-                        ServiceID = service.RowKey,
+                        ID = service.RowKey,
+                        ServiceID = service.ServiceID,
                         ServiceName = service.ServiceName,
                         IsEnabled = service.IsEnabled, // Not sure if this will actually have a use for the "Available" definition? 
                         Configuration = service.Configuration // In this context, configuration will define what needs to be provided
@@ -94,7 +94,8 @@ namespace PostyFox_NetCore
                 {
                     ServiceDTO dto = new()
                     {
-                        ServiceID = service.RowKey,
+                        ID = service.RowKey,
+                        ServiceID = service.ServiceID,
                         ServiceName = service.ServiceName,
                         IsEnabled = service.IsEnabled,
                         Configuration = service.Configuration

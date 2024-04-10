@@ -26,7 +26,7 @@ namespace PostyFox_NetCore.Integrations
 
         public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
         {
-            _logger = loggerFactory.CreateLogger<Services>();
+            _logger = loggerFactory.CreateLogger<Telegram>();
             _configTable = clientFactory.CreateClient("ConfigTable");
             _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
             _secretStore = secretClientFactory.CreateClient("SecretStore");
@@ -40,7 +40,7 @@ namespace PostyFox_NetCore.Integrations
         {
             // This constructor will be used when there is no secretStore provided by dependency injection - i.e. we are running locally.
 
-            _logger = loggerFactory.CreateLogger<Services>();
+            _logger = loggerFactory.CreateLogger<Telegram>();
             _configTable = clientFactory.CreateClient("ConfigTable");
 
 #pragma warning disable CS8604 // Possible null reference argument.
