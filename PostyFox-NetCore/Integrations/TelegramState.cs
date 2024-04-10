@@ -20,6 +20,7 @@ namespace PostyFox_NetCore.Integrations
             {
                 // Fetch the blob from store and load existing session data
                 _blobClient.DownloadTo(this);
+                Position = 0;
             }
         }
 
