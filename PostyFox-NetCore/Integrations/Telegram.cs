@@ -1,5 +1,4 @@
 using System.Net;
-using Azure;
 using Azure.Data.Tables;
 using Azure.Security.KeyVault.Secrets;
 using Azure.Storage.Blobs;
@@ -11,7 +10,6 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
-using PostyFox_NetCore;
 using PostyFox_NetCore.Helpers;
 using TL;
 
@@ -45,8 +43,12 @@ namespace PostyFox_NetCore.Integrations
             _logger = loggerFactory.CreateLogger<Services>();
             _configTable = clientFactory.CreateClient("ConfigTable");
 
+#pragma warning disable CS8604 // Possible null reference argument.
             apiId = int.Parse(Environment.GetEnvironmentVariable("TelegramApiID"));
+#pragma warning restore CS8604 // Possible null reference argument.
+#pragma warning disable CS8601 // Possible null reference assignment.
             apiHash = Environment.GetEnvironmentVariable("TelegramApiHash");
+#pragma warning restore CS8601 // Possible null reference assignment.
         }
 
         [Function("Telegram_Ping")]
@@ -75,21 +77,24 @@ namespace PostyFox_NetCore.Integrations
 
                 // Trigger the login flow, and see if we need more information - pass this back to client in response.
                 ServiceTableEntity? entity = query.FirstOrDefault();
-                if (entity != null)
+                if (entity != null && entity.Configuration != null)
                 {
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
                     dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
                     string requestBody = new StreamReader(req.Body).ReadToEnd();
-                    string loginPayload = serviceConfig.PhoneNumber;
+                    if (serviceConfig != null)
+                    {
+                        string loginPayload = serviceConfig.PhoneNumber;
 
-                    TelegramStore store = new TelegramStore(userId, _blobStorageAccount);
-                    using (WTelegram.Client telegramClient = new WTelegram.Client((val) =>
-                    {
-                        if (val == "api_id") return apiId.ToString();
-                        if (val == "api_hash") return apiHash;
-                        if (val == "phone_number") return loginPayload;
-                        return null;
-                    }, store))
-                    {
+                        TelegramStore store = new TelegramStore(userId, _blobStorageAccount);
+                        using WTelegram.Client telegramClient = new((val) =>
+                        {
+                            if (val == "api_id") return apiId.ToString();
+                            if (val == "api_hash") return apiHash;
+                            if (val == "phone_number") return loginPayload;
+                            return null;
+                        }, store);
                         var response = req.CreateResponse(HttpStatusCode.OK);
                         ValueTask valueTask;
                         if (telegramClient.UserId != 0)
@@ -109,6 +114,11 @@ namespace PostyFox_NetCore.Integrations
                         }
                         return response;
                     }
+                    else
+                    {
+                        var response = req.CreateResponse(HttpStatusCode.NotFound); // No configuration saved
+                        return response;
+                    }
                 }
                 else
                 {
@@ -123,11 +133,39 @@ namespace PostyFox_NetCore.Integrations
             }
         }
 
+        public class LoginParameters
+        {
+            /// <summary>
+            /// The value that has been requested by the Telegram API
+            /// </summary>
+            [OpenApiPropertyAttribute(Description = "The value that has been requested by the Telegram API", Nullable = true)]
+            public string? Value { get; set; }
+        }
+
+        public class LoginResponse
+        {
+            /// <summary>
+            /// The current stage / status of the Login process
+            /// </summary>
+            [OpenApiPropertyAttribute(Description = "The current stage / status of the Login process")]
+            public string Status { get; set; }
+            /// <summary>
+            /// The field name that should be used when you submit the JSON back
+            /// </summary>
+            [OpenApiPropertyAttribute(Description = "The field name that should be used when you submit the JSON back")]
+            public string Input { get; set; }
+            /// <summary>
+            /// The Label that should be shown to the user for the required data
+            /// </summary>
+            [OpenApiPropertyAttribute(Description = "The Label that should be shown to the user for the required data", Nullable = true)]
+            public string? Label { get; set; }
+        }
+
         [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
-        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(string), Summary = "Returns with details for authentication flow", Description = "Returns with a JSON object detailing the Value required to proceed with authentication; submit via POST as a JSON body to continue.")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(LoginResponse), Summary = "Returns with details for authentication flow", Description = "Returns with a JSON object detailing the Value required to proceed with authentication; submit via POST as a JSON body to continue.")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
-        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(string), Required = false)]
+        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(LoginParameters), Required = false)]
         [Function("Telegram_DoLogin")]
         public HttpResponseData DoLogin([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
@@ -141,13 +179,17 @@ namespace PostyFox_NetCore.Integrations
 
                 // Trigger the login flow, and see if we need more information - pass this back to client in response.
                 ServiceTableEntity? entity = query.FirstOrDefault();
-                if (entity != null)
+                if (entity != null && entity.Configuration != null)
                 {
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
                     dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
                     string requestBody = new StreamReader(req.Body).ReadToEnd();
                     string loginPayload = serviceConfig.PhoneNumber;
                     if (!string.IsNullOrEmpty(requestBody)) {
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
                         dynamic postBody = JsonConvert.DeserializeObject(requestBody);
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
                         if (postBody != null)
                         {
                             if (postBody.Value != null)
@@ -192,7 +234,6 @@ namespace PostyFox_NetCore.Integrations
 
         private Task TelegramClient_OnOther(IObject arg)
         {
-            Console.WriteLine(arg);
             return Task.CompletedTask;
         }
     }
