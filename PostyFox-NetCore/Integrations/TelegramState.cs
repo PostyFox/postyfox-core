@@ -34,8 +34,13 @@ namespace PostyFox_NetCore.Integrations
             if (Length > 0)
             {
                 // Write the data back to Storage Account
-                Position = 0;
-                _blobClient.Upload(this, true);
+                long currentPosition = Position;
+                lock (this)
+                {
+                    Position = 0;
+                    _blobClient.Upload(this, true);
+                }
+                Position = currentPosition;
             }
         }
 
