@@ -1,4 +1,6 @@
-﻿using Google.Protobuf.WellKnownTypes;
+﻿using Azure.Storage.Blobs;
+using Google.Protobuf.WellKnownTypes;
+using PostyFox_NetCore.Integrations;
 using TL;
 
 namespace PostyFox_NetCore.Helpers
@@ -11,8 +13,7 @@ namespace PostyFox_NetCore.Helpers
         /// Holds Telegram Clients that are being used for authentication; userId is used as the hash.
         /// </summary>
         internal static Dictionary<string, WTelegram.Client> TelegramClients = new();
-
-        internal static WTelegram.Client GetTelegramClient(int apiId, string apiHash, string userId)
+        internal static WTelegram.Client GetTelegramClient(int apiId, string apiHash, string userId, BlobServiceClient blobServiceClient)
         {
             if (TelegramClients.ContainsKey(userId))
             {
@@ -20,7 +21,13 @@ namespace PostyFox_NetCore.Helpers
             } 
             else
             {
-                WTelegram.Client client = new WTelegram.Client(apiId, apiHash, userId);
+                TelegramStore store = new TelegramStore(userId, blobServiceClient);
+                WTelegram.Client client = new WTelegram.Client((val) =>
+                {
+                    if (val == "api_id") return apiId.ToString();
+                    if (val == "api_hash") return apiHash;
+                    return null;
+                }, store);
                 TelegramClients.Add(userId, client);
                 return client;
             }

@@ -18,32 +18,25 @@ namespace PostyFox_NetCore.Integrations
         private BlobClient _blobClient;
         private byte[] _data;
         private int _dataLen;
-        private DateTime _lastWrite;
-        private Task _delayedWrite;
 
-        public TelegramStore(string storageAccount, string containerName, string sessionName, IAzureClientFactory<BlobServiceClient> clientFactory)
+        public TelegramStore(string sessionName, BlobServiceClient blobServiceClient)
         {
             _sessionName = sessionName;
-            _blobServiceClient = clientFactory.CreateClient("StorageAccount");
-            _containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            _blobServiceClient = blobServiceClient;
+            _containerClient = _blobServiceClient.GetBlobContainerClient("telegram");
             _containerClient.CreateIfNotExists();
-            _blobClient = _containerClient.GetBlobClient(sessionName);
-            if (_blobClient.Exists())
+            _blobClient = _containerClient.GetBlobClient(_sessionName);
+            if (_blobClient.Exists().Value)
             {
                 // Fetch the blob from store and load existing session data
+                _blobClient.DownloadTo(this);
             }
-
-
-            //using var cmd = new NpgsqlCommand($"SELECT data FROM WTelegram_sessions WHERE name = '{_sessionName}'", _sql);
-            //using var rdr = cmd.ExecuteReader();
-            //if (rdr.Read())
-            //    _dataLen = (_data = rdr[0] as byte[]).Length;
         }
 
         protected override void Dispose(bool disposing)
         {
-            //_delayedWrite?.Wait();
-            //_sql.Dispose();
+            // Force flush
+            Flush();
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -54,18 +47,7 @@ namespace PostyFox_NetCore.Integrations
 
         public override void Write(byte[] buffer, int offset, int count) // Write call and buffer modifications are done within a lock()
         {
-            //_data = buffer; _dataLen = count;
-            //if (_delayedWrite != null) return;
-            //var left = 1000 - (int)(DateTime.UtcNow - _lastWrite).TotalMilliseconds;
-            //if (left < 0)
-            //{
-            //    using var cmd = new NpgsqlCommand($"INSERT INTO WTelegram_sessions (name, data) VALUES ('{_sessionName}', @data) ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data", _sql);
-            //    cmd.Parameters.AddWithValue("data", count == buffer.Length ? buffer : buffer[offset..(offset + count)]);
-            //    cmd.ExecuteNonQuery();
-            //    _lastWrite = DateTime.UtcNow;
-            //}
-            //else // delay writings for a full second
-            //    _delayedWrite = Task.Delay(left).ContinueWith(t => { lock (this) { _delayedWrite = null; Write(_data, 0, _dataLen); } });
+            _data = buffer; _dataLen = count;
         }
 
         public override long Length => _dataLen;
@@ -75,6 +57,10 @@ namespace PostyFox_NetCore.Integrations
         public override bool CanWrite => true;
         public override long Seek(long offset, SeekOrigin origin) => 0;
         public override void SetLength(long value) { }
-        public override void Flush() { }
+        public override void Flush() 
+        {
+            // Write the data back to Storage Account
+            _blobClient.Upload(this, true);
+        }
     }
 }

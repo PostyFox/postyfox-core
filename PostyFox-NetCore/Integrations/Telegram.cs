@@ -2,6 +2,7 @@ using System.Net;
 using Azure;
 using Azure.Data.Tables;
 using Azure.Security.KeyVault.Secrets;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -21,14 +22,15 @@ namespace PostyFox_NetCore.Integrations
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
         private readonly SecretClient? _secretStore;
+        private readonly BlobServiceClient _blobStorageAccount;
         private int apiId = 0;
         private string apiHash = string.Empty;
 
-        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory)
+        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
         {
             _logger = loggerFactory.CreateLogger<Services>();
             _configTable = clientFactory.CreateClient("ConfigTable");
-
+            _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
             _secretStore = secretClientFactory.CreateClient("SecretStore");
 
             // Load the configuration for Telegram from KeyVault
@@ -79,7 +81,14 @@ namespace PostyFox_NetCore.Integrations
                     string requestBody = new StreamReader(req.Body).ReadToEnd();
                     string loginPayload = serviceConfig.PhoneNumber;
 
-                    using (WTelegram.Client telegramClient = new WTelegram.Client(apiId, apiHash, userId))
+                    TelegramStore store = new TelegramStore(userId, _blobStorageAccount);
+                    using (WTelegram.Client telegramClient = new WTelegram.Client((val) =>
+                    {
+                        if (val == "api_id") return apiId.ToString();
+                        if (val == "api_hash") return apiHash;
+                        if (val == "phone_number") return loginPayload;
+                        return null;
+                    }, store))
                     {
                         var response = req.CreateResponse(HttpStatusCode.OK);
                         ValueTask valueTask;
@@ -148,7 +157,7 @@ namespace PostyFox_NetCore.Integrations
                         }
                     }
 
-                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId);
+                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount);
                     telegramClient.OnOther += TelegramClient_OnOther;
                     var t = telegramClient.Login(loginPayload);
                     t.Wait();
