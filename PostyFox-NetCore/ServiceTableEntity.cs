@@ -9,6 +9,7 @@ namespace PostyFox_NetCore
     {
         public string ServiceName { get; set; }
         public bool IsEnabled { get; set; }
+        public string Configuration { get; set; }
         [Description("User ID")]
         public string PartitionKey { get; set; }
         [Description("Service ID")]

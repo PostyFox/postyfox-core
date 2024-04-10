@@ -22,6 +22,10 @@ By far the easiest way of using / configuring Azurite is to use the [Visual Stud
 
 The local.settings.json file for each project should *already* be configured correctly for working off the Azurite storage emulator and not require any changes, unless you are using different ports.
 
+If you encounter issues with TLS / Token auth, you may need to tweak your Azurite config to use TLS - to do this a [good blog post is here](https://blog.jongallant.com/2020/04/local-azure-storage-development-with-azurite-azuresdks-storage-explorer/) - no point rewriting it all!  Configuration can then be completed under the Azurite Extension settings in Visual Studio Code, and after restarting the emulator you will find your session is using https.
+
+You might also want to use [Azure Storage Explorer](https://azure.microsoft.com/en-us/products/storage/storage-explorer/) to browse, and configure values directly on your local storage layer. 
+
 ### Using the Function App Runtime
 
 You can spin up a Function App host locally, once the FA functions are compiled (dotnet build or yarn etc); go into the output folder and then simply run func start to kick the host into life.  This gives you a way to debug things locally, and it should work from within VS Core and VS.  Note that VS Core needs the Function App Extension installed (strongly recommended).
