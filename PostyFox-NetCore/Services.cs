@@ -54,7 +54,8 @@ namespace PostyFox_NetCore
                         ServiceID = service.ServiceID,
                         ServiceName = service.ServiceName,
                         IsEnabled = service.IsEnabled, // Not sure if this will actually have a use for the "Available" definition? 
-                        Configuration = service.Configuration // In this context, configuration will define what needs to be provided
+                        Configuration = service.Configuration, // In this context, configuration will define what needs to be provided
+                        SecureConfiguration = service.SecureConfiguration
                     };
                     ls.Add(dto);
                 }
