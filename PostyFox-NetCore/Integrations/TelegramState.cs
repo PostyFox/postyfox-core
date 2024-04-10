@@ -59,8 +59,11 @@ namespace PostyFox_NetCore.Integrations
         public override void SetLength(long value) { }
         public override void Flush() 
         {
-            // Write the data back to Storage Account
-            _blobClient.Upload(this, true);
+            if (_data != null && _dataLen > 0)
+            {
+                // Write the data back to Storage Account
+                _blobClient.Upload(this, true);
+            }
         }
     }
 }
