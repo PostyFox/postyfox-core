@@ -31,9 +31,10 @@ namespace PostyFox_NetCore.Integrations
 
         public override void Flush() 
         {
-            if (this.Length > 0)
+            if (Length > 0)
             {
                 // Write the data back to Storage Account
+                Position = 0;
                 _blobClient.Upload(this, true);
             }
         }
