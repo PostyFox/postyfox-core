@@ -15,7 +15,9 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   }
 
   app_settings = {
-    "ConfigTable" = azurerm_storage_account.data_storage.primary_table_endpoint
+    "ConfigTable"    = azurerm_storage_account.data_storage.primary_table_endpoint
+    "SecretStore"    = azurerm_key_vault.key_vault.vault_uri
+    "StorageAccount" = azurerm_storage_account.data_storage.primary_blob_endpoint
     "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
   }
 
@@ -67,6 +69,12 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
 resource "azurerm_role_assignment" "dotnetfuncapp-dataowner" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id
   role_definition_name = "Storage Blob Data Owner"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "dotnetfuncapp-dataowner-dat" {
+  scope                = azurerm_storage_account.data_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
 
