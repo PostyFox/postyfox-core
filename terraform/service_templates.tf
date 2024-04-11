@@ -19,7 +19,7 @@ resource "azurerm_storage_table_entity" "discordwh-template" {
   row_key       = "DiscordWH"
 
   entity = {
-    ServiceName   = "DiscordWH"
+    ServiceName   = "Discord Web Hook"
     IsEnabled     = true
     ServiceID     = "DiscordWH"
     Configuration = "{\"Webhook\":\"\"}"
