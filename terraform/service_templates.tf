@@ -1,5 +1,5 @@
 resource "azurerm_storage_table_entity" "telegram-template" {
-  storage_table_id = azurerm_storage_table.data_storage.id
+  storage_table_id = azurerm_storage_table.availableservices.id
 
   partition_key = "Service"
   row_key       = "Telegram"
@@ -13,7 +13,7 @@ resource "azurerm_storage_table_entity" "telegram-template" {
 }
 
 resource "azurerm_storage_table_entity" "discordwh-template" {
-  storage_table_id = azurerm_storage_table.data_storage.id
+  storage_table_id = azurerm_storage_table.availableservices.id
 
   partition_key = "Service"
   row_key       = "DiscordWH"
@@ -27,7 +27,7 @@ resource "azurerm_storage_table_entity" "discordwh-template" {
 }
 
 resource "azurerm_storage_table_entity" "bluesky-template" {
-  storage_table_id = azurerm_storage_table.data_storage.id
+  storage_table_id = azurerm_storage_table.availableservices.id
 
   partition_key = "Service"
   row_key       = "BlueSky"
