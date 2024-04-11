@@ -9,6 +9,7 @@ resource "azurerm_storage_table_entity" "telegram-template" {
     IsEnabled     = true
     ServiceID     = "Telegram"
     Configuration = "{\"PhoneNumber\":\"\"}"
+    Endpoint      = azurerm_linux_function_app.dotnet_func_app.default_hostname
   }
 }
 
@@ -23,6 +24,7 @@ resource "azurerm_storage_table_entity" "discordwh-template" {
     IsEnabled     = true
     ServiceID     = "DiscordWH"
     Configuration = "{\"Webhook\":\"\"}"
+    Endpoint      = azurerm_linux_function_app.dotnet_func_app.default_hostname
   }
 }
 
@@ -38,5 +40,6 @@ resource "azurerm_storage_table_entity" "bluesky-template" {
     ServiceID           = "BlueSky"
     Configuration       = "{\"Handle\":\"\"}"
     SecureConfiguration = "{\"AppPassword\":\"\"}"
+    Endpoint            = azurerm_linux_function_app.nodejs_func_app.default_hostname
   }
 }
