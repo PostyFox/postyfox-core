@@ -10,7 +10,10 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "@atproto/api": "^0.12.2"
+    "@atproto/api": "^0.12.2",
+    "@azure/data-tables": "^13.2.2",
+    "@azure/identity": "^4.1.0",
+    "@azure/keyvault-secrets": "^4.8.0"
   },
   "devDependencies": {
     "@azure/functions": "^4.2.5",
