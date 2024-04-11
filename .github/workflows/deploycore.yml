@@ -40,6 +40,8 @@ jobs:
 
     - name: Setup OpenTofu
       uses: opentofu/setup-opentofu@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Tofu Init
       run: tofu init -upgrade -backend-config="key=${{inputs.targetEnvironment}}.tfstate" -reconfigure
