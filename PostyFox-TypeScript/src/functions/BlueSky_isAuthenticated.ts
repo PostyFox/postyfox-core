@@ -54,5 +54,6 @@ async function BlueSky_IsAuthenticated(request: HttpRequest, context: Invocation
 
 app.http('BlueSky_IsAuthenticated', {
     methods: ['POST'],
+    authLevel: "anonymous",
     handler: BlueSky_IsAuthenticated
 });

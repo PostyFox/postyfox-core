@@ -6,5 +6,6 @@ async function BlueSky_Ping(request: HttpRequest, context: InvocationContext): P
 
 app.http('BlueSky_Ping', {
     methods: ['GET'],
+    authLevel: "anonymous",
     handler: BlueSky_Ping
 });
