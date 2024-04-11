@@ -37,7 +37,7 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
     require_authentication   = true
     require_https            = true
     runtime_version          = "~1"
-    unauthenticated_action   = "Return401"
+    unauthenticated_action   = "RedirectToLoginPage"
     default_provider         = "AAD_B2C"
 
     custom_oidc_v2 {
