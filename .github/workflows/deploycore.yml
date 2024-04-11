@@ -117,12 +117,16 @@ jobs:
       run: npm run build
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
 
+    - name: Zip NodeJS Artifact
+      run: zip -r nodejs-fa.zip . --exclude @.funcignore --exclude .funcignore
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
+
     - uses: actions/upload-artifact@v4
       name: Upload NodeJS Function App Artifact
       id: upload-nodejs-fa
       with:
         name: nodejs-fa
-        path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
+        path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript/nodejs-fa.zip
 
   deploy-dotnet:
     needs: [terraform, codebuild]
@@ -160,4 +164,4 @@ jobs:
         id: nfa
         with:
           app-name: postyfox-func-app-nodejs-${{ inputs.targetEnvironment }}
-          package: '/home/runner/work/postyfox-core/postyfox-core/nodejs-fa'          
+          package: '/home/runner/work/postyfox-core/postyfox-core/nodejs-fa.zip'          
