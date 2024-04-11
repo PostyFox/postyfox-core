@@ -60,7 +60,8 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
 
   lifecycle {
     ignore_changes = [ 
-      app_settings["WEBSITE_ENABLE_SYNC_UPDATE_SITE"]
+      app_settings["WEBSITE_ENABLE_SYNC_UPDATE_SITE"],
+      app_settings["WEBSITE_RUN_FROM_PACKAGE"]
     ]
   }
 }
