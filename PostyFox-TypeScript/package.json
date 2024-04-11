@@ -1,7 +1,7 @@
 {
-  "name": "",
+  "name": "PostyFox-TypeScript",
   "version": "1.0.0",
-  "description": "",
+  "description": "The TypeScript / NodeJS Function App Stack for PostyFox",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
@@ -13,7 +13,7 @@
   "devDependencies": {
     "@azure/functions": "^3.0.0",
     "azure-functions-core-tools": "^4.x",
-    "@types/node": "18.x",
+    "@types/node": "20.x",
     "typescript": "^4.0.0"
   }
 }
