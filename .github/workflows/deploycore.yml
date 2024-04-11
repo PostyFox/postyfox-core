@@ -128,7 +128,7 @@ jobs:
       id: upload-nodejs-fa
       with:
         name: nodejs-fa
-        path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript/nodejs-fa.zip
+        path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript/nodejs-fa
 
   deploy-dotnet:
     needs: [terraform, codebuild]
