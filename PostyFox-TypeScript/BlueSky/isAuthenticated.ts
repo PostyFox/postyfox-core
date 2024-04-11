@@ -10,11 +10,11 @@ async function BlueSky_IsAuthenticated(request: HttpRequest, context: Invocation
         const credential = new DefaultAzureCredential();
         let body = (await request.body.getReader().read()).value;
 
-        // Extract the serviceId from the POST JSON body
+        // Extract the id from the POST JSON body
         if (body) {
             let jsonObject = JSON.parse(body);
             
-            if (jsonObject.ServiceID) {
+            if (jsonObject.Id) {
                 // Service config for the user is held in ConfigTable
                 const configTableName = process.env["ConfigTable"];
                 if(!configTableName) throw new Error("ConfigTable is empty");
@@ -22,7 +22,7 @@ async function BlueSky_IsAuthenticated(request: HttpRequest, context: Invocation
                 const client = new TableClient(configTableName, "ConfigTable", credential);
                 await client.createTable(); // Ensure it exists
 
-                const entity = await client.getEntity(getUserId(request), jsonObject.ServiceID);
+                const entity = await client.getEntity(getUserId(request), jsonObject.Id);
                 if (entity && entity.ServiceID == "BlueSky") {
                     let configurationJson = JSON.parse(entity.Configuration.toString());
                     // The BlueSky identity for a user is made up of a SecureConfiguration component which is stored in KeyVault (their App Password)
@@ -31,7 +31,7 @@ async function BlueSky_IsAuthenticated(request: HttpRequest, context: Invocation
                     if(!keyVaultName) throw new Error("SecretStore is empty");
 
                     const secretClient = new SecretClient(keyVaultName, credential);
-                    let secretName = jsonObject.ServiceID + "-" + getUserId(request);
+                    let secretName = jsonObject.Id + "-" + getUserId(request);
                     let secret = await secretClient.getSecret(secretName);
 
                     // Extract the password from the secret data, and try logging into the BSky platform. Return result.

@@ -19,6 +19,11 @@ namespace PostyFox_NetCore
         private readonly TableServiceClient _configTable;
         private readonly SecretClient? _secretStore;
 
+        public class ServiceRequest
+        {
+            public string ID { get; set; }
+        }
+
         public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory)
         {
             _logger = loggerFactory.CreateLogger<Services>();
