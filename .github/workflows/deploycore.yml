@@ -137,6 +137,8 @@ jobs:
 
     steps:
       - uses: actions/download-artifact@v4
+        with:
+          name: dotnet-fa
 
       - uses: azure/login@v2
         with:
@@ -156,10 +158,18 @@ jobs:
 
     steps:
       - uses: actions/download-artifact@v4
+        with:
+          name: nodejs-fa
 
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Unzip artifact for deployment
+        run: unzip nodejs-fa.zip
+
+      - name: Listing
+        run: ls -laR
 
       - name: 'Upload NodeJS Function App'
         uses: Azure/functions-action@v1
