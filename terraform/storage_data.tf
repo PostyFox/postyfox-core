@@ -7,4 +7,7 @@ resource "azurerm_storage_account" "data_storage" {
   account_replication_type = "LRS"
 }
 
-# Deploy a container for Static Storage
+resource "azurerm_storage_table" "availableservices" {
+  name                 = "AvailableServices"
+  storage_account_name = azurerm_storage_account.data_storage.name
+}

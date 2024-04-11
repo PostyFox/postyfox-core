@@ -40,6 +40,8 @@ jobs:
 
     - name: Setup OpenTofu
       uses: opentofu/setup-opentofu@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Tofu Init
       run: tofu init -upgrade -backend-config="key=${{inputs.targetEnvironment}}.tfstate" -reconfigure
@@ -98,26 +100,83 @@ jobs:
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - uses: actions/upload-artifact@v4
+      name: Upload DotNet Function App Artifact
       id: upload-dotnet-fa
       with:
         name: dotnet-fa
         path: /home/runner/work/output/dotnet-fa
 
-  deploy:
+    - name: Setup Node v20
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+
+    - name: npm install
+      run: npm install 
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
+
+    - name: npm build
+      run: npm run build
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
+
+    - name: Zip NodeJS Artifact
+      run: zip -r nodejs-fa.zip . --exclude @.funcignore --exclude .funcignore
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
+
+    - uses: actions/upload-artifact@v4
+      name: Upload NodeJS Function App Artifact
+      id: upload-nodejs-fa
+      with:
+        name: nodejs-fa
+        path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript/nodejs-fa.zip
+
+  deploy-dotnet:
     needs: [terraform, codebuild]
-    name: 'Code Deployment'
+    name: 'Code Deployment - DotNet'
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/download-artifact@v4
+        with:
+          name: dotnet-fa
+
+      - name: Listing
+        run: ls -laR
 
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Upload Azure Functions'
+      - name: 'Upload Dot Net Function App'
         uses: Azure/functions-action@v1
         id: fa
         with:
           app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
-          package: '/home/runner/work/postyfox-core/postyfox-core/dotnet-fa'
+          package: '.'
+
+  deploy-nodejs:
+    needs: [terraform, codebuild]
+    name: 'Code Deployment - NodeJs'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nodejs-fa
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Unzip artifact for deployment
+        run: unzip nodejs-fa.zip
+
+      - name: Listing
+        run: ls -laR
+
+      - name: 'Upload NodeJS Function App'
+        uses: Azure/functions-action@v1
+        id: nfa
+        with:
+          app-name: postyfox-func-app-nodejs-${{ inputs.targetEnvironment }}
+          package: '.'

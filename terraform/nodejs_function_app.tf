@@ -12,7 +12,9 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
   service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
 
   app_settings = {
-    "ConfigTable" = azurerm_storage_account.data_storage.primary_table_endpoint
+    "ConfigTable"    = azurerm_storage_account.data_storage.primary_table_endpoint
+    "SecretStore"    = azurerm_key_vault.key_vault.vault_uri
+    "StorageAccount" = azurerm_storage_account.data_storage.primary_blob_endpoint    
     "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
   }
 
@@ -22,7 +24,7 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
 
   site_config {
     application_stack {
-      node_version = 18
+      node_version = 20
     }
 
     application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
@@ -35,7 +37,7 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
     require_authentication   = true
     require_https            = true
     runtime_version          = "~1"
-    unauthenticated_action   = "Return401"
+    unauthenticated_action   = "RedirectToLoginPage"
     default_provider         = "AAD_B2C"
 
     custom_oidc_v2 {
@@ -58,7 +60,8 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
 
   lifecycle {
     ignore_changes = [ 
-      app_settings["WEBSITE_ENABLE_SYNC_UPDATE_SITE"]
+      app_settings["WEBSITE_ENABLE_SYNC_UPDATE_SITE"],
+      app_settings["WEBSITE_RUN_FROM_PACKAGE"]
     ]
   }
 }
@@ -67,5 +70,17 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
 resource "azurerm_role_assignment" "nodejsfuncapp-dataowner" {
   scope                = azurerm_storage_account.linux_func_storage.id
   role_definition_name = "Storage Blob Data Owner"
+  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "nodejsfuncapp-dataowner-dat" {
+  scope                = azurerm_storage_account.data_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "nodejsfuncapp-table" {
+  scope                = azurerm_storage_account.data_storage.id
+  role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
 }

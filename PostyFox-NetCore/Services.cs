@@ -1,5 +1,6 @@
 using System.Net;
 using Azure.Data.Tables;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -16,6 +17,19 @@ namespace PostyFox_NetCore
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
+        private readonly SecretClient? _secretStore;
+
+        public class ServiceRequest
+        {
+            public string ID { get; set; }
+        }
+
+        public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory)
+        {
+            _logger = loggerFactory.CreateLogger<Services>();
+            _configTable = clientFactory.CreateClient("ConfigTable");
+            _secretStore = secretClientFactory.CreateClient("SecretStore");
+        }
 
         public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
         {
@@ -54,7 +68,8 @@ namespace PostyFox_NetCore
                         ServiceID = service.ServiceID,
                         ServiceName = service.ServiceName,
                         IsEnabled = service.IsEnabled, // Not sure if this will actually have a use for the "Available" definition? 
-                        Configuration = service.Configuration // In this context, configuration will define what needs to be provided
+                        Configuration = service.Configuration, // In this context, configuration will define what needs to be provided
+                        SecureConfiguration = service.SecureConfiguration
                     };
                     ls.Add(dto);
                 }
@@ -139,13 +154,25 @@ namespace PostyFox_NetCore
                     ServiceTableEntity tableEntity = new()
                     {
                         PartitionKey = userId,
+                        ServiceID = data.ServiceID,
                         ServiceName = data.ServiceName,
                         Configuration = data.Configuration,
                         Timestamp = DateTime.UtcNow,
                         IsEnabled = data.Enabled,
-                        RowKey = data.ServiceID
+                        RowKey = data.ID
                     };
                     client.UpsertEntity(tableEntity);
+
+                    if (data.SecureConfiguration != null)
+                    {
+                        // We have secure configuration data to unwrap and save to Key Vault
+                        if (_secretStore != null)
+                        {
+                            // Key Vault Secrets have a max of 127 chars in length.  This should be around 73 / 74 chars.
+                            KeyVaultSecret secret = new KeyVaultSecret(data.ID+"-"+userId, data.SecureConfiguration);
+                            _secretStore.SetSecret(secret);
+                        }
+                    }
                 }
 
                 var response = req.CreateResponse(HttpStatusCode.OK);

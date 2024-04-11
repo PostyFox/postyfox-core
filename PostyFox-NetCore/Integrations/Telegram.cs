@@ -12,6 +12,7 @@ using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
 using PostyFox_NetCore.Helpers;
 using TL;
+using static PostyFox_NetCore.Services;
 
 namespace PostyFox_NetCore.Integrations
 {
@@ -64,8 +65,9 @@ namespace PostyFox_NetCore.Integrations
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(bool), Summary = "true if a valid session is held", Description = "If no valid session, call authentication flow")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
+        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(ServiceRequest), Required = true)]
         [Function("Telegram_IsAuthenticated")]
-        public HttpResponseData IsAuthenticated([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        public HttpResponseData IsAuthenticated([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
             if (AuthHelper.ValidateAuth(req, _logger))
             {
@@ -73,16 +75,18 @@ namespace PostyFox_NetCore.Integrations
                 _configTable.CreateTableIfNotExists("ConfigTable");
                 var client = _configTable.GetTableClient("ConfigTable");
 
-                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == "Telegram");
+                string requestBody = new StreamReader(req.Body).ReadToEnd();
+                dynamic postBody = JsonConvert.DeserializeObject(requestBody);
+                string id = postBody.ID;
 
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == id);
                 // Trigger the login flow, and see if we need more information - pass this back to client in response.
                 ServiceTableEntity? entity = query.FirstOrDefault();
-                if (entity != null && entity.Configuration != null)
+                if (entity != null && entity.Configuration != null && entity.ServiceID == "Telegram")
                 {
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
                     dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
 #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
-                    string requestBody = new StreamReader(req.Body).ReadToEnd();
                     if (serviceConfig != null)
                     {
                         string loginPayload = serviceConfig.PhoneNumber;
@@ -140,6 +144,7 @@ namespace PostyFox_NetCore.Integrations
             /// </summary>
             [OpenApiPropertyAttribute(Description = "The value that has been requested by the Telegram API", Nullable = true)]
             public string? Value { get; set; }
+            public string ID { get; set; }
         }
 
         public class LoginResponse
@@ -174,29 +179,23 @@ namespace PostyFox_NetCore.Integrations
                 _configTable.CreateTableIfNotExists("ConfigTable");
                 var client = _configTable.GetTableClient("ConfigTable");
                 string userId = AuthHelper.GetAuthId(req);
-
-                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == "Telegram");
+                string requestBody = new StreamReader(req.Body).ReadToEnd();
+                dynamic postBody = JsonConvert.DeserializeObject(requestBody);
+                string id = postBody.ID;
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == id);
 
                 // Trigger the login flow, and see if we need more information - pass this back to client in response.
                 ServiceTableEntity? entity = query.FirstOrDefault();
-                if (entity != null && entity.Configuration != null)
+                if (entity != null && entity.Configuration != null && entity.ServiceID == "Telegram")
                 {
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
                     dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
 #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
-                    string requestBody = new StreamReader(req.Body).ReadToEnd();
+
                     string loginPayload = serviceConfig.PhoneNumber;
-                    if (!string.IsNullOrEmpty(requestBody)) {
-#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
-                        dynamic postBody = JsonConvert.DeserializeObject(requestBody);
-#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
-                        if (postBody != null)
-                        {
-                            if (postBody.Value != null)
-                            {
-                                loginPayload = postBody.Value;
-                            }
-                        }
+                    if (postBody.Value != null)
+                    {
+                        loginPayload = postBody.Value;
                     }
 
                     WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount);
