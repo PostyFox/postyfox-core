@@ -19,6 +19,7 @@ namespace PostyFox_NetCore
         public string? ServiceID { get; set; }
         [Description("ID")]
         public string RowKey { get; set; }
+        public string Endpoint { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
     }

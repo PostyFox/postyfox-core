@@ -34,5 +34,10 @@ namespace PostyFox_NetCore
         /// </summary>
         [OpenApiPropertyAttribute(Description = "Identifies if the service is available for use, or enabled by the user for posting / interaction")]
         public bool? IsEnabled { get; set; }
+        /// <summary>
+        /// Contains details of the endpoint that should be address for this particular Service
+        /// </summary>
+        [OpenApiPropertyAttribute(Description = "Contains details of the endpoint that should be address for this particular Service")]
+        public string Endpoint { get; set; }
     }
 }
