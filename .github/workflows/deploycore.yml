@@ -124,9 +124,9 @@ jobs:
         name: nodejs-fa
         path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
 
-  deploy:
+  deploy-dotnet:
     needs: [terraform, codebuild]
-    name: 'Code Deployment'
+    name: 'Code Deployment - DotNet'
     runs-on: ubuntu-latest
 
     steps:
@@ -142,6 +142,18 @@ jobs:
         with:
           app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
           package: '/home/runner/work/postyfox-core/postyfox-core/dotnet-fa'
+
+  deploy-nodejs:
+    needs: [terraform, codebuild]
+    name: 'Code Deployment - NodeJs'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: 'Upload NodeJS Function App'
         uses: Azure/functions-action@v1
