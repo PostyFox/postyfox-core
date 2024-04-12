@@ -1,7 +1,8 @@
 import { app, HttpResponseInit, HttpRequest, InvocationContext } from "@azure/functions"
+const { flattenHeaders } = require("../Helpers/index");
 
 async function Tumblr_Ping(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    return { body: request.headers.values.toString() };
+    return { body: flattenHeaders(request.headers) };
 }
 
 app.http('Tumblr_Ping', {

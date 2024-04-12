@@ -13,7 +13,6 @@ exports.validateAuth = function(request: HttpRequest): boolean {
     }
 };
 
-
 // Gets the authenticated UserID
 exports.getUserId = function(request: HttpRequest): string {
     const isDevMode = process.env["PostyFoxDevMode"];
@@ -23,3 +22,12 @@ exports.getUserId = function(request: HttpRequest): string {
         return process.env["PostyFoxUserID"];
     }
 };
+
+exports.flattenHeaders = function(headers: Headers): string {
+    let response = "";
+    headers.forEach((v,k) => {
+        response += k + "=" + v + "\n";
+    });
+
+    return response;
+}
