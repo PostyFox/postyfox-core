@@ -3,13 +3,31 @@
 import { app, HttpResponseInit, HttpRequest, InvocationContext } from "@azure/functions"
 import { SecretClient } from "@azure/keyvault-secrets";
 import { DefaultAzureCredential } from "@azure/identity";
-const { getUserId, validateAuth } = require("../Helpers/index");
+const { getUserId, validateAuth, generateRandomString } = require("../Helpers/index");
 
 async function Tumblr_OAuthVerify(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
     // Extract code and state query string parameters from the response
     // Check that state was one we sent with the original request
     if (request.query.has("code") && request.query.has("state")) {
+        const keyVaultName = process.env["SecretStore"];
+        if(!keyVaultName) throw new Error("SecretStore is empty");
+        const credential = new DefaultAzureCredential();
+        const secretClient = new SecretClient(keyVaultName, credential);
+        let userId = getUserId(request);
+        let secret = await secretClient.getSecret("TumblrState-" + userId); // Get the state from store
 
+        if (secret != null && secret.value != null)
+        {
+            if (secret.value == request.query.get("state")) {
+                // State matches - woo!
+                // Continue with auth flow.
+                
+            }
+        }
+
+        return {
+            status: 404
+        }
     }
 
 
@@ -28,9 +46,13 @@ async function Tumbler_GenerateAuthUrl(request: HttpRequest, context: Invocation
         const secretClient = new SecretClient(keyVaultName, credential);
         let secret = await secretClient.getSecret("TumblrClientId");
 
-        // Generate an auth url, save the state code and pass back to user
+        let state = generateRandomString(20);
+        let userId = getUserId(request);
+
+        await secretClient.setSecret("TumblrState-" + userId, state); // Save the state so we can validate it later
+
         let authUrl = "www.tumblr.com/oauth2/authorize?";
-        authUrl += "client_id=" + secret.value + "&response_type=code&scope=basic%20write&state=<>redirect_uri=" + tumblrRedirectUri
+        authUrl += "client_id=" + secret.value + "&response_type=code&scope=basic%20write&state=" + state + "redirect_uri=" + tumblrRedirectUri
     }
 
     return {

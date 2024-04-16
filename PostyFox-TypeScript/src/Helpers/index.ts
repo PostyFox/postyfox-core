@@ -31,3 +31,10 @@ exports.flattenHeaders = function(headers: Headers): string {
 
     return response;
 }
+
+exports.generateRandomString = function(stringLength: number) : string {
+    const chars = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890";
+    const randomArray = Array.from({ length: stringLength }, (v, k) => chars[Math.floor(Math.random() * chars.length)]);
+    const randomString = randomArray.join("");
+    return randomString;
+};
