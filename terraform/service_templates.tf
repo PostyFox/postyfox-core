@@ -43,3 +43,19 @@ resource "azurerm_storage_table_entity" "bluesky-template" {
     Endpoint            = azurerm_linux_function_app.nodejs_func_app.default_hostname
   }
 }
+
+resource "azurerm_storage_table_entity" "bluesky-template" {
+  storage_table_id = azurerm_storage_table.availableservices.id
+
+  partition_key = "Service"
+  row_key       = "Tumblr"
+
+  entity = {
+    ServiceName         = "Tumblr"
+    IsEnabled           = true
+    ServiceID           = "Tumblr"
+    Configuration       = "{\"Username\":\"\", \"OAuthState\":\"\", \"OAuthExpires\":\"\"}"
+    SecureConfiguration = "{\"OAuthAccessToken\":\"\", \"OAuthRefreshToken\":\"\"}"
+    Endpoint            = azurerm_linux_function_app.nodejs_func_app.default_hostname
+  }
+}

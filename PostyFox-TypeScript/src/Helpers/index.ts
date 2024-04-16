@@ -13,7 +13,6 @@ exports.validateAuth = function(request: HttpRequest): boolean {
     }
 };
 
-
 // Gets the authenticated UserID
 exports.getUserId = function(request: HttpRequest): string {
     const isDevMode = process.env["PostyFoxDevMode"];
@@ -22,4 +21,20 @@ exports.getUserId = function(request: HttpRequest): string {
     } else {
         return process.env["PostyFoxUserID"];
     }
+};
+
+exports.flattenHeaders = function(headers: Headers): string {
+    let response = "";
+    headers.forEach((v,k) => {
+        response += k + "=" + v + "\n";
+    });
+
+    return response;
+}
+
+exports.generateRandomString = function(stringLength: number) : string {
+    const chars = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890";
+    const randomArray = Array.from({ length: stringLength }, (v, k) => chars[Math.floor(Math.random() * chars.length)]);
+    const randomString = randomArray.join("");
+    return randomString;
 };

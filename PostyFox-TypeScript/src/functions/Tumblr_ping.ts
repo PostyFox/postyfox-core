@@ -1,12 +1,12 @@
 import { app, HttpResponseInit, HttpRequest, InvocationContext } from "@azure/functions"
 const { flattenHeaders } = require("../Helpers/index");
 
-async function BlueSky_Ping(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+async function Tumblr_Ping(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
     return { body: flattenHeaders(request.headers) };
 }
 
-app.http('BlueSky_Ping', {
+app.http('Tumblr_Ping', {
     methods: ['GET'],
     authLevel: "anonymous",
-    handler: BlueSky_Ping
+    handler: Tumblr_Ping
 });
