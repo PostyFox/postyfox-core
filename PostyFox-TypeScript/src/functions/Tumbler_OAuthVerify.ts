@@ -89,6 +89,16 @@ async function Tumbler_GenerateAuthUrl(request: HttpRequest, context: Invocation
      };
 }
 
+async function Tumblr_RefreshTokens(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+    // api.tumblr.com/v2/oauth2/token
+    // Pull all Service: Tumblr secrets 
+    // Sort by expiry
+    // Refresh them and save
+    return {
+        status: 501
+    }
+}
+
 app.http('Tumblr_OAuthVerify', {
     methods: ['GET'],
     authLevel: "anonymous",
