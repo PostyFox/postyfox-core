@@ -6,6 +6,8 @@ resource "azurerm_storage_account" "spa_storage" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
+  shared_access_key_enabled = false
+
   static_website {
     index_document = "index.html"
   }
