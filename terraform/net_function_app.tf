@@ -66,6 +66,26 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   }
 }
 
+// Logging
+
+resource "azurerm_monitor_diagnostic_setting" "dotnet_func_app" {
+  name                       = "${local.appname}-logging-app-dotnet${local.hyphen-env}"
+  target_resource_id         = azurerm_linux_function_app.dotnet_func_app.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
+
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
+
+  dynamic "enabled_log" {
+    for_each = var.app_logs
+    content {
+      category = enabled_log.value
+    }
+  }
+}
+
 // Add application identity to Storage Blob Owner on storage account
 resource "azurerm_role_assignment" "dotnetfuncapp-dataowner" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id

@@ -18,3 +18,11 @@ variable "func_app_tenant_endpoint" {
 variable "openid_configuration_endpoint" {
   type = string
 }
+
+variable "app_logs" {
+  type = list(string)
+}
+
+variable "kv_logs" {
+  type = list(string)
+}
