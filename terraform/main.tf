@@ -13,6 +13,9 @@ terraform {
     storage_account_name = "stterraformpfox"
     container_name       = "tfstate"
     key                  = "dev-terraform.tfstate"
+    subscription_id      = "d0cf8868-6b53-43a4-bafe-dda6264f06de" # State account and container is in a different subscription
+    use_azuread_auth     = true
+    use_oidc             = true
   }
 }
 
