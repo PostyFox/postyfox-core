@@ -25,3 +25,21 @@ resource "azurerm_role_assignment" "nodejsfuncapp-secret_permissions" {
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
 }
+
+resource "azurerm_monitor_diagnostic_setting" "keyvault" {
+  name                       = "${local.appname}-logging-keyvault${local.hyphen-env}"
+  target_resource_id         = azurerm_key_vault.key_vault.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
+
+  metric {
+    category = "AllMetrics"
+    enabled  = false
+  }
+
+  dynamic "enabled_log" {
+    for_each = var.kv_logs
+    content {
+      category = enabled_log.value
+    }
+  }
+}
