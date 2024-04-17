@@ -6,6 +6,18 @@ resource "azurerm_storage_account" "linux_func_storage" {
   account_replication_type = "LRS"
 
   shared_access_key_enabled = false
+
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+
+    versioning_enabled = true
+
+    container_delete_retention_policy {
+      days = 7
+    }
+  }  
 }
 
 resource "azurerm_storage_account" "linux_funcnet_storage" {
