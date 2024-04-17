@@ -44,7 +44,7 @@ resource "azurerm_storage_table_entity" "bluesky-template" {
   }
 }
 
-resource "azurerm_storage_table_entity" "bluesky-template" {
+resource "azurerm_storage_table_entity" "tumblr-template" {
   storage_table_id = azurerm_storage_table.availableservices.id
 
   partition_key = "Service"
