@@ -24,6 +24,12 @@ jobs:
         shell: bash
 
     steps:
+    - name: Check Curl
+      shell: bash
+      run: |
+        curl --version
+        file $(which curl)
+        
     # Login using az login and a service principal, allowing Terraform to access the account
     - name: Azure Login
       shell: pwsh
@@ -57,7 +63,7 @@ jobs:
       with:
         inlineScript: |
           set -eu
-          agentIP=$(/usr/bin/curl -s https://api.ipify.org/)
+          agentIP=$(curl -s https://api.ipify.org/)
           az storage account network-rule add \
             --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
             --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" \
