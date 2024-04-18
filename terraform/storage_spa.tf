@@ -6,6 +6,20 @@ resource "azurerm_storage_account" "spa_storage" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
+  shared_access_key_enabled = false
+
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+
+    versioning_enabled = false # We can rollback via the code
+
+    container_delete_retention_policy {
+      days = 7
+    }
+  }  
+
   static_website {
     index_document = "index.html"
   }

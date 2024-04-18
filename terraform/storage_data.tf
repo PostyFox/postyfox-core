@@ -5,6 +5,20 @@ resource "azurerm_storage_account" "data_storage" {
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+
+    versioning_enabled = true
+
+    container_delete_retention_policy {
+      days = 7
+    }
+  }
+
+  shared_access_key_enabled = false
 }
 
 resource "azurerm_storage_table" "availableservices" {

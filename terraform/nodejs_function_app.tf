@@ -28,6 +28,11 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
     }
 
     application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
+
+    cors {
+      allowed_origins = "*"
+      support_credentials = true
+    }
   }
 
   auth_settings_v2 {
