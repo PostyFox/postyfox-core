@@ -57,7 +57,7 @@ jobs:
       with:
         inlineScript: |
           set -eu
-          agentIP=$(curl -s https://api.ipify.org/)
+          agentIP=$(/usr/bin/curl -s https://api.ipify.org/)
           az storage account network-rule add \
             --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
             --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" \
