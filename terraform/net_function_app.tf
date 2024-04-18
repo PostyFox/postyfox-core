@@ -15,9 +15,9 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   }
 
   app_settings = {
-    "ConfigTable"    = azurerm_storage_account.data_storage.primary_table_endpoint
-    "SecretStore"    = azurerm_key_vault.key_vault.vault_uri
-    "StorageAccount" = azurerm_storage_account.data_storage.primary_blob_endpoint
+    "ConfigTable"                            = azurerm_storage_account.data_storage.primary_table_endpoint
+    "SecretStore"                            = azurerm_key_vault.key_vault.vault_uri
+    "StorageAccount"                         = azurerm_storage_account.data_storage.primary_blob_endpoint
     "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
   }
 
@@ -30,7 +30,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
 
     cors {
-      allowed_origins = var.cors
+      allowed_origins     = var.cors
       support_credentials = true
     }
   }
@@ -46,8 +46,8 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     default_provider         = "AAD_B2C"
 
     custom_oidc_v2 {
-      name = "AAD_B2C"
-      client_id = var.func_app_registered_client_id
+      name                          = "AAD_B2C"
+      client_id                     = var.func_app_registered_client_id
       openid_configuration_endpoint = var.openid_configuration_endpoint
     }
 
@@ -64,7 +64,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   }
 
   lifecycle {
-    ignore_changes = [ 
+    ignore_changes = [
       app_settings["WEBSITE_ENABLE_SYNC_UPDATE_SITE"],
       app_settings["WEBSITE_RUN_FROM_PACKAGE"]
     ]

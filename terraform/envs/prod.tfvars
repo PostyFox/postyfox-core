@@ -6,3 +6,4 @@ app_logs = ["FunctionAppLogs"]
 kv_logs = ["AuditEvent"]
 
 cors = ["*.postyfox.com"]
+allowed_ips = []

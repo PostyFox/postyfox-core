@@ -6,7 +6,18 @@ resource "azurerm_storage_account" "spa_storage" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
+  infrastructure_encryption_enabled = true
+
   shared_access_key_enabled = false
+
+  public_network_access_enabled = true
+
+  network_rules {
+    bypass         = ["Logging", "Metrics", "AzureServices"]
+    default_action = "Allow"
+
+    ip_rules = var.allowed_ips
+  }
 
   blob_properties {
     delete_retention_policy {
@@ -18,7 +29,7 @@ resource "azurerm_storage_account" "spa_storage" {
     container_delete_retention_policy {
       days = 7
     }
-  }  
+  }
 
   static_website {
     index_document = "index.html"
