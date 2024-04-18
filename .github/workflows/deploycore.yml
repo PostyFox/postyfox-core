@@ -44,6 +44,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Whitelist GitHub Runner IP
+      shell: pwsh
+      run: |
+        $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
+
+        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxspastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+
     - name: Setup OpenTofu
       uses: opentofu/setup-opentofu@v1
       with:
@@ -57,28 +67,6 @@ jobs:
         ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
-
-    - name: Whitelist GitHub Runner IP
-      shell: pwsh
-      run:
-          $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
-
-          az storage account network-rule add \
-            --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
-            --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" \
-            --ip-address $ip.ip
-          az storage account network-rule add \
-            --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
-            --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" \
-            --ip-address $ip.ip
-          az storage account network-rule add \
-            --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
-            --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" \
-            --ip-address $ip.ip
-          az storage account network-rule add \
-            --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
-            --account-name "postyfoxspastor${{inputs.targetEnvironment}}" \
-            --ip-address $ip.ip
 
     - name: Tofu Plan
       run: "tofu plan --var-file=./envs/${{inputs.targetEnvironment}}.tfvars"
