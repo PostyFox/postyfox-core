@@ -54,6 +54,8 @@ jobs:
         az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
         az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxspastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
+        az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
+
     - name: Setup OpenTofu
       uses: opentofu/setup-opentofu@v1
       with:
