@@ -61,25 +61,24 @@ jobs:
     - name: Whitelist GitHub Runner IP
       shell: pwsh
       run:
-          set -eu
-          agentIP=$(curl -s https://api.ipify.org/)
+          $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
+
           az storage account network-rule add \
             --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
             --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" \
-            --ip-address $agentIP
+            --ip-address $ip.ip
           az storage account network-rule add \
             --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
             --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" \
-            --ip-address $agentIP
+            --ip-address $ip.ip
           az storage account network-rule add \
             --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
             --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" \
-            --ip-address $agentIP
+            --ip-address $ip.ip
           az storage account network-rule add \
             --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" \
             --account-name "postyfoxspastor${{inputs.targetEnvironment}}" \
-            --ip-address $agentIP
-          sleep 300
+            --ip-address $ip.ip
 
     - name: Tofu Plan
       run: "tofu plan --var-file=./envs/${{inputs.targetEnvironment}}.tfvars"
