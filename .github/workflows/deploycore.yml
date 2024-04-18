@@ -29,7 +29,7 @@ jobs:
       run: |
         curl --version
         file $(which curl)
-        
+
     # Login using az login and a service principal, allowing Terraform to access the account
     - name: Azure Login
       shell: pwsh
@@ -59,9 +59,8 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
     - name: Whitelist GitHub Runner IP
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
+      shell: pwsh
+      run:
           set -eu
           agentIP=$(curl -s https://api.ipify.org/)
           az storage account network-rule add \
