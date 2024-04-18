@@ -26,3 +26,7 @@ variable "app_logs" {
 variable "kv_logs" {
   type = list(string)
 }
+
+variable "cors" {
+  type = list(string)
+}
