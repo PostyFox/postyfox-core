@@ -8,3 +8,9 @@ resource "azurerm_role_assignment" "sp-datacontributor" {
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = data.azurerm_client_config.current.object_id
 }
+
+resource "azurerm_role_assignment" "sp-tablecontributor" {
+  scope                = azurerm_resource_group.rg.id
+  role_definition_name = "Storage Table Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
