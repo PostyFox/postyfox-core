@@ -34,7 +34,7 @@ resource "azurerm_storage_account" "data_storage" {
 
   lifecycle {
     ignore_changes = [ 
-      network_rules.ip_rules
+      network_rules[0].ip_rules
      ]
   }
 }
