@@ -5,5 +5,5 @@ openid_configuration_endpoint="https://postyfoxdev.b2clogin.com/postyfoxdev.onmi
 app_logs = ["FunctionAppLogs"]
 kv_logs = ["AuditEvent"]
 
-cors = ["*.postyfox.com", "localhost:4200"]
+cors = ["dev.cp.postyfox.com", "localhost:4200"]
 allowed_ips = ["81.187.251.125"]
