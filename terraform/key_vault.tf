@@ -20,7 +20,7 @@ resource "azurerm_key_vault" "key_vault" {
 
   lifecycle {
     ignore_changes = [ 
-      network_acls.ip_rules
+      network_acls[0].ip_rules
      ]
   }
 }
