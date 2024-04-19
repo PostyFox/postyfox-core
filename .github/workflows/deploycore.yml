@@ -205,14 +205,14 @@ jobs:
         id: fa
         with:
           app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
-          package: './artifacts/dotnet-fa'
+          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-fa'
 
       - name: 'Upload NodeJS Function App'
         uses: Azure/functions-action@v1
         id: nfa
         with:
           app-name: postyfox-func-app-nodejs-${{ inputs.targetEnvironment }}
-          package: './artifacts/dotnet-fa'
+          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/nodejs-fa'
 
       - name: Remove GitHub Runner IP
         shell: pwsh
