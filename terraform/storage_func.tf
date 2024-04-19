@@ -8,7 +8,7 @@ resource "azurerm_storage_account" "linux_func_storage" {
 
   infrastructure_encryption_enabled = true
 
-  shared_access_key_enabled = false
+  shared_access_key_enabled = true
 
   public_network_access_enabled = true
 
@@ -49,7 +49,7 @@ resource "azurerm_storage_account" "linux_funcnet_storage" {
 
   infrastructure_encryption_enabled = true
 
-  shared_access_key_enabled = false
+  shared_access_key_enabled = true
 
   public_network_access_enabled = true
 
