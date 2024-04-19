@@ -179,7 +179,7 @@ jobs:
 
       - name: Whitelist GitHub Runner IP
         shell: pwsh
-S        run: |
+        run: |
           $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
 
           az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
@@ -187,6 +187,8 @@ S        run: |
           az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxspastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
       - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
 
       - name: Listing
         run: ls -laR
