@@ -17,6 +17,12 @@ resource "azurerm_key_vault" "key_vault" {
   }
 
   sku_name = "standard"
+
+  lifecycle {
+    ignore_changes = [ 
+      network_acls.ip_rules
+     ]
+  }
 }
 
 # A secret called client secret should be added to this vault :)

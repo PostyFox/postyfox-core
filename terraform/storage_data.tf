@@ -31,6 +31,12 @@ resource "azurerm_storage_account" "data_storage" {
       days = 7
     }
   }
+
+  lifecycle {
+    ignore_changes = [ 
+      network_rules.ip_rules
+     ]
+  }
 }
 
 resource "azurerm_storage_table" "availableservices" {

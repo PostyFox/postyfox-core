@@ -38,4 +38,10 @@ resource "azurerm_storage_account" "spa_storage" {
   custom_domain {
     name = "${local.portal-prefix}${local.portal-address}"
   }
+
+  lifecycle {
+    ignore_changes = [ 
+      network_rules.ip_rules
+     ]
+  }
 }
