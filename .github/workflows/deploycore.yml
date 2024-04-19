@@ -188,13 +188,21 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: ./artifacts
+          name: dotnet-fa
+          path: ./artifacts/dotnet-fa
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: nodejs-fa
+          path: ./artifacts/nodejs-fa
 
       - name: Unzip artifact for deployment
         run: unzip ./artifacts/nodejs-fa/nodejs-fa.zip
 
       - name: Listing
-        run: ls -laR
+        run: |
+          pwd
+          ls -laR
 
       - uses: azure/login@v2
         with:
@@ -205,14 +213,15 @@ jobs:
         id: fa
         with:
           app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
-          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-fa'
+          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-fa/.'
 
       - name: 'Upload NodeJS Function App'
         uses: Azure/functions-action@v1
         id: nfa
         with:
           app-name: postyfox-func-app-nodejs-${{ inputs.targetEnvironment }}
-          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/nodejs-fa'
+          respect-funcignore: true
+          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/nodejs-fa/.'
 
       - name: Remove GitHub Runner IP
         shell: pwsh
