@@ -161,8 +161,24 @@ jobs:
         name: nodejs-fa
         path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript/nodejs-fa.zip
 
-  deploy-dotnet:
+  setup-access:
     needs: [terraform, codebuild]
+    name: 'Grant Github Runner Access'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Whitelist GitHub Runner IP
+        shell: pwsh
+        if: always()
+        run: |
+          $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
+
+          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxspastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+
+  deploy-dotnet:
+    needs: [setup-access]
     name: 'Code Deployment - DotNet'
     runs-on: ubuntu-latest
 
@@ -186,7 +202,7 @@ jobs:
           package: '.'
 
   deploy-nodejs:
-    needs: [terraform, codebuild]
+    needs: [setup-access]
     name: 'Code Deployment - NodeJs'
     runs-on: ubuntu-latest
 
@@ -211,3 +227,20 @@ jobs:
         with:
           app-name: postyfox-func-app-nodejs-${{ inputs.targetEnvironment }}
           package: '.'
+
+  remove-access:
+    needs: [deploy-dotnet, deploy-nodejs]
+    name: 'Remove Github Runner Access'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Remove GitHub Runner IP
+        shell: pwsh
+        if: always()
+        run: |
+          $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
+
+          az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+          az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+          az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxspastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+        
