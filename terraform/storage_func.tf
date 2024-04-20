@@ -32,9 +32,9 @@ resource "azurerm_storage_account" "linux_func_storage" {
   }
 
   lifecycle {
-    ignore_changes = [ 
+    ignore_changes = [
       network_rules[0].ip_rules
-     ]
+    ]
   }
 }
 
@@ -73,8 +73,8 @@ resource "azurerm_storage_account" "linux_funcnet_storage" {
   }
 
   lifecycle {
-    ignore_changes = [ 
+    ignore_changes = [
       network_rules[0].ip_rules
-     ]
+    ]
   }
 }

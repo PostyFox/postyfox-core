@@ -1,12 +1,14 @@
 resource "azurerm_key_vault" "key_vault" {
-  name                        = "${local.appname}-kv${local.hyphen-env}"
-  location                    = azurerm_resource_group.rg.location
-  resource_group_name         = azurerm_resource_group.rg.name
-  enabled_for_disk_encryption = true
-  tenant_id                   = data.azurerm_client_config.current.tenant_id
-  soft_delete_retention_days  = 7
-  purge_protection_enabled    = true
-  enable_rbac_authorization   = true
+  name                            = "${local.appname}-kv${local.hyphen-env}"
+  location                        = azurerm_resource_group.rg.location
+  resource_group_name             = azurerm_resource_group.rg.name
+  enabled_for_disk_encryption     = true
+  enabled_for_deployment          = true
+  enabled_for_template_deployment = true
+  tenant_id                       = data.azurerm_client_config.current.tenant_id
+  soft_delete_retention_days      = 7
+  purge_protection_enabled        = true
+  enable_rbac_authorization       = true
 
   public_network_access_enabled = true
   network_acls {
@@ -19,9 +21,9 @@ resource "azurerm_key_vault" "key_vault" {
   sku_name = "standard"
 
   lifecycle {
-    ignore_changes = [ 
+    ignore_changes = [
       network_acls[0].ip_rules
-     ]
+    ]
   }
 }
 
