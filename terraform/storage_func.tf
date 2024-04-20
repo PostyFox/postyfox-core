@@ -16,7 +16,7 @@ resource "azurerm_storage_account" "linux_func_storage" {
     bypass         = ["Logging", "Metrics", "AzureServices"]
     default_action = "Deny"
 
-    ip_rules = merge(var.allowed_ips, azurerm_linux_function_app.nodejs_func_app.possible_outbound_ip_address_list)
+    ip_rules = var.allowed_ips
   }
 
   blob_properties {
@@ -57,7 +57,7 @@ resource "azurerm_storage_account" "linux_funcnet_storage" {
     bypass         = ["Logging", "Metrics", "AzureServices"]
     default_action = "Deny"
 
-    ip_rules = merge(var.allowed_ips, azurerm_linux_function_app.dotnet_func_app.possible_outbound_ip_address_list)
+    ip_rules = var.allowed_ips
   }
 
   blob_properties {

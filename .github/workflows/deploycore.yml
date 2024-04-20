@@ -88,6 +88,15 @@ jobs:
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
+    - name: Tofu Get Outputs
+      run: "tofu outputs --var-file=./envs/${{inputs.targetEnvironment}}.tfvars"
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
+      env:
+        ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}      
+
     - name: Remove GitHub Runner IP
       shell: pwsh
       if: always()
