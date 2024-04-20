@@ -8,16 +8,9 @@ resource "azurerm_storage_account" "linux_func_storage" {
 
   infrastructure_encryption_enabled = true
 
-  shared_access_key_enabled = true
+  shared_access_key_enabled = false
 
   public_network_access_enabled = true
-
-  network_rules {
-    bypass         = ["Logging", "Metrics", "AzureServices"]
-    default_action = "Deny"
-
-    ip_rules = var.allowed_ips
-  }
 
   blob_properties {
     delete_retention_policy {
@@ -29,12 +22,6 @@ resource "azurerm_storage_account" "linux_func_storage" {
     container_delete_retention_policy {
       days = 7
     }
-  }
-
-  lifecycle {
-    ignore_changes = [
-      network_rules[0].ip_rules
-    ]
   }
 }
 
@@ -49,16 +36,9 @@ resource "azurerm_storage_account" "linux_funcnet_storage" {
 
   infrastructure_encryption_enabled = true
 
-  shared_access_key_enabled = true
+  shared_access_key_enabled = false
 
   public_network_access_enabled = true
-
-  network_rules {
-    bypass         = ["Logging", "Metrics", "AzureServices"]
-    default_action = "Deny"
-
-    ip_rules = var.allowed_ips
-  }
 
   blob_properties {
     delete_retention_policy {
@@ -70,11 +50,5 @@ resource "azurerm_storage_account" "linux_funcnet_storage" {
     container_delete_retention_policy {
       days = 7
     }
-  }
-
-  lifecycle {
-    ignore_changes = [
-      network_rules[0].ip_rules
-    ]
   }
 }
