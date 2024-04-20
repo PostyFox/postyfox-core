@@ -90,7 +90,7 @@ jobs:
 
     - name: Tofu Get Outputs
       id: tofu-output
-      run: "tofu output --var-file=./envs/${{inputs.targetEnvironment}}.tfvars -json"
+      run: "tofu output -json"
       working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
       env:
         ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
