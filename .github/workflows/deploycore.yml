@@ -111,6 +111,25 @@ jobs:
 
         az keyvault network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
+    - name: Ensure Function Apps are allowed on Storage FW
+      shell: pwsh
+      env:
+        tofu_out: ${{ steps.tofu-output.outputs.stdout }}
+      run: |
+        $data = $env:tofu_out
+        $dataObj = ConvertFrom-Json $data
+
+        $ipList = $dataObj.dotnet_fa_ip_list.value + $dataObj.nodejs_fa_ip_list.value
+        $ipList = $ipList | Select-Object -Unique
+
+        foreach ($ip in $ipList) {
+          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip
+          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" --ip-address $ip
+          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" --ip-address $ip
+          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxspastor${{inputs.targetEnvironment}}" --ip-address $ip
+          az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip
+        }
+        
   codebuild:
     name: 'Code Build'
     runs-on: ubuntu-latest
