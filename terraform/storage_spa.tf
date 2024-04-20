@@ -12,13 +12,6 @@ resource "azurerm_storage_account" "spa_storage" {
 
   public_network_access_enabled = true
 
-  network_rules {
-    bypass         = ["Logging", "Metrics", "AzureServices"]
-    default_action = "Allow"
-
-    ip_rules = var.allowed_ips
-  }
-
   blob_properties {
     delete_retention_policy {
       days = 7
@@ -37,11 +30,5 @@ resource "azurerm_storage_account" "spa_storage" {
 
   custom_domain {
     name = "${local.portal-prefix}${local.portal-address}"
-  }
-
-  lifecycle {
-    ignore_changes = [
-      network_rules[0].ip_rules
-    ]
   }
 }

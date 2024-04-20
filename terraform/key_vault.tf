@@ -11,20 +11,8 @@ resource "azurerm_key_vault" "key_vault" {
   enable_rbac_authorization       = true
 
   public_network_access_enabled = true
-  network_acls {
-    bypass         = "AzureServices"
-    default_action = "Deny"
-
-    ip_rules = var.allowed_ips
-  }
 
   sku_name = "standard"
-
-  lifecycle {
-    ignore_changes = [
-      network_acls[0].ip_rules
-    ]
-  }
 }
 
 # A secret called client secret should be added to this vault :)
