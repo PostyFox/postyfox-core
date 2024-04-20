@@ -5,4 +5,5 @@ openid_configuration_endpoint="https://postyfox.b2clogin.com/postyfox.onmicrosof
 app_logs = ["FunctionAppLogs"]
 kv_logs = ["AuditEvent"]
 
-cors = ["*.postyfox.com"]
+cors = ["cp.postyfox.com"]
+allowed_ips = []

@@ -28,5 +28,11 @@ variable "kv_logs" {
 }
 
 variable "cors" {
-  type = list(string)
+  type        = list(string)
+  description = "(Required) CORS URLs which are applied to user facing Function Apps and Storage Accounts"
+}
+
+variable "allowed_ips" {
+  type        = list(string)
+  description = "(Optional) Defines the IP Addresses which can bypass the deny rules on resources to access KeyVault and Data Storage"
 }

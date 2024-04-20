@@ -1,18 +1,16 @@
 resource "azurerm_key_vault" "key_vault" {
-  name                        = "${local.appname}-kv${local.hyphen-env}"
-  location                    = azurerm_resource_group.rg.location
-  resource_group_name         = azurerm_resource_group.rg.name
-  enabled_for_disk_encryption = true
-  tenant_id                   = data.azurerm_client_config.current.tenant_id
-  soft_delete_retention_days  = 7
-  purge_protection_enabled    = true
-  enable_rbac_authorization   = true
+  name                            = "${local.appname}-kv${local.hyphen-env}"
+  location                        = azurerm_resource_group.rg.location
+  resource_group_name             = azurerm_resource_group.rg.name
+  enabled_for_disk_encryption     = true
+  enabled_for_deployment          = true
+  enabled_for_template_deployment = true
+  tenant_id                       = data.azurerm_client_config.current.tenant_id
+  soft_delete_retention_days      = 7
+  purge_protection_enabled        = true
+  enable_rbac_authorization       = true
 
-  public_network_access_enabled = false
-  network_acls {
-    bypass = "AzureServices"
-    default_action = "Deny"
-  }
+  public_network_access_enabled = true
 
   sku_name = "standard"
 }

@@ -24,6 +24,12 @@ jobs:
         shell: bash
 
     steps:
+    - name: Check Curl
+      shell: bash
+      run: |
+        curl --version
+        file $(which curl)
+
     # Login using az login and a service principal, allowing Terraform to access the account
     - name: Azure Login
       shell: pwsh
@@ -37,6 +43,15 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Whitelist GitHub Runner IP
+      shell: pwsh
+      run: |
+        $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
+
+        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+
+        az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
     - name: Setup OpenTofu
       uses: opentofu/setup-opentofu@v1
@@ -70,6 +85,42 @@ jobs:
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
+    - name: Tofu Get Outputs
+      id: tofu-output
+      run: "tofu output -json"
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/terraform
+      env:
+        ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}      
+
+    - name: Remove GitHub Runner IP
+      shell: pwsh
+      if: always()
+      run: |
+        $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
+
+        az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
+
+        az keyvault network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
+
+    - name: Ensure Function Apps are allowed on Storage FW
+      shell: pwsh
+      env:
+        tofu_out: ${{ steps.tofu-output.outputs.stdout }}
+      run: |
+        $data = $env:tofu_out
+        $dataObj = ConvertFrom-Json $data
+
+        $ipList = $dataObj.dotnet_fa_ip_list.value + $dataObj.nodejs_fa_ip_list.value
+        $ipList = $ipList | Select-Object -Unique
+
+        foreach ($ip in $ipList) {
+          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip
+          az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip
+        }
+        
   codebuild:
     name: 'Code Build'
     runs-on: ubuntu-latest
@@ -130,18 +181,39 @@ jobs:
         name: nodejs-fa
         path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript/nodejs-fa.zip
 
-  deploy-dotnet:
+  deploy:
     needs: [terraform, codebuild]
-    name: 'Code Deployment - DotNet'
+    name: 'Deployment of Code'
     runs-on: ubuntu-latest
 
     steps:
+      - name: Azure Login
+        shell: pwsh
+        run: |
+          az login --service-principal -u $env:ARM_CLIENT_ID -p $env:ARM_CLIENT_SECRET --tenant $env:ARM_TENANT_ID
+        env:
+          ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
+
       - uses: actions/download-artifact@v4
         with:
           name: dotnet-fa
+          path: ./artifacts/dotnet-fa
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: nodejs-fa
+          path: ./artifacts/nodejs-fa
+
+      - name: Unzip artifact for deployment
+        run: unzip ./artifacts/nodejs-fa/nodejs-fa.zip
 
       - name: Listing
-        run: ls -laR
+        run: |
+          pwd
+          ls -laR
 
       - uses: azure/login@v2
         with:
@@ -152,31 +224,12 @@ jobs:
         id: fa
         with:
           app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
-          package: '.'
-
-  deploy-nodejs:
-    needs: [terraform, codebuild]
-    name: 'Code Deployment - NodeJs'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: nodejs-fa
-
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Unzip artifact for deployment
-        run: unzip nodejs-fa.zip
-
-      - name: Listing
-        run: ls -laR
+          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-fa/.'
 
       - name: 'Upload NodeJS Function App'
         uses: Azure/functions-action@v1
         id: nfa
         with:
           app-name: postyfox-func-app-nodejs-${{ inputs.targetEnvironment }}
-          package: '.'
+          respect-funcignore: true
+          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/nodejs-fa/.'
