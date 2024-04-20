@@ -1,5 +1,5 @@
 resource "azurerm_storage_account" "linux_func_storage" {
-  name                            = "${local.appname}funcstor${var.environment}"
+  name                            = "${local.appname}funcnodestor${var.environment}"
   resource_group_name             = azurerm_resource_group.rg.name
   location                        = azurerm_resource_group.rg.location
   account_tier                    = "Standard"

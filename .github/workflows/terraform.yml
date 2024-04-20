@@ -44,9 +44,6 @@ jobs:
         $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
 
         az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
-        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
-        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
-        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxspastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
         az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
@@ -78,8 +75,5 @@ jobs:
         $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
 
         az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
-        az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncnetstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
-        az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxfuncstor${{inputs.targetEnvironment}}" --ip-address $ip.ip
-        az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxspastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
         az keyvault network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
