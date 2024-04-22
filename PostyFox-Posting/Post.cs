@@ -74,16 +74,19 @@ namespace PostyFox_Posting
                 _configTable.CreateTableIfNotExists("UserProfiles_APIKeys");
 
                 var client = _configTable.GetTableClient("UserProfiles_APIKeys");
-                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == para.APIKey.UserID && x.RowKey == para.APIKey.ID);
+                var query = client.Query<ProfileAPIKeyTableEntity>(x => x.PartitionKey == para.APIKey.UserID && x.RowKey == para.APIKey.ID);
                 var valid = query.FirstOrDefault();
                 if (valid != null)
                 {
                     // Key is valid for user
 
                     // Extract out and save the post data to storage
+                    foreach (var targetPlatform in para.TargetPlatforms)
+                    {
 
-                    // Save the post to queue
-                    // Schedule as required
+                        // Save the post to queue - Parse out the targets and convert each to a QueueEntity and save to queue
+                        // Schedule as required
+                    }
                 } 
                 else
                 {
