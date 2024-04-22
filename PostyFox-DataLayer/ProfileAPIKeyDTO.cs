@@ -1,16 +1,16 @@
 ﻿using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 
-namespace PostyFox_NetCore
+namespace PostyFox_DataLayer
 {
     public class ProfileAPIKeyDTO
     {
-        [OpenApiPropertyAttribute(Description = "The internal unique identifier for this API Key")]
+        [OpenApiProperty(Description = "The internal unique identifier for this API Key")]
         public string? ID { get; set; }
 
-        [OpenApiPropertyAttribute(Description = "API Key")]
+        [OpenApiProperty(Description = "API Key")]
         public string? APIKey { get; set; }
 
-        [OpenApiPropertyAttribute(Description = "User ID")]
+        [OpenApiProperty(Description = "User ID")]
         public string? UserID { get; set; }
     }
 }

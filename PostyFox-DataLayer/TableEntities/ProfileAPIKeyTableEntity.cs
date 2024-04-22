@@ -2,7 +2,7 @@
 using Azure.Data.Tables;
 using System.ComponentModel;
 
-namespace PostyFox_NetCore
+namespace PostyFox_DataLayer.TableEntities
 {
 #pragma warning disable CS8618
     public class ProfileAPIKeyTableEntity : ITableEntity

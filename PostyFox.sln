@@ -5,6 +5,10 @@ VisualStudioVersion = 17.7.34031.279
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostyFox-NetCore", "PostyFox-NetCore\PostyFox-NetCore.csproj", "{61B98370-3AA2-4676-BB52-61787C91AC30}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostyFox-DataLayer", "PostyFox-DataLayer\PostyFox-DataLayer.csproj", "{C37C0B65-392C-40FF-8A75-8FF8C4EBB3D9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostyFox-Posting", "PostyFox-Posting\PostyFox-Posting.csproj", "{90C08284-08BB-4DE7-9723-6EDFD958ACDF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{61B98370-3AA2-4676-BB52-61787C91AC30}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61B98370-3AA2-4676-BB52-61787C91AC30}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61B98370-3AA2-4676-BB52-61787C91AC30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C37C0B65-392C-40FF-8A75-8FF8C4EBB3D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C37C0B65-392C-40FF-8A75-8FF8C4EBB3D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C37C0B65-392C-40FF-8A75-8FF8C4EBB3D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C37C0B65-392C-40FF-8A75-8FF8C4EBB3D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90C08284-08BB-4DE7-9723-6EDFD958ACDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90C08284-08BB-4DE7-9723-6EDFD958ACDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90C08284-08BB-4DE7-9723-6EDFD958ACDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90C08284-08BB-4DE7-9723-6EDFD958ACDF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

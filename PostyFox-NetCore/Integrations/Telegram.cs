@@ -10,6 +10,7 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
+using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
 using TL;
 using static PostyFox_NetCore.Services;
