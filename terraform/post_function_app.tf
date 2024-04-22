@@ -42,8 +42,6 @@ resource "azurerm_linux_function_app" "dotnet_funcpost_app" {
   }
 }
 
-dev.
-
 resource "azurerm_app_service_custom_hostname_binding" "dotnet_funcpost_binding" {
   hostname            = "${local.portal-prefix}${local.posting-address}"
   app_service_name    = azurerm_linux_function_app.dotnet_funcpost_app.name
