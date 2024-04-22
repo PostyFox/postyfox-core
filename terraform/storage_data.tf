@@ -43,3 +43,8 @@ resource "azurerm_storage_table" "availableservices" {
   name                 = "AvailableServices"
   storage_account_name = azurerm_storage_account.data_storage.name
 }
+
+resource "azurerm_storage_queue" "postingqueue" {
+  name                 = "PostingQueue"
+  storage_account_name = azurerm_storage_account.data_storage.name
+}

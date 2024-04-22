@@ -100,3 +100,9 @@ resource "azurerm_role_assignment" "dotnetfuncpostapp-table" {
   role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
 }
+
+resource "azurerm_role_assignment" "dotnetfuncpostapp-queue" {
+  scope                = azurerm_storage_account.data_storage.id
+  role_definition_name = "Storage Queue Data Contributor"
+  principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
+}
