@@ -219,6 +219,11 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
+          name: dotnet-posting
+          path: ./artifacts/dotnet-posting
+
+      - uses: actions/download-artifact@v4
+        with:
           name: nodejs-fa
           path: ./artifacts/nodejs-fa
 
@@ -240,6 +245,13 @@ jobs:
         with:
           app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
           package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-fa/.'
+
+      - name: 'Upload Dot Net Posting Function App'
+        uses: Azure/functions-action@v1
+        id: posting-fa
+        with:
+          app-name: postyfox-func-app-post-${{ inputs.targetEnvironment }}
+          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-posting/.'
 
       - name: 'Upload NodeJS Function App'
         uses: Azure/functions-action@v1
