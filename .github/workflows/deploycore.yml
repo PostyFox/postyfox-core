@@ -146,16 +146,31 @@ jobs:
       run: dotnet build -c Release -v d
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
+    - name: Build dotnet Posting Function App
+      run: dotnet build -c Release -v d
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
+
     - name: Publish dotnet Core Function App
       run: dotnet publish -v d -o /home/runner/work/output/dotnet-fa
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
+    - name: Publish dotnet Posting Function App
+      run: dotnet publish -v d -o /home/runner/work/output/dotnet-posting
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
+
     - uses: actions/upload-artifact@v4
-      name: Upload DotNet Function App Artifact
+      name: Upload DotNet Core Function App Artifact
       id: upload-dotnet-fa
       with:
         name: dotnet-fa
         path: /home/runner/work/output/dotnet-fa
+
+    - uses: actions/upload-artifact@v4
+      name: Upload DotNet Posting Function App Artifact
+      id: upload-dotnet-postingfa
+      with:
+        name: dotnet-posting
+        path: /home/runner/work/output/dotnet-posting      
 
     - name: Setup Node v20
       uses: actions/setup-node@v4
