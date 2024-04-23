@@ -146,16 +146,31 @@ jobs:
       run: dotnet build -c Release -v d
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
+    - name: Build dotnet Posting Function App
+      run: dotnet build -c Release -v d
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
+
     - name: Publish dotnet Core Function App
       run: dotnet publish -v d -o /home/runner/work/output/dotnet-fa
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
+    - name: Publish dotnet Posting Function App
+      run: dotnet publish -v d -o /home/runner/work/output/dotnet-posting
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
+
     - uses: actions/upload-artifact@v4
-      name: Upload DotNet Function App Artifact
+      name: Upload DotNet Core Function App Artifact
       id: upload-dotnet-fa
       with:
         name: dotnet-fa
         path: /home/runner/work/output/dotnet-fa
+
+    - uses: actions/upload-artifact@v4
+      name: Upload DotNet Posting Function App Artifact
+      id: upload-dotnet-postingfa
+      with:
+        name: dotnet-posting
+        path: /home/runner/work/output/dotnet-posting      
 
     - name: Setup Node v20
       uses: actions/setup-node@v4
@@ -204,6 +219,11 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
+          name: dotnet-posting
+          path: ./artifacts/dotnet-posting
+
+      - uses: actions/download-artifact@v4
+        with:
           name: nodejs-fa
           path: ./artifacts/nodejs-fa
 
@@ -225,6 +245,13 @@ jobs:
         with:
           app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
           package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-fa/.'
+
+      - name: 'Upload Dot Net Posting Function App'
+        uses: Azure/functions-action@v1
+        id: posting-fa
+        with:
+          app-name: postyfox-func-app-post-${{ inputs.targetEnvironment }}
+          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-posting/.'
 
       - name: 'Upload NodeJS Function App'
         uses: Azure/functions-action@v1

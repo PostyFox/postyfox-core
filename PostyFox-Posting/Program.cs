@@ -20,7 +20,7 @@ var host = new HostBuilder()
 #pragma warning restore CS8604
             clientBuilder.UseCredential(new DefaultAzureCredential());
         });
-        
+
     })
     .Build();
 
