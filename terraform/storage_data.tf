@@ -45,6 +45,6 @@ resource "azurerm_storage_table" "availableservices" {
 }
 
 resource "azurerm_storage_queue" "postingqueue" {
-  name                 = "PostingQueue"
+  name                 = "postingqueue"
   storage_account_name = azurerm_storage_account.data_storage.name
 }
