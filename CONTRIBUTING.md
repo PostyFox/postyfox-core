@@ -45,7 +45,7 @@ Replace username with a username for display and processing in the UI.
 
 ### Testing the API / Checking the Swagger Docs
 
-Point your browser at a deployed instance, such as the [dev one](https://postyfox-func-app-dotnet-dev.azurewebsites.net/api/swagger/ui) and login. You will be able to send test requests to the API and review the responses. Note that this functionality is not enabled on all deployments.
+Point your browser at a deployed instance, such as the [dev one](https://postyfox-func-app-dotnet-dev.azurewebsites.net/api/swagger/ui). If you have not already logged in, you will need to complete this [first](https://postyfoxdev.b2clogin.com/postyfoxdev.onmicrosoft.com/oauth2/v2.0/authorize?p=B2C_1_Signin&client_id=2b89259d-3cc3-41fe-adbf-5f9acb15e622&nonce=defaultNonce&redirect_uri=https%3A%2F%2Fpostyfox-func-app-dotnet-dev.azurewebsites.net%2F.auth%2Flogin%2FAAD_B2C%2Fcallback&scope=openid&response_type=id_token&prompt=login). You will be able to send test requests to the API and review the responses. Note that this functionality is not enabled on all deployments.
 
 ## REMINDER
 
