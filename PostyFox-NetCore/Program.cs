@@ -18,7 +18,14 @@ var host = new HostBuilder()
                 clientBuilder.AddSecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore"))).WithName("SecretStore");
             }
 #pragma warning restore CS8604
-            clientBuilder.UseCredential(new DefaultAzureCredential());
+            DefaultAzureCredentialOptions options = new DefaultAzureCredentialOptions()
+            {
+                ExcludeManagedIdentityCredential = false,
+                ExcludeVisualStudioCodeCredential = true,
+                ExcludeVisualStudioCredential = true,
+                ExcludeWorkloadIdentityCredential = false
+            };
+            clientBuilder.UseCredential(new DefaultAzureCredential(options));
         });
         
     })
