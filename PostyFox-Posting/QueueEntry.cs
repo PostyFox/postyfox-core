@@ -9,13 +9,12 @@ namespace PostyFox_Posting
 {
     public class QueueEntry
     {
+        public string RootPostId { get; set; }
         public string PostId { get; set; }  
         public string User { get; set; }
-        public string TargetPlatformServiceId { get; set; }
-        public string Status { get; set; }
+        public string? TargetPlatformServiceId { get; set; }
+        public int Status { get; set; }
         public List<string> Media { get; set; }
-        public string Description { get; set; }
-        public List<string> Tags { get; set; }
-        public DateTime PostAt { get; set; }
+        public DateTime? PostAt { get; set; }
     }
 }

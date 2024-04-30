@@ -13,6 +13,7 @@ using PostyFox_DataLayer;
 using System.Net;
 using Azure.Data.Tables;
 using Microsoft.Extensions.Azure;
+using Azure.Storage.Blobs;
 
 namespace PostyFox_Posting
 {
@@ -20,15 +21,23 @@ namespace PostyFox_Posting
     {
         private readonly ILogger<Post> _logger;
         private readonly TableServiceClient _configTable;
+        private readonly BlobServiceClient _blobStorageAccount;
 
-        public Post(ILogger<Post> logger, IAzureClientFactory<TableServiceClient> clientFactory)
+        public Post(ILogger<Post> logger, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
         {
             _logger = logger;
             _configTable = clientFactory.CreateClient("ConfigTable");
+            _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
         }
 
-
-
+        public enum PostStatus
+        {
+            Queued,
+            Posting,
+            Posted,
+            Faulted,
+            SomeFaults
+        }
         public class PostParameters
         {
             public PostyFox_DataLayer.ProfileAPIKeyDTO APIKey { get; set; }
@@ -51,7 +60,7 @@ namespace PostyFox_Posting
         public class PostResponse
         { 
             public string PostId { get; set; }
-            public string Status { get; set; }
+            public PostStatus Status { get; set; }
             public string MediaSavedUri { get; set; }
         }
 
@@ -61,8 +70,8 @@ namespace PostyFox_Posting
         [Function("Post")]
         public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
+            string postId = Guid.NewGuid().ToString();
             // Confirm that have a API Key
-
             string requestBody = new StreamReader(req.Body).ReadToEnd();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
             PostParameters para = data as PostParameters;
@@ -78,14 +87,39 @@ namespace PostyFox_Posting
                 var valid = query.FirstOrDefault();
                 if (valid != null)
                 {
+                    BlobContainerClient _containerClient;
                     // Key is valid for user
+                    _containerClient = _blobStorageAccount.GetBlobContainerClient("post/"+postId); // Root post containing folder
 
-                    // Extract out and save the post data to storage
+                    // Given the max size of a queue item is 64Kb, we save off anything we can to blob storage for the post
+
+                    // Extract out and save the common post data to storage
+                    // Save Description and tags data
+                    _containerClient.UploadBlob("description", BinaryData.FromString(para.Description));
+                    _containerClient.UploadBlob("description-html", BinaryData.FromString(para.HTMLDescription));
+                    _containerClient.UploadBlob("tags", BinaryData.FromString(JsonConvert.SerializeObject(para.Tags)));
+                    // Save Images 
+                    // TODO: Images, pull them over from the temporary upload location
+
+                    // Extract out and save the PLATFORM SPECIFIC post data to storage
                     foreach (var targetPlatform in para.TargetPlatforms)
                     {
-
                         // Save the post to queue - Parse out the targets and convert each to a QueueEntity and save to queue
+                        QueueEntry queueEntry = new QueueEntry()
+                        {
+                            PostAt = para.PostAt,
+                            RootPostId = postId,
+                            PostId = Guid.NewGuid().ToString(),
+                            User = para.APIKey.UserID,
+                            TargetPlatformServiceId = targetPlatform,
+                            Status = (int)PostStatus.Queued
+                        };
+
+                        // Write a "lock" file so we don't try and delete the root containing post folder with the data
+                        _containerClient.UploadBlob("lock-" + targetPlatform, BinaryData.FromString("LOCKED"));
+
                         // Schedule as required
+                        
                     }
                 } 
                 else
