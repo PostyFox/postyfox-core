@@ -30,7 +30,7 @@ resource "azurerm_linux_function_app" "dotnet_funcpost_app" {
     application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
 
     cors {
-      allowed_origins     = ["*"]
+      allowed_origins = ["*"]
     }
   }
 

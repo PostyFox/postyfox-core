@@ -5,11 +5,12 @@ resource "azurerm_storage_table_entity" "telegram-template" {
   row_key       = "Telegram"
 
   entity = {
-    ServiceName   = "Telegram"
-    IsEnabled     = true
-    ServiceID     = "Telegram"
-    Configuration = "{\"PhoneNumber\":\"\"}"
-    Endpoint      = azurerm_linux_function_app.dotnet_func_app.default_hostname
+    ServiceName            = "Telegram"
+    "IsEnabled@odata.type" = "Edm.Boolean"
+    IsEnabled              = true
+    ServiceID              = "Telegram"
+    Configuration          = "{\"PhoneNumber\":\"\"}"
+    Endpoint               = azurerm_linux_function_app.dotnet_func_app.default_hostname
   }
 }
 
@@ -20,11 +21,12 @@ resource "azurerm_storage_table_entity" "discordwh-template" {
   row_key       = "DiscordWH"
 
   entity = {
-    ServiceName   = "Discord Web Hook"
-    IsEnabled     = true
-    ServiceID     = "DiscordWH"
-    Configuration = "{\"Webhook\":\"\"}"
-    Endpoint      = azurerm_linux_function_app.dotnet_func_app.default_hostname
+    ServiceName            = "Discord Web Hook"
+    "IsEnabled@odata.type" = "Edm.Boolean"
+    IsEnabled              = true
+    ServiceID              = "DiscordWH"
+    Configuration          = "{\"Webhook\":\"\"}"
+    Endpoint               = azurerm_linux_function_app.dotnet_func_app.default_hostname
   }
 }
 
@@ -35,12 +37,13 @@ resource "azurerm_storage_table_entity" "bluesky-template" {
   row_key       = "BlueSky"
 
   entity = {
-    ServiceName         = "BlueSky"
-    IsEnabled           = true
-    ServiceID           = "BlueSky"
-    Configuration       = "{\"Handle\":\"\"}"
-    SecureConfiguration = "{\"AppPassword\":\"\"}"
-    Endpoint            = azurerm_linux_function_app.nodejs_func_app.default_hostname
+    ServiceName            = "BlueSky"
+    "IsEnabled@odata.type" = "Edm.Boolean"
+    IsEnabled              = true
+    ServiceID              = "BlueSky"
+    Configuration          = "{\"Handle\":\"\"}"
+    SecureConfiguration    = "{\"AppPassword\":\"\"}"
+    Endpoint               = azurerm_linux_function_app.nodejs_func_app.default_hostname
   }
 }
 
@@ -51,11 +54,12 @@ resource "azurerm_storage_table_entity" "tumblr-template" {
   row_key       = "Tumblr"
 
   entity = {
-    ServiceName         = "Tumblr"
-    IsEnabled           = true
-    ServiceID           = "Tumblr"
-    Configuration       = "{\"Username\":\"\", \"OAuthState\":\"\", \"OAuthExpires\":\"\"}"
-    SecureConfiguration = "{\"OAuthAccessToken\":\"\", \"OAuthRefreshToken\":\"\"}"
-    Endpoint            = azurerm_linux_function_app.nodejs_func_app.default_hostname
+    ServiceName            = "Tumblr"
+    "IsEnabled@odata.type" = "Edm.Boolean"
+    IsEnabled              = true
+    ServiceID              = "Tumblr"
+    Configuration          = "{\"Username\":\"\", \"OAuthState\":\"\", \"OAuthExpires\":\"\"}"
+    SecureConfiguration    = "{\"OAuthAccessToken\":\"\", \"OAuthRefreshToken\":\"\"}"
+    Endpoint               = azurerm_linux_function_app.nodejs_func_app.default_hostname
   }
 }
