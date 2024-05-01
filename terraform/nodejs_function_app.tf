@@ -19,7 +19,8 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
   }
 
   identity {
-    type = "SystemAssigned"
+    type = "SystemAssigned, UserAssigned"
+    identity_ids = [ azurerm_user_assigned_identity.func_apps_uai.id ]
   }
 
   site_config {
@@ -113,17 +114,5 @@ resource "azurerm_monitor_diagnostic_setting" "nodejs_func_app" {
 resource "azurerm_role_assignment" "nodejsfuncapp-dataowner" {
   scope                = azurerm_storage_account.linux_func_storage.id
   role_definition_name = "Storage Blob Data Owner"
-  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "nodejsfuncapp-dataowner-dat" {
-  scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "nodejsfuncapp-table" {
-  scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
 }

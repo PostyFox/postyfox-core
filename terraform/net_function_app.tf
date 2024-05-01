@@ -11,8 +11,10 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
 
   identity {
-    type = "SystemAssigned"
+    type = "SystemAssigned, UserAssigned"
+    identity_ids = [ azurerm_user_assigned_identity.func_apps_uai.id ]
   }
+
 
   app_settings = {
     "ConfigTable"                            = azurerm_storage_account.data_storage.primary_table_endpoint
@@ -115,17 +117,5 @@ resource "azurerm_monitor_diagnostic_setting" "dotnet_func_app" {
 resource "azurerm_role_assignment" "dotnetfuncapp-dataowner" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id
   role_definition_name = "Storage Blob Data Owner"
-  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "dotnetfuncapp-dataowner-dat" {
-  scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "dotnetfuncapp-table" {
-  scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
