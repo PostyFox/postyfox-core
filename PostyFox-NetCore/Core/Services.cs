@@ -160,7 +160,7 @@ namespace PostyFox_NetCore
                         ServiceName = data.ServiceName,
                         Configuration = data.Configuration,
                         Timestamp = DateTime.UtcNow,
-                        IsEnabled = data.Enabled,
+                        IsEnabled = data.IsEnabled,
                         RowKey = data.ID
                     };
                     client.UpsertEntity(tableEntity);
