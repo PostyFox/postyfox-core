@@ -13,13 +13,6 @@ resource "azurerm_storage_account" "data_storage" {
 
   public_network_access_enabled = true
 
-  network_rules {
-    bypass         = ["Logging", "Metrics", "AzureServices"]
-    default_action = "Deny"
-
-    ip_rules = var.allowed_ips
-  }
-
   blob_properties {
     delete_retention_policy {
       days = 7
