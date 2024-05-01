@@ -16,10 +16,12 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
     "SecretStore"                            = azurerm_key_vault.key_vault.vault_uri
     "StorageAccount"                         = azurerm_storage_account.data_storage.primary_blob_endpoint
     "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    "AZURE_CLIENT_ID"                        = azurerm_user_assigned_identity.func_apps_uai.client_id    
   }
 
   identity {
-    type = "SystemAssigned"
+    type = "SystemAssigned, UserAssigned"
+    identity_ids = [ azurerm_user_assigned_identity.func_apps_uai.id ]
   }
 
   site_config {
@@ -113,17 +115,5 @@ resource "azurerm_monitor_diagnostic_setting" "nodejs_func_app" {
 resource "azurerm_role_assignment" "nodejsfuncapp-dataowner" {
   scope                = azurerm_storage_account.linux_func_storage.id
   role_definition_name = "Storage Blob Data Owner"
-  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "nodejsfuncapp-dataowner-dat" {
-  scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "nodejsfuncapp-table" {
-  scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
 }

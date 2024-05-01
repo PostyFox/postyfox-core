@@ -49,8 +49,6 @@ jobs:
       run: |
         $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
 
-        az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
-
         az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
     - name: Setup OpenTofu
@@ -101,8 +99,6 @@ jobs:
       run: |
         $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
 
-        az storage account network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip.ip
-
         az keyvault network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
 
     - name: Ensure Function Apps are allowed on Storage FW
@@ -117,7 +113,6 @@ jobs:
         $ipList = $ipList | Select-Object -Unique
 
         foreach ($ip in $ipList) {
-          az storage account network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --account-name "postyfoxdatastor${{inputs.targetEnvironment}}" --ip-address $ip
           az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip
         }
         
