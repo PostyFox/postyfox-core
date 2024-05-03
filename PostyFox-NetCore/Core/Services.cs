@@ -148,7 +148,7 @@ namespace PostyFox_NetCore
                 _logger.LogInformation("SetUser Called", userId);
 
                 string requestBody = new StreamReader(req.Body).ReadToEnd();
-                dynamic data = JsonConvert.DeserializeObject(requestBody);
+                ServiceDTO data = JsonConvert.DeserializeObject<ServiceDTO>(requestBody);
 
                 if (data != null)
                 {
@@ -160,7 +160,7 @@ namespace PostyFox_NetCore
                         ServiceName = data.ServiceName,
                         Configuration = data.Configuration,
                         Timestamp = DateTime.UtcNow,
-                        IsEnabled = data.Enabled,
+                        IsEnabled = data.IsEnabled.Value,
                         RowKey = data.ID
                     };
                     client.UpsertEntity(tableEntity);

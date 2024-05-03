@@ -44,13 +44,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Whitelist GitHub Runner IP
-      shell: pwsh
-      run: |
-        $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
-
-        az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
-
     - name: Setup OpenTofu
       uses: opentofu/setup-opentofu@v1
       with:
@@ -93,29 +86,6 @@ jobs:
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}      
 
-    - name: Remove GitHub Runner IP
-      shell: pwsh
-      if: always()
-      run: |
-        $ip = Invoke-RestMethod -Uri 'https://api.ipify.org?format=json'
-
-        az keyvault network-rule remove --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip.ip
-
-    - name: Ensure Function Apps are allowed on Storage FW
-      shell: pwsh
-      env:
-        tofu_out: ${{ steps.tofu-output.outputs.stdout }}
-      run: |
-        $data = $env:tofu_out
-        $dataObj = ConvertFrom-Json $data
-
-        $ipList = $dataObj.dotnet_fa_ip_list.value + $dataObj.nodejs_fa_ip_list.value
-        $ipList = $ipList | Select-Object -Unique
-
-        foreach ($ip in $ipList) {
-          az keyvault network-rule add --resource-group "postyfox-rg-${{inputs.targetEnvironment}}" --name "postyfox-kv-${{inputs.targetEnvironment}}" --ip-address $ip
-        }
-        
   codebuild:
     name: 'Code Build'
     runs-on: ubuntu-latest

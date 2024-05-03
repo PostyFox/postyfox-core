@@ -77,7 +77,7 @@ namespace PostyFox_NetCore.Integrations
                 var client = _configTable.GetTableClient("ConfigTable");
 
                 string requestBody = new StreamReader(req.Body).ReadToEnd();
-                dynamic postBody = JsonConvert.DeserializeObject(requestBody);
+                ServiceRequest postBody = JsonConvert.DeserializeObject<ServiceRequest>(requestBody);
                 string id = postBody.ID;
 
                 var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == id);
@@ -181,7 +181,7 @@ namespace PostyFox_NetCore.Integrations
                 var client = _configTable.GetTableClient("ConfigTable");
                 string userId = AuthHelper.GetAuthId(req);
                 string requestBody = new StreamReader(req.Body).ReadToEnd();
-                dynamic postBody = JsonConvert.DeserializeObject(requestBody);
+                LoginParameters postBody = JsonConvert.DeserializeObject<LoginParameters>(requestBody);
                 string id = postBody.ID;
                 var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == id);
 
