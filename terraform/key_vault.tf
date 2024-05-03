@@ -17,16 +17,15 @@ resource "azurerm_key_vault" "key_vault" {
 
 # A secret called client secret should be added to this vault :)
 
-
 resource "azurerm_role_assignment" "dotnetfuncapp-secret_permissions" {
   scope                = azurerm_key_vault.key_vault.id
-  role_definition_name = "Key Vault Secrets User"
+  role_definition_name = "Key Vault Secrets Officer"
   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
 
 resource "azurerm_role_assignment" "nodejsfuncapp-secret_permissions" {
   scope                = azurerm_key_vault.key_vault.id
-  role_definition_name = "Key Vault Secrets User"
+  role_definition_name = "Key Vault Secrets Officer"
   principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
 }
 
