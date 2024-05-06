@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
 using TL;
+using PostyFox_DataLayer;
 using static PostyFox_NetCore.Services;
 
 namespace PostyFox_NetCore.Integrations
