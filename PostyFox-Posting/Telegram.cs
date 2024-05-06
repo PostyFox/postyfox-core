@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer.TableEntities;
 using TL;
 using PostyFox_DataLayer;
+using WTelegram;
 
 namespace PostyFox_Posting
 {
@@ -61,18 +62,61 @@ namespace PostyFox_Posting
             return response;
         }
 
+
+        public class TelegramParameters
+        {
+            public string UserId { get; set; }
+            /// <summary>
+            ///     Service Id
+            /// </summary>
+            public string Id { get; set; }
+
+        }
+
+        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(TelegramParameters), Required = false)]
         [Function("Telegram_GetAccessibleChats")]
         public HttpResponseData GetAccessibleChats([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
-            //Get the state file for the user
-            TelegramStore store = new TelegramStore(userId, blobServiceClient);
+            _configTable.CreateTableIfNotExists("ConfigTable");
+            var client = _configTable.GetTableClient("ConfigTable");
 
-            //Check valid session
+            string requestBody = new StreamReader(req.Body).ReadToEnd();
+            TelegramParameters postBody = JsonConvert.DeserializeObject<TelegramParameters>(requestBody);
+            if (postBody != null)
+            {
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == postBody.UserId && x.RowKey == postBody.Id);
+                // Trigger the login flow, and see if we need more information - pass this back to client in response.
+                ServiceTableEntity? entity = query.FirstOrDefault();
+                if (entity != null && entity.Configuration != null && entity.ServiceID == "Telegram")
+                {
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+                    dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+                    if (serviceConfig != null)
+                    {
+                        string loginPayload = serviceConfig.PhoneNumber;
+                        //Get the state file for the user
+                        TelegramStore store = new TelegramStore(postBody.UserId, _blobStorageAccount);
 
+                        //Check valid session
+                        using WTelegram.Client telegramClient = new((val) =>
+                        {
+                            if (val == "api_id") return apiId.ToString();
+                            if (val == "api_hash") return apiHash;
+                            if (val == "phone_number") return loginPayload;
+                            return null;
+                        }, store);
 
-            //Pull available chats
+                        //telegramClient.
 
-            var response = req.CreateResponse(HttpStatusCode.OK);
+                        //Pull available chats
+
+                        var okResponse = req.CreateResponse(HttpStatusCode.OK);
+                        return okResponse;
+                    }
+                }
+            }
+            var response = req.CreateResponse(HttpStatusCode.NotFound);
             return response;
         }
 
