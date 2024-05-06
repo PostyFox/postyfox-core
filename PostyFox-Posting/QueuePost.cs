@@ -14,10 +14,10 @@ namespace PostyFox_Posting
             _logger = logger;
         }
 
-        [Function(nameof(QueuePost))]
-        public void Run([QueueTrigger("postingqueue", Connection = "PostingQueue")] QueueMessage message)
-        {
-            _logger.LogInformation($"C# Queue trigger function processed: {message.MessageText}");
-        }
+        //[Function(nameof(QueuePost))]
+        //public void Run([QueueTrigger("postingqueue", Connection = "PostingQueue")] QueueMessage message)
+        //{
+        //    _logger.LogInformation($"C# Queue trigger function processed: {message.MessageText}");
+        //}
     }
 }
