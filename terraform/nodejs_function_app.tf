@@ -12,6 +12,7 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
   service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
 
   app_settings = {
+    "PostingQueue__queueServiceUri"          = azurerm_storage_account.data_storage.primary_queue_endpoint    
     "ConfigTable"                            = azurerm_storage_account.data_storage.primary_table_endpoint
     "SecretStore"                            = azurerm_key_vault.key_vault.vault_uri
     "StorageAccount"                         = azurerm_storage_account.data_storage.primary_blob_endpoint
