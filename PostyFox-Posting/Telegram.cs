@@ -75,7 +75,7 @@ namespace PostyFox_Posting
 
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(TelegramParameters), Required = false)]
         [Function("Telegram_GetAccessibleChats")]
-        public HttpResponseData GetAccessibleChats([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        public async Task<HttpResponseData> GetAccessibleChats([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
             _configTable.CreateTableIfNotExists("ConfigTable");
             var client = _configTable.GetTableClient("ConfigTable");
@@ -107,11 +107,26 @@ namespace PostyFox_Posting
                             return null;
                         }, store);
 
-                        //telegramClient.
+                        if (telegramClient.UserId != 0)
+                        {
+                            var t = telegramClient.Login(loginPayload);
+                            t.Wait();
+                            if (t.Result == null)
+                            {
+                                var chats = await telegramClient.Messages_GetAllChats();
+                                foreach (var (id, chat) in chats.chats)
+                                {
+                                    if (chat.IsActive)
+                                    {
+                                        // id / chat
+                                    }
+                                }
+                            }
+                        }
 
-                        //Pull available chats
+                                //Pull available chats
 
-                        var okResponse = req.CreateResponse(HttpStatusCode.OK);
+                                var okResponse = req.CreateResponse(HttpStatusCode.OK);
                         return okResponse;
                     }
                 }
