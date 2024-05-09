@@ -5,7 +5,6 @@ using Azure.Storage.Blobs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
@@ -13,7 +12,6 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer.TableEntities;
 using TL;
 using PostyFox_DataLayer;
-using WTelegram;
 
 namespace PostyFox_Posting
 {
@@ -70,10 +68,17 @@ namespace PostyFox_Posting
             ///     Service Id
             /// </summary>
             public string Id { get; set; }
+        }
 
+        public class TelegramChatResponse
+        {
+            public Dictionary<long, string> ChatList { get; set; }
         }
 
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(TelegramParameters), Required = false)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(TelegramChatResponse), Summary = "Details of the accessible Telegram Chats", Description = "Details of the accessible Telegram Chats")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
+
         [Function("Telegram_GetAccessibleChats")]
         public async Task<HttpResponseData> GetAccessibleChats([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
@@ -107,26 +112,32 @@ namespace PostyFox_Posting
                             return null;
                         }, store);
 
+                        TelegramChatResponse telegramChatResponse = new()
+                        {
+                            ChatList = []
+                        };
+
                         if (telegramClient.UserId != 0)
                         {
                             var t = telegramClient.Login(loginPayload);
                             t.Wait();
                             if (t.Result == null)
                             {
+
                                 var chats = await telegramClient.Messages_GetAllChats();
                                 foreach (var (id, chat) in chats.chats)
                                 {
                                     if (chat.IsActive)
                                     {
-                                        // id / chat
+                                        telegramChatResponse.ChatList.Add(id, chat.Title);
                                     }
                                 }
                             }
                         }
 
-                                //Pull available chats
-
-                                var okResponse = req.CreateResponse(HttpStatusCode.OK);
+                        var okResponse = req.CreateResponse(HttpStatusCode.OK);
+                        var valueTask = okResponse.WriteAsJsonAsync(JsonConvert.SerializeObject(telegramChatResponse));
+                        valueTask.AsTask().GetAwaiter().GetResult();
                         return okResponse;
                     }
                 }
