@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer.TableEntities;
 using TL;
 using PostyFox_DataLayer;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 
 namespace PostyFox_Posting
 {
@@ -64,9 +65,7 @@ namespace PostyFox_Posting
         public class TelegramParameters
         {
             public string UserId { get; set; }
-            /// <summary>
-            ///     Service Id
-            /// </summary>
+            [OpenApiProperty(Description = "Service ID")]
             public string Id { get; set; }
         }
 
@@ -75,10 +74,10 @@ namespace PostyFox_Posting
             public Dictionary<long, string> ChatList { get; set; }
         }
 
+        [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(TelegramParameters), Required = false)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(TelegramChatResponse), Summary = "Details of the accessible Telegram Chats", Description = "Details of the accessible Telegram Chats")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
-
         [Function("Telegram_GetAccessibleChats")]
         public async Task<HttpResponseData> GetAccessibleChats([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
