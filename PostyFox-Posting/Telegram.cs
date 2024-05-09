@@ -79,7 +79,7 @@ namespace PostyFox_Posting
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(TelegramChatResponse), Summary = "Details of the accessible Telegram Chats", Description = "Details of the accessible Telegram Chats")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
         [Function("Telegram_GetAccessibleChats")]
-        public async Task<HttpResponseData> GetAccessibleChats([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        public async Task<HttpResponseData> GetAccessibleChats([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
             _configTable.CreateTableIfNotExists("ConfigTable");
             var client = _configTable.GetTableClient("ConfigTable");
