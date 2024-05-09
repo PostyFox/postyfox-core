@@ -65,6 +65,9 @@ namespace PostyFox_Posting
         public class TelegramParameters
         {
             public string UserId { get; set; }
+
+            public PostyFox_DataLayer.ProfileAPIKeyDTO APIKey { get; set; }
+
             [OpenApiProperty(Description = "Service ID")]
             public string Id { get; set; }
         }
