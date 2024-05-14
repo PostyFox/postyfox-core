@@ -81,9 +81,9 @@ namespace PostyFox_Posting
                 // Lookup against the keys, check that we have a valid key before we continue
                 _logger.LogDebug("Validating API Key data", para);
 
-                _configTable.CreateTableIfNotExists("UserProfiles_APIKeys");
+                _configTable.CreateTableIfNotExists("UserProfilesAPIKeys");
 
-                var client = _configTable.GetTableClient("UserProfiles_APIKeys");
+                var client = _configTable.GetTableClient("UserProfilesAPIKeys");
                 var query = client.Query<ProfileAPIKeyTableEntity>(x => x.PartitionKey == para.APIKey.UserID && x.RowKey == para.APIKey.ID);
                 var valid = query.FirstOrDefault();
                 if (valid != null)
