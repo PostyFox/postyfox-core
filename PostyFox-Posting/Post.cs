@@ -66,6 +66,8 @@ namespace PostyFox_Posting
 
         [OpenApiOperation(tags: ["post"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(PostResponse), Summary = "Returns with details of the post", Description = "Returns with details of the post")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "", Description = "")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.BadRequest, Summary = "", Description = "")]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(PostParameters), Required = true)]
         [Function("Post")]
         public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
@@ -121,15 +123,22 @@ namespace PostyFox_Posting
                         // Schedule as required
                         
                     }
+                    var response = req.CreateResponse(HttpStatusCode.OK);
+                    return response;
                 } 
                 else
                 {
                     _logger.LogDebug("API Key is invalid or could not be verified");
+
+                    var response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                    return response;
                 }
             }
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            return response;
+            else
+            {
+                var response = req.CreateResponse(HttpStatusCode.BadRequest);
+                return response;
+            }
         }
     }
 }
