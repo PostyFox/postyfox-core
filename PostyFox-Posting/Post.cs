@@ -75,8 +75,7 @@ namespace PostyFox_Posting
             string postId = Guid.NewGuid().ToString();
             // Confirm that have a API Key
             string requestBody = new StreamReader(req.Body).ReadToEnd();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            PostParameters para = data as PostParameters;
+            PostParameters para = JsonConvert.DeserializeObject<PostParameters>(requestBody);
             if (para != null)
             {
                 // Lookup against the keys, check that we have a valid key before we continue
