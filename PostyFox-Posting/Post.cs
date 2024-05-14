@@ -19,13 +19,13 @@ namespace PostyFox_Posting
 {
     public class Post
     {
-        private readonly ILogger<Post> _logger;
+        private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
         private readonly BlobServiceClient _blobStorageAccount;
 
-        public Post(ILogger<Post> logger, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
+        public Post(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
         {
-            _logger = logger;
+            _logger = loggerFactory.CreateLogger<Post>();
             _configTable = clientFactory.CreateClient("ConfigTable");
             _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
         }
