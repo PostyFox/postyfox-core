@@ -84,13 +84,11 @@ namespace PostyFox_Posting
                 _configTable.CreateTableIfNotExists("UserProfilesAPIKeys");
 
                 var client = _configTable.GetTableClient("UserProfilesAPIKeys");
-                var query = client.Query<ProfileAPIKeyTableEntity>(x => x.PartitionKey == para.APIKey.UserID && x.RowKey == para.APIKey.ID);
+                var query = client.Query<ProfileAPIKeyTableEntity>(x => x.PartitionKey.ToLower() == para.APIKey.UserID.ToLower() && x.RowKey == para.APIKey.ID);
                 var valid = query.FirstOrDefault();
                 if (valid != null)
                 {
-                    BlobContainerClient _containerClient;
-                    // Key is valid for user
-                    _containerClient = _blobStorageAccount.GetBlobContainerClient("post/"+postId); // Root post containing folder
+                    BlobContainerClient _containerClient = _blobStorageAccount.GetBlobContainerClient("post/"+postId); // Root post containing folder
 
                     // Given the max size of a queue item is 64Kb, we save off anything we can to blob storage for the post
 
