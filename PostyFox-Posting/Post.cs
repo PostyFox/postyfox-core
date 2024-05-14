@@ -72,7 +72,7 @@ namespace PostyFox_Posting
         [Function("Post")]
         public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
-            string postId = Guid.NewGuid().ToString();
+            string postId = Guid.NewGuid().ToString().Replace("-", "");
             // Confirm that have a API Key
             string requestBody = new StreamReader(req.Body).ReadToEnd();
             PostParameters para = JsonConvert.DeserializeObject<PostParameters>(requestBody);
