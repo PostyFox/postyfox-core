@@ -83,8 +83,10 @@ namespace PostyFox_Posting
 
                 _configTable.CreateTableIfNotExists("UserProfilesAPIKeys");
 
+                string userId = para.APIKey.UserID.ToLower();
+
                 var client = _configTable.GetTableClient("UserProfilesAPIKeys");
-                var query = client.Query<ProfileAPIKeyTableEntity>(x => x.PartitionKey.ToLower() == para.APIKey.UserID.ToLower() && x.RowKey == para.APIKey.ID);
+                var query = client.Query<ProfileAPIKeyTableEntity>(x => x.PartitionKey == userId && x.RowKey == para.APIKey.ID);
                 var valid = query.FirstOrDefault();
                 if (valid != null)
                 {
