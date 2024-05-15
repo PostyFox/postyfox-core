@@ -90,6 +90,9 @@ namespace PostyFox_Posting
                 var valid = query.FirstOrDefault();
                 if (valid != null)
                 {
+                    BlobContainerClient _postContainerClient = _blobStorageAccount.GetBlobContainerClient("post");
+                    _postContainerClient.CreateIfNotExists();
+
                     BlobContainerClient _containerClient = _blobStorageAccount.GetBlobContainerClient("post/"+postId); // Root post containing folder
                     _containerClient.CreateIfNotExists();
 
