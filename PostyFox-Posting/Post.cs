@@ -91,6 +91,7 @@ namespace PostyFox_Posting
                 if (valid != null)
                 {
                     BlobContainerClient _containerClient = _blobStorageAccount.GetBlobContainerClient("post/"+postId); // Root post containing folder
+                    _containerClient.CreateIfNotExists();
 
                     // Given the max size of a queue item is 64Kb, we save off anything we can to blob storage for the post
 
