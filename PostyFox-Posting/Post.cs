@@ -92,17 +92,18 @@ namespace PostyFox_Posting
                 {
                     BlobContainerClient _postContainerClient = _blobStorageAccount.GetBlobContainerClient("post");
                     _postContainerClient.CreateIfNotExists();
+                    //_postContainerClient.
 
-                    BlobContainerClient _containerClient = _blobStorageAccount.GetBlobContainerClient("post/"+postId); // Root post containing folder
-                    _containerClient.CreateIfNotExists();
+                    //BlobContainerClient _containerClient = _blobStorageAccount.GetBlobContainerClient("post/"+postId); // Root post containing folder
+                    //_containerClient.CreateIfNotExists();
 
                     // Given the max size of a queue item is 64Kb, we save off anything we can to blob storage for the post
 
                     // Extract out and save the common post data to storage
                     // Save Description and tags data
-                    _containerClient.UploadBlob("description", BinaryData.FromString(para.Description));
-                    _containerClient.UploadBlob("description-html", BinaryData.FromString(para.HTMLDescription));
-                    _containerClient.UploadBlob("tags", BinaryData.FromString(JsonConvert.SerializeObject(para.Tags)));
+                    _postContainerClient.UploadBlob(postId + "/description", BinaryData.FromString(para.Description));
+                    _postContainerClient.UploadBlob(postId + "/description-html", BinaryData.FromString(para.HTMLDescription));
+                    _postContainerClient.UploadBlob(postId + "/tags", BinaryData.FromString(JsonConvert.SerializeObject(para.Tags)));
                     // Save Images 
                     // TODO: Images, pull them over from the temporary upload location
 
@@ -121,7 +122,7 @@ namespace PostyFox_Posting
                         };
 
                         // Write a "lock" file so we don't try and delete the root containing post folder with the data
-                        _containerClient.UploadBlob("lock-" + targetPlatform, BinaryData.FromString("LOCKED"));
+                        _postContainerClient.UploadBlob(postId + "/lock-" + targetPlatform, BinaryData.FromString("LOCKED"));
 
                         // Schedule as required
                         
