@@ -14,6 +14,7 @@ using System.Net;
 using Azure.Data.Tables;
 using Microsoft.Extensions.Azure;
 using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 
 namespace PostyFox_Posting
 {
@@ -22,12 +23,14 @@ namespace PostyFox_Posting
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
         private readonly BlobServiceClient _blobStorageAccount;
+        private readonly QueueServiceClient _postingQueueClient;
 
-        public Post(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
+        public Post(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory, IAzureClientFactory<QueueServiceClient> postingQueueFactory)
         {
             _logger = loggerFactory.CreateLogger<Post>();
             _configTable = clientFactory.CreateClient("ConfigTable");
             _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
+            _postingQueueClient = postingQueueFactory.CreateClient("PostingQueue");
         }
 
         public enum PostStatus
@@ -125,6 +128,9 @@ namespace PostyFox_Posting
                         _postContainerClient.UploadBlob(postId + "/lock-" + targetPlatform, BinaryData.FromString("LOCKED"));
 
                         // Schedule as required
+
+                        QueueClient queueClient = _postingQueueClient.GetQueueClient("postingqueue");
+                        queueClient.SendMessage(JsonConvert.SerializeObject(queueEntry));
                         
                     }
                     var response = req.CreateResponse(HttpStatusCode.OK);
