@@ -23,6 +23,26 @@ resource "azurerm_role_assignment" "secret_permissions" {
   principal_id         = azurerm_user_assigned_identity.func_apps_uai.principal_id
 }
 
+
+// These are needed for the portal to not be an idiot
+resource "azurerm_role_assignment" "dotnet_fa_user" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "nodejs_fa_user" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "posting_fa_user" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
+}
+
 resource "azurerm_monitor_diagnostic_setting" "keyvault" {
   name                       = "${local.appname}-logging-keyvault${local.hyphen-env}"
   target_resource_id         = azurerm_key_vault.key_vault.id

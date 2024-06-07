@@ -15,9 +15,9 @@ namespace PostyFox_Posting
         }
 
         [Function(nameof(QueuePost))]
-        public void Run([QueueTrigger("PostingQueue", Connection = "ConfigTable")] QueueMessage message)
+        public void Run([QueueTrigger("postingqueue", Connection = "PostingQueue")] QueueMessage message)
         {
-            _logger.LogInformation($"C# Queue trigger function processed: {message.MessageText}");
+            _logger.LogInformation($"Processing message: {message.MessageText}");
         }
     }
 }

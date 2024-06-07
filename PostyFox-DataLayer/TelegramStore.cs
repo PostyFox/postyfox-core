@@ -1,8 +1,8 @@
 ﻿using Azure.Storage.Blobs;
 
-namespace PostyFox_NetCore.Integrations
+namespace PostyFox_DataLayer
 {
-    class TelegramStore : MemoryStream
+    public class TelegramStore : MemoryStream
     {
         private readonly string _sessionName;
         private BlobServiceClient _blobServiceClient;

@@ -43,4 +43,5 @@
   <ItemGroup>
     <Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
   </ItemGroup>
+  <ProjectExtensions><VisualStudio><UserProperties local_1settings_1json__JsonSchema="" /></VisualStudio></ProjectExtensions>
 </Project>

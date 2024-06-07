@@ -2,6 +2,7 @@
 using Google.Protobuf.WellKnownTypes;
 using PostyFox_NetCore.Integrations;
 using TL;
+using PostyFox_DataLayer;
 
 namespace PostyFox_NetCore.Helpers
 {
