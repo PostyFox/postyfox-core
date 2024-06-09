@@ -2,9 +2,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Azure;
 using Azure.Identity;
 using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
+using Twitch.Net.Api;
 
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable") ?? throw new Exception("Configuration not found for ConfigTable");
 var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? throw new Exception("Configuration not found for StorageAccount");
+var twitchClientId = Environment.GetEnvironmentVariable("TwitchClientId") ?? throw new Exception("Configuration not found for TwitchClientId");
+var twitchClientSecret = Environment.GetEnvironmentVariable("TwitchClientSecret") ?? throw new Exception("Configuration not found for TwitchClientSecret");
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
@@ -28,7 +31,13 @@ var host = new HostBuilder()
             };
             clientBuilder.UseCredential(new DefaultAzureCredential(defaultCredentialOptions));
         });
-        
+
+        services.AddTwitchApiClient(config =>
+        {
+            config.ClientId = twitchClientId;
+            config.ClientSecret = twitchClientSecret;
+        });
+
     })
     .Build();
 

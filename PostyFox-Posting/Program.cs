@@ -2,10 +2,17 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Azure;
 using Azure.Identity;
 using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
+using Twitch.Net.Api;
+using Twitch.Net.EventSub;
 
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable") ?? throw new Exception("Configuration not found for ConfigTable");
 var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? throw new Exception("Configuration not found for StorageAccount");
-var queueAccount = Environment.GetEnvironmentVariable("PostingQueue") ?? throw new Exception("Configuration not found for PostingQueue"); 
+var queueAccount = Environment.GetEnvironmentVariable("PostingQueue") ?? throw new Exception("Configuration not found for PostingQueue");
+
+var twitchClientId = Environment.GetEnvironmentVariable("TwitchClientId") ?? throw new Exception("Configuration not found for TwitchClientId");
+var twitchClientSecret = Environment.GetEnvironmentVariable("TwitchClientSecret") ?? throw new Exception("Configuration not found for TwitchClientSecret");
+var twitchCallbackUrl = Environment.GetEnvironmentVariable("TwitchCallbackUrl") ?? throw new Exception("Configuration not found for TwitchCallbackUrl");
+var twitchSignatureSecret = Environment.GetEnvironmentVariable("TwitchSignatureSecret") ?? throw new Exception("Configuration not found for TwitchSignatureSecret");
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
@@ -30,6 +37,23 @@ var host = new HostBuilder()
             };
             clientBuilder.UseCredential(new DefaultAzureCredential(defaultCredentialOptions));
         });
+
+        services.AddTwitchEventSubService(config =>
+        {
+            config.ClientId = twitchClientId;
+            config.ClientSecret = twitchClientSecret;
+            config.CallbackUrl = twitchCallbackUrl;
+            config.SignatureSecret = twitchSignatureSecret;
+        });
+
+        services.AddTwitchApiClient(config =>
+        {
+            config.ClientId = twitchClientId;
+            config.ClientSecret = twitchClientSecret;
+        });
+
+        //services.AddHostedService<TwitchNotificationService>();
+        //services.AddTransient<EventSubBuilder>();
 
     })
     .Build();

@@ -6,6 +6,11 @@
     "ConfigTable": "https://127.0.0.1:10002/devstoreaccount1",
     "StorageAccount": "https://127.0.0.1:10000/devstoreaccount1",
     "PostingQueue": "",
-    "SecretStore": ""
+    "SecretStore": "",
+
+    "TwitchClientId": "",
+    "TwitchClientSecret": "",
+    "TwitchCallbackUrl": "",
+    "TwitchSignatureSecret": ""
   }
 }
