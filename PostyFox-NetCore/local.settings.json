@@ -9,6 +9,8 @@
     "TelegramApiID": 23772970,
     "TelegramApiHash": "",
     "PostyFoxDevMode": true,
-    "PostyFoxUserID": "Womble"
+    "PostyFoxUserID": "Womble",
+    "TwitchClientId": "",
+    "TwitchClientSecret": ""
   }
 }
