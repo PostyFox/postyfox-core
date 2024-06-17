@@ -18,6 +18,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
 
   app_settings = {
     "PostingQueue__queueServiceUri"          = azurerm_storage_account.data_storage.primary_queue_endpoint
+    "PostingQueue"                           = azurerm_storage_account.data_storage.primary_queue_endpoint        
     "ConfigTable"                            = azurerm_storage_account.data_storage.primary_table_endpoint
     "SecretStore"                            = azurerm_key_vault.key_vault.vault_uri
     "StorageAccount"                         = azurerm_storage_account.data_storage.primary_blob_endpoint
