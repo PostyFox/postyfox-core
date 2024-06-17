@@ -39,7 +39,7 @@ namespace PostyFox_NetCore.Integrations
 
         public class Twitch_RegisterSub
         {
-            public string ChannelName { get; set; }
+            public string channelName { get; set; }
         }
 
         [OpenApiOperation(tags: ["twitch"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
@@ -62,8 +62,8 @@ namespace PostyFox_NetCore.Integrations
 
                 if (registerSub != null)
                 {
-                    _logger.LogInformation("Resolving user: {user}", registerSub.ChannelName);
-                    var users = await _apiClient.Helix.Users.GetUsersAsync(logins: [registerSub.ChannelName]);
+                    _logger.LogInformation("Resolving user: {user}", registerSub.channelName);
+                    var users = await _apiClient.Helix.Users.GetUsersAsync(logins: [registerSub.channelName]);
                     if (users.Successfully != 1)
                     {
                         response = req.CreateResponse(HttpStatusCode.NotFound);
@@ -74,7 +74,7 @@ namespace PostyFox_NetCore.Integrations
                     if (user == null)
                     {
                         // No user found
-                        _logger.LogInformation("No user found for: {user} when attempting to register subscription", registerSub.ChannelName);
+                        _logger.LogInformation("No user found for: {user} when attempting to register subscription", registerSub.channelName);
                     }
                     else
                     {
