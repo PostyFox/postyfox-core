@@ -37,6 +37,13 @@ resource "azurerm_storage_table" "availableservices" {
   storage_account_name = azurerm_storage_account.data_storage.name
 }
 
+# External Triggers are externally triggering events that cause posting activity - i.e Twitch etc
+resource "azurerm_storage_table" "externaltriggers" {
+  name                 = "ExternalTriggers"
+  storage_account_name = azurerm_storage_account.data_storage.name
+}
+
+# Posting queue - of items to be posted out to the users' social platforms
 resource "azurerm_storage_queue" "postingqueue" {
   name                 = "postingqueue"
   storage_account_name = azurerm_storage_account.data_storage.name
