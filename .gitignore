@@ -2,7 +2,8 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/PostyFox/obj/Debug
+**/*/obj
+**/*/bin
 /terraform/.terraform
 terraform/.terraform.lock.hcl
 terraform/terraform.tfstate

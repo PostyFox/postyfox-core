@@ -1,5 +1,4 @@
 ﻿using Azure.Data.Tables;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -8,18 +7,10 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text.Json;
-using System.Threading.Tasks;
-using TL;
 using Twitch.Net.Api.Client;
 using Twitch.Net.EventSub;
-using static PostyFox_NetCore.Services;
-//using TwitchLiveNotifications.Helpers;
-//using TwitchLiveNotifications.Models;
 
 namespace PostyFox_NetCore.Integrations
 {
@@ -33,13 +24,16 @@ namespace PostyFox_NetCore.Integrations
         public Twitch(ILoggerFactory loggerFactory, IApiClient apiClient, IAzureClientFactory<TableServiceClient> clientFactory)
         {
             _logger = loggerFactory.CreateLogger<Twitch>();
-            _apiClient = apiClient;
             _configTable = clientFactory.CreateClient("ConfigTable");
+            _apiClient = apiClient;
         }
 
         public class Twitch_RegisterSub
         {
             public string channelName { get; set; }
+            public string channelId { get; set; }
+            public string webhookPost { get; set; }
+            public string postTemplate { get; set; }
         }
 
         [OpenApiOperation(tags: ["twitch"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
@@ -78,18 +72,19 @@ namespace PostyFox_NetCore.Integrations
                     }
                     else
                     {
+                        registerSub.channelId = user.Id;
                         ServiceTableEntity twitchSubTableEntity = new ServiceTableEntity()
                         {
                             ServiceName = user.DisplayName,
-                            Configuration = user.Id,
+                            Configuration = JsonSerializer.Serialize(registerSub),
                             PartitionKey = userId,
-                            RowKey="Tw-"+userId+"-"+user.Id,
+                            RowKey = "Tw-" + userId + "-" + user.Id,
                             ServiceID = "TwitchSubscription"
                         };
 
                         // Commit to the table storage (Upsert) 
-                        _configTable.CreateTableIfNotExists("ConfigTable");
-                        var client = _configTable.GetTableClient("ConfigTable");
+                        _configTable.CreateTableIfNotExists("ExternalTriggers");
+                        var client = _configTable.GetTableClient("ExternalTriggers");
                         client.UpsertEntity(twitchSubTableEntity);
 
                         // Kick off a call to twitch - EventSubTypes.StreamOnline, EventSubTypes.StreamOffline

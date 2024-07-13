@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <VersionPrefix>0.0.2</VersionPrefix>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Authors>Twitch.Net Contributors</Authors>
+        <Title>Twitch.Net Shared code between packages</Title>
+        <PackageProjectUrl>https://github.com/Twitch-Net/Twitch.Net</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/Twitch-Net/Twitch.Net</RepositoryUrl>
+        <PackageTags>.NET6</PackageTags>
+        <RepositoryType>Open Source</RepositoryType>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
+      <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    </ItemGroup>
+
+</Project>

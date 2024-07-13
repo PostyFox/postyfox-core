@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <VersionPrefix>0.0.2</VersionPrefix>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Authors>Twitch.Net Contributors</Authors>
+        <Title>Twitch.Net PubSub Implementation</Title>
+        <PackageProjectUrl>https://github.com/Twitch-Net/Twitch.Net</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/Twitch-Net/Twitch.Net</RepositoryUrl>
+        <RepositoryType>Open Source</RepositoryType>
+        <PackageTags>PubSub Twitch Websocket .NET6</PackageTags>
+        <Description>PubSub Implementation to communicate with twitchs PubSub system.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Twitch.Net.Communication\Twitch.Net.Communication.csproj" />
+      <ProjectReference Include="..\Twitch.Net.Shared\Twitch.Net.Shared.csproj" />
+    </ItemGroup>
+
+</Project>

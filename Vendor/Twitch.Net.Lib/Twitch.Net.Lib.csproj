@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <VersionPrefix>0.0.2</VersionPrefix>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Authors>Twitch.Net Contributors</Authors>
+        <Title>Twitch.Net Lib - Collection of all Twitch.Net</Title>
+        <PackageProjectUrl>https://github.com/Twitch-Net/Twitch.Net</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/Twitch-Net/Twitch.Net</RepositoryUrl>
+        <RepositoryType>Open Source</RepositoryType>
+        <PackageTags>Twitch IRC PubSub API EventSub .NET6</PackageTags>
+        <Description>Collection of the entire "Twitch.Net.X" Library, for an easier installation and upgrade of all nugets.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Twitch.Net.Api\Twitch.Net.Api.csproj" />
+      <ProjectReference Include="..\Twitch.Net.Client\Twitch.Net.Client.csproj" />
+      <ProjectReference Include="..\Twitch.Net.Communication\Twitch.Net.Communication.csproj" />
+      <ProjectReference Include="..\Twitch.Net.EventSub\Twitch.Net.EventSub.csproj" />
+      <ProjectReference Include="..\Twitch.Net.PubSub\Twitch.Net.PubSub.csproj" />
+      <ProjectReference Include="..\Twitch.Net.Shared\Twitch.Net.Shared.csproj" />
+    </ItemGroup>
+
+</Project>

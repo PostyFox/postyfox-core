@@ -5,9 +5,17 @@ VisualStudioVersion = 17.7.34031.279
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostyFox-NetCore", "PostyFox-NetCore\PostyFox-NetCore.csproj", "{61B98370-3AA2-4676-BB52-61787C91AC30}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostyFox-DataLayer", "PostyFox-DataLayer\PostyFox-DataLayer.csproj", "{C37C0B65-392C-40FF-8A75-8FF8C4EBB3D9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostyFox-DataLayer", "PostyFox-DataLayer\PostyFox-DataLayer.csproj", "{C37C0B65-392C-40FF-8A75-8FF8C4EBB3D9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostyFox-Posting", "PostyFox-Posting\PostyFox-Posting.csproj", "{90C08284-08BB-4DE7-9723-6EDFD958ACDF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostyFox-Posting", "PostyFox-Posting\PostyFox-Posting.csproj", "{90C08284-08BB-4DE7-9723-6EDFD958ACDF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Vendor", "Vendor", "{5D5F9062-25DE-493A-87B1-0CAC9DD42FC2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Twitch.Net.Api", "Vendor\Twitch.Net.Api\Twitch.Net.Api.csproj", "{A84F15F6-100C-43D3-B275-88E391296B60}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Twitch.Net.EventSub", "Vendor\Twitch.Net.EventSub\Twitch.Net.EventSub.csproj", "{5C8FC6F8-ACC7-4F05-8116-E9C3C4AFC37A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Twitch.Net.Shared", "Vendor\Twitch.Net.Shared\Twitch.Net.Shared.csproj", "{FC50F390-2EC5-4536-AF63-1D857F75B485}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,9 +35,26 @@ Global
 		{90C08284-08BB-4DE7-9723-6EDFD958ACDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{90C08284-08BB-4DE7-9723-6EDFD958ACDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{90C08284-08BB-4DE7-9723-6EDFD958ACDF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A84F15F6-100C-43D3-B275-88E391296B60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A84F15F6-100C-43D3-B275-88E391296B60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A84F15F6-100C-43D3-B275-88E391296B60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A84F15F6-100C-43D3-B275-88E391296B60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C8FC6F8-ACC7-4F05-8116-E9C3C4AFC37A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C8FC6F8-ACC7-4F05-8116-E9C3C4AFC37A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C8FC6F8-ACC7-4F05-8116-E9C3C4AFC37A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C8FC6F8-ACC7-4F05-8116-E9C3C4AFC37A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC50F390-2EC5-4536-AF63-1D857F75B485}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC50F390-2EC5-4536-AF63-1D857F75B485}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC50F390-2EC5-4536-AF63-1D857F75B485}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC50F390-2EC5-4536-AF63-1D857F75B485}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A84F15F6-100C-43D3-B275-88E391296B60} = {5D5F9062-25DE-493A-87B1-0CAC9DD42FC2}
+		{5C8FC6F8-ACC7-4F05-8116-E9C3C4AFC37A} = {5D5F9062-25DE-493A-87B1-0CAC9DD42FC2}
+		{FC50F390-2EC5-4536-AF63-1D857F75B485} = {5D5F9062-25DE-493A-87B1-0CAC9DD42FC2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {184ABBF5-3470-445D-9B8F-E430AF15F285}

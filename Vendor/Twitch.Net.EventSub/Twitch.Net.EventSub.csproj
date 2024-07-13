@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <VersionPrefix>0.0.2</VersionPrefix>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Authors>Twitch.Net Contributors</Authors>
+        <Title>Twitch.Net EventSub implementation</Title>
+        <PackageProjectUrl>https://github.com/Twitch-Net/Twitch.Net</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/Twitch-Net/Twitch.Net</RepositoryUrl>
+        <RepositoryType>Open Source</RepositoryType>
+        <PackageTags>Twitch EventSub .NET6</PackageTags>
+        <Nullable>enable</Nullable>
+        <Description>EventSub Implementation to handle registration, unregister and such.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.12" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
+      <PackageReference Include="Optional" Version="4.0.0" />
+      <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Twitch.Net.Shared\Twitch.Net.Shared.csproj" />
+      <FrameworkReference Include="Microsoft.AspNetCore.App" /><!-- Needed to handle the "HttpRequest" all together in the lib-->
+    </ItemGroup>
+
+</Project>
