@@ -7,6 +7,7 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
+using System.ComponentModel;
 using System.Net;
 using System.Text.Json;
 using Twitch.Net.Api.Client;
@@ -34,6 +35,8 @@ namespace PostyFox_NetCore.Integrations
             public string channelId { get; set; }
             public string webhookPost { get; set; }
             public string postTemplate { get; set; }
+            public int notifyFrequencyHrs { get; set; }
+            public string targetPlatform { get; set; } 
         }
 
         [OpenApiOperation(tags: ["twitch"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
@@ -51,7 +54,6 @@ namespace PostyFox_NetCore.Integrations
                 string userId = AuthHelper.GetAuthId(req);
 
                 var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-
                 var registerSub = JsonSerializer.Deserialize<Twitch_RegisterSub>(requestBody);
 
                 if (registerSub != null)
@@ -73,19 +75,38 @@ namespace PostyFox_NetCore.Integrations
                     else
                     {
                         registerSub.channelId = user.Id;
-                        ServiceTableEntity twitchSubTableEntity = new ServiceTableEntity()
+
+                        // 1. Create entry in ExternalTrigger table - user configuration basically
+                        ExternalTriggerTableEntity externalTriggerTableEntity = new()
                         {
-                            ServiceName = user.DisplayName,
-                            Configuration = JsonSerializer.Serialize(registerSub),
+                            RowKey = userId + "-" + user.Id,
                             PartitionKey = userId,
-                            RowKey = "Tw-" + userId + "-" + user.Id,
-                            ServiceID = "TwitchSubscription"
+                            ExternalAccount = user.Id,
+                            ExternalAccountType = "Twitch",
+                            Template = registerSub.postTemplate,
+                            TargetPlatform = registerSub.targetPlatform,
+                            NotifyFrequencyHrs = registerSub.notifyFrequencyHrs
                         };
 
                         // Commit to the table storage (Upsert) 
                         _configTable.CreateTableIfNotExists("ExternalTriggers");
                         var client = _configTable.GetTableClient("ExternalTriggers");
-                        client.UpsertEntity(twitchSubTableEntity);
+                        client.UpsertEntity(externalTriggerTableEntity);
+
+                        // 2. Create entry in ExternalInterests table - this is the map of triggers back to ExternalTrigger for incoming hooks
+                        ExternalInterestsTableEntity externalInterestsTableEntity = new()
+                        {
+                            //                    [Description("External Service Type (i.e. Twitch)")]
+                            //public string PartitionKey { get; set; }
+                            //[Description("Twitch (etc) User ID")]
+                            //public string RowKey { get; set; }
+                            //public string Configuration { get; set; }
+
+                        };
+
+                        _configTable.CreateTableIfNotExists("ExternalInterests");
+                        var externalInterestsClient = _configTable.GetTableClient("ExternalInterests");
+                        externalInterestsClient.UpsertEntity(externalInterestsTableEntity);
 
                         // Kick off a call to twitch - EventSubTypes.StreamOnline, EventSubTypes.StreamOffline
 
