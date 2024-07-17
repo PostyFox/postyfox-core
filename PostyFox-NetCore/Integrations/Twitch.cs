@@ -4,6 +4,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
@@ -79,7 +80,7 @@ namespace PostyFox_NetCore.Integrations
                         // 1. Create entry in ExternalTrigger table - user configuration basically
                         ExternalTriggerTableEntity externalTriggerTableEntity = new()
                         {
-                            RowKey = userId + "-" + user.Id,
+                            RowKey = user.Id,
                             PartitionKey = userId,
                             ExternalAccount = user.Id,
                             ExternalAccountType = "Twitch",
@@ -93,20 +94,37 @@ namespace PostyFox_NetCore.Integrations
                         var client = _configTable.GetTableClient("ExternalTriggers");
                         client.UpsertEntity(externalTriggerTableEntity);
 
+
                         // 2. Create entry in ExternalInterests table - this is the map of triggers back to ExternalTrigger for incoming hooks
-                        ExternalInterestsTableEntity externalInterestsTableEntity = new()
-                        {
-                            //                    [Description("External Service Type (i.e. Twitch)")]
-                            //public string PartitionKey { get; set; }
-                            //[Description("Twitch (etc) User ID")]
-                            //public string RowKey { get; set; }
-                            //public string Configuration { get; set; }
-
-                        };
-
                         _configTable.CreateTableIfNotExists("ExternalInterests");
                         var externalInterestsClient = _configTable.GetTableClient("ExternalInterests");
-                        externalInterestsClient.UpsertEntity(externalInterestsTableEntity);
+                        // a. Check for an existing entry
+                        // - Pull the config and add entry
+                        var rec = externalInterestsClient.GetEntityIfExists<ExternalInterestsTableEntity>("Twitch", user.Id);
+
+                        if (rec.HasValue)
+                        {
+                            List<string> conf = JsonSerializer.Deserialize<List<string>>(rec.Value.Configuration);
+                            if (!conf.Contains(userId))
+                            {
+                                conf.Add(userId);
+                                rec.Value.Configuration = JsonSerializer.Serialize(conf);
+                                externalInterestsClient.UpsertEntity(rec.Value);
+                            }
+                        } 
+                        else
+                        {
+                            List<string> conf = new List<string>();
+                            conf.Add(userId);
+                            // b. No entry, add a new entry
+                            ExternalInterestsTableEntity externalInterestsTableEntity = new()
+                            {
+                                PartitionKey = "Twitch",
+                                RowKey = user.Id,
+                                Configuration = JsonSerializer.Serialize(conf)
+                            };
+                            externalInterestsClient.UpsertEntity(externalInterestsTableEntity);
+                        }
 
                         // Kick off a call to twitch - EventSubTypes.StreamOnline, EventSubTypes.StreamOffline
 
