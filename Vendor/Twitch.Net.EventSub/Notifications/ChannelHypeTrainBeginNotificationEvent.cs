@@ -1,0 +1,34 @@
+﻿using System.Text.Json.Serialization;
+
+namespace Twitch.Net.EventSub.Notifications;
+
+/**
+ * "id": "1b0AsbInCHZW2SQFQkCzqN07Ib2",
+ * "broadcaster_user_id": "1337",
+ * "broadcaster_user_login": "cool_user",
+ * "broadcaster_user_name": "Cool_User",
+ * "total": 137,
+ * "progress": 137,
+ * "goal": 500,
+ * "top_contributions": [
+ *      { "user_id": "123", "user_login": "pogchamp", "user_name": "PogChamp", "type": "bits", "total": 50 },
+ *      { "user_id": "456", "user_login": "kappa", "user_name": "Kappa", "type": "subscription", "total": 45 }
+ * ],
+ * "last_contribution": { "user_id": "123", "user_login": "pogchamp", "user_name": "PogChamp", "type": "bits", "total": 50 },
+ * "started_at": "2020-07-15T17:16:03.17106713Z",
+ * "expires_at": "2020-07-15T17:16:11.17106713Z"
+ */
+public class ChannelHypeTrainBeginNotificationEvent : ChannelHypeTrainBaseModel
+{
+    [JsonPropertyName("expires_at")]
+    public DateTime ExpiresAt { get; init; }
+        
+    [JsonPropertyName("progress")]
+    public int Progress { get; init; }
+        
+    [JsonPropertyName("goal")]
+    public int Goal { get; init; }
+
+    [JsonPropertyName("last_contribution")]
+    public HypeTrainContributor LastContribution { get; init; } = null!;
+}

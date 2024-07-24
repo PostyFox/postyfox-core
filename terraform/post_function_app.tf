@@ -17,10 +17,15 @@ resource "azurerm_linux_function_app" "dotnet_funcpost_app" {
 
   app_settings = {
     "PostingQueue__queueServiceUri"          = azurerm_storage_account.data_storage.primary_queue_endpoint    
+    "PostingQueue"                           = azurerm_storage_account.data_storage.primary_queue_endpoint    
     "ConfigTable"                            = azurerm_storage_account.data_storage.primary_table_endpoint
     "SecretStore"                            = azurerm_key_vault.key_vault.vault_uri
     "StorageAccount"                         = azurerm_storage_account.data_storage.primary_blob_endpoint
     "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    "TwitchClientId"                         = var.twitchClientId
+    "TwitchClientSecret"                     = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"   
+    "TwitchSignatureSecret"                  = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"    
+    "TwitchCallbackUrl"                      = var.twitchCallbackUrl
     "AZURE_CLIENT_ID"                        = azurerm_user_assigned_identity.func_apps_uai.client_id    
   }
 

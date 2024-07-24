@@ -5,7 +5,13 @@
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "ConfigTable": "https://127.0.0.1:10002/devstoreaccount1",
     "StorageAccount": "https://127.0.0.1:10000/devstoreaccount1",
-    "PostingQueue": "",
-    "SecretStore": ""
+    "PostingQueue": "https://127.0.0.1:10001/devstoreaccount1",
+    "PostingQueue__queueServiceUri": "https://127.0.0.1:10001/devstoreaccount1",
+    "SecretStore": "",
+
+    "TwitchClientId": "",
+    "TwitchClientSecret": "",
+    "TwitchCallbackUrl": "",
+    "TwitchSignatureSecret": ""
   }
 }

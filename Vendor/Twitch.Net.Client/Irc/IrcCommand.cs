@@ -1,0 +1,35 @@
+﻿namespace Twitch.Net.Client.Irc;
+
+public enum IrcCommand
+{
+    Unknown,
+    PrivMsg,
+    Notice,
+    Ping,
+    Pong,
+    Join,
+    Part,
+    HostTarget,
+    ClearChat,
+    ClearMsg,
+    UserState,
+    GlobalUserState,
+    Nick,
+    Pass,
+    Cap,
+    Rpl001,
+    Rpl002,
+    Rpl003,
+    Rpl004,
+    Rpl353,
+    Rpl366,
+    Rpl372,
+    Rpl375,
+    Rpl376,
+    Whisper,
+    RoomState,
+    Reconnect,
+    ServerChange,
+    UserNotice,
+    Mode
+}

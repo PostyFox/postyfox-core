@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <VersionPrefix>0.0.2</VersionPrefix>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Authors>Twitch.Net Contributors</Authors>
+        <Title>Twitch.Net Communication implementation</Title>
+        <PackageProjectUrl>https://github.com/Twitch-Net/Twitch.Net</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/Twitch-Net/Twitch.Net</RepositoryUrl>
+        <RepositoryType>Open Source</RepositoryType>
+        <PackageTags>Twitch Websocket Communication .NET6</PackageTags>
+        <Description>Communication core to interact with twitch systems throught websocket, such as IRC and PubSub.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Optional" Version="4.0.0" />
+      <PackageReference Include="Websocket.Client" Version="4.4.43" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Twitch.Net.Shared\Twitch.Net.Shared.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -36,3 +36,11 @@ variable "allowed_ips" {
   type        = list(string)
   description = "(Optional) Defines the IP Addresses which can bypass the deny rules on resources to access KeyVault and Data Storage"
 }
+
+variable "twitchClientId" {
+  type = string
+}
+
+variable "twitchCallbackUrl" { 
+  type = string
+}
