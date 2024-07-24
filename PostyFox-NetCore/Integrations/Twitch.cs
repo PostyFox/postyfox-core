@@ -1,16 +1,17 @@
 ﻿using Azure.Data.Tables;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Azure;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Optional.Unsafe;
 using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
-using System.ComponentModel;
 using System.Net;
 using System.Text.Json;
+using TL;
 using Twitch.Net.Api.Client;
 using Twitch.Net.EventSub;
 
@@ -22,12 +23,16 @@ namespace PostyFox_NetCore.Integrations
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
         private readonly IApiClient _apiClient;
+        private readonly IEventSubService _eventSubService;
+        private readonly EventSubBuilder _eventSubBuilder;
 
-        public Twitch(ILoggerFactory loggerFactory, IApiClient apiClient, IAzureClientFactory<TableServiceClient> clientFactory)
+        public Twitch(ILoggerFactory loggerFactory, IApiClient apiClient, IEventSubService eventSubService, EventSubBuilder eventSubBuilder, IAzureClientFactory<TableServiceClient> clientFactory)
         {
             _logger = loggerFactory.CreateLogger<Twitch>();
             _configTable = clientFactory.CreateClient("ConfigTable");
             _apiClient = apiClient;
+            _eventSubService = eventSubService;
+            _eventSubBuilder = eventSubBuilder;
         }
 
         public class Twitch_RegisterSub
@@ -126,9 +131,16 @@ namespace PostyFox_NetCore.Integrations
                             externalInterestsClient.UpsertEntity(externalInterestsTableEntity);
                         }
 
-                        // Kick off a call to twitch - EventSubTypes.StreamOnline, EventSubTypes.StreamOffline
-
                         response = req.CreateResponse(HttpStatusCode.OK);
+                        // Kick off a call to twitch - EventSubTypes.StreamOnline, EventSubTypes.StreamOffline
+                        var twitchModel = _eventSubBuilder.Build(EventSubTypes.StreamOnline, "");
+                        if (twitchModel.HasValue)
+                        {
+                            var twitchResult = await _eventSubService.Subscribe(twitchModel.ValueOrFailure());
+                            
+                        }
+
+                        
                         return response;
                     }
                 }

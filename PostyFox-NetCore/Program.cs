@@ -4,6 +4,7 @@ using Azure.Identity;
 using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Twitch.Net.Api;
 using Azure.Security.KeyVault.Secrets;
+using Twitch.Net.EventSub;
 
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable") ?? throw new Exception("Configuration not found for ConfigTable");
 var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? throw new Exception("Configuration not found for StorageAccount");
@@ -18,12 +19,14 @@ var defaultCredentialOptions = new DefaultAzureCredentialOptions
 };
 
 var twitchClientSecret = "";
+var twitchSignatureSecret = "";
 
 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
 {
     // Connect to the Secret service and pull the Twitch Secrets, as we need them during initialisation
     SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new DefaultAzureCredential(defaultCredentialOptions));
     twitchClientSecret = _secretStore.GetSecret("TwitchClientSecret").Value.ToString();
+    twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
 }
 
 var host = new HostBuilder()
@@ -51,6 +54,12 @@ var host = new HostBuilder()
             config.ClientSecret = twitchClientSecret;
         });
 
+        var eventSubConfig = new EventSubConfig();
+        eventSubConfig.SignatureSecret = twitchSignatureSecret;
+        eventSubConfig.ClientId = twitchClientId;
+        eventSubConfig.ClientSecret = twitchClientSecret;
+        eventSubConfig.CallbackUrl = twitchCallbackUrl;
+        services.AddTwitchEventSubService(eventSubConfig);
     })
     .Build();
 
