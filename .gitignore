@@ -10,3 +10,4 @@ terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 /.vs/PostyFox
 /.vs/ProjectEvaluation
+/.vs
