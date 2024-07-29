@@ -28,7 +28,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     "TwitchSignatureSecret"                         = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"    
     "TwitchCallbackUrl"                             = var.twitchCallbackUrl
     "AZURE_CLIENT_ID"                               = azurerm_user_assigned_identity.func_apps_uai.client_id
-    "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID"  = azurerm_user_assigned_identity.func_apps_uai.id
+    "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID"  = azurerm_user_assigned_identity.func_apps_uai.principal_id
   }
 
   site_config {
@@ -125,5 +125,5 @@ resource "azurerm_monitor_diagnostic_setting" "dotnet_func_app" {
 resource "azurerm_role_assignment" "dotnetfuncapp-data" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id
   role_definition_name = "Storage Blob Data Reader"
-  principal_id         = azurerm_user_assigned_identity.func_apps_uai.id
+  principal_id         = azurerm_user_assigned_identity.func_apps_uai.principal_id
 }
