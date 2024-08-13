@@ -13,6 +13,9 @@ namespace PostyFox_DataLayer.TableEntities
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
+
+        public string Title { get; set; }
+        public string MarkdownBody { get; set; }
     }
 #pragma warning restore CS8618
 }
