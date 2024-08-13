@@ -4,17 +4,18 @@ using System.ComponentModel;
 
 namespace PostyFox_DataLayer.TableEntities
 {
-    public class PostTemplateTableEntity : ITableEntity
+#pragma warning disable CS8618
+    public class PostingTemplateTableEntity : ITableEntity
     {
-        [Description("UserID")]
+        [Description("User ID")]
         public string PartitionKey { get; set; }
-        [Description("Unique External Trigger ID")]
+        [Description("ID")]
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
+
         public string Title { get; set; }
-        public string Body { get; set; }
-        // TODO: We should support an image being referenced here
-        // TODO: We should support "chaining" multiple posts together for allowing posting of threads
+        public string MarkdownBody { get; set; }
     }
+#pragma warning restore CS8618
 }

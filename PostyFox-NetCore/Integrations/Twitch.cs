@@ -99,7 +99,6 @@ namespace PostyFox_NetCore.Integrations
                         var client = _configTable.GetTableClient("ExternalTriggers");
                         client.UpsertEntity(externalTriggerTableEntity);
 
-
                         // 2. Create entry in ExternalInterests table - this is the map of triggers back to ExternalTrigger for incoming hooks
                         _configTable.CreateTableIfNotExists("ExternalInterests");
                         var externalInterestsClient = _configTable.GetTableClient("ExternalInterests");
@@ -133,13 +132,12 @@ namespace PostyFox_NetCore.Integrations
 
                         response = req.CreateResponse(HttpStatusCode.OK);
                         // Kick off a call to twitch - EventSubTypes.StreamOnline, EventSubTypes.StreamOffline
-                        var twitchModel = _eventSubBuilder.Build(EventSubTypes.StreamOnline, "");
+                        var twitchModel = _eventSubBuilder.Build(EventSubTypes.StreamOnline, user.Id);
                         if (twitchModel.HasValue)
                         {
                             var twitchResult = await _eventSubService.Subscribe(twitchModel.ValueOrFailure());
                             
                         }
-
                         
                         return response;
                     }
