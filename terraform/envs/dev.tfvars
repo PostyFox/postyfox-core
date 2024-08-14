@@ -10,4 +10,4 @@ allowed_ips = ["81.187.251.125"]
 
 
 twitchClientId    = "kuzdmn0w740xkkyuteg5yt6o0fybrq"
-twitchCallbackUrl = ""
+twitchCallbackUrl = "https://api.dev.postyfox.com/api/Twitch_Callback"
