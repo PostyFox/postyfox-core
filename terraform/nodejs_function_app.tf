@@ -12,12 +12,13 @@ resource "azurerm_linux_function_app" "nodejs_func_app" {
   service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
 
   app_settings = {
-    "PostingQueue__queueServiceUri"          = azurerm_storage_account.data_storage.primary_queue_endpoint    
-    "ConfigTable"                            = azurerm_storage_account.data_storage.primary_table_endpoint
-    "SecretStore"                            = azurerm_key_vault.key_vault.vault_uri
-    "StorageAccount"                         = azurerm_storage_account.data_storage.primary_blob_endpoint
-    "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
-    "AZURE_CLIENT_ID"                        = azurerm_user_assigned_identity.func_apps_uai.client_id    
+    "PostingQueue__queueServiceUri"                 = azurerm_storage_account.data_storage.primary_queue_endpoint    
+    "ConfigTable"                                   = azurerm_storage_account.data_storage.primary_table_endpoint
+    "SecretStore"                                   = azurerm_key_vault.key_vault.vault_uri
+    "StorageAccount"                                = azurerm_storage_account.data_storage.primary_blob_endpoint
+    "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET"        = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID"  = azurerm_user_assigned_identity.func_apps_uai.id
+    "SCM_DO_BUILD_DURING_DEPLOYMENT"                = "false"
   }
 
   identity {
