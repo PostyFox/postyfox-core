@@ -131,7 +131,7 @@ resource "azurerm_role_assignment" "dotnetuai-data" {
 
 resource "azurerm_role_assignment" "dotnetuai-table" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id
-  role_definition_name = "Storage Blob Table Contributor"
+  role_definition_name = "Storage Table Contributor"
   principal_id         = azurerm_user_assigned_identity.func_apps_uai.principal_id
 }
 
@@ -155,7 +155,7 @@ resource "azurerm_role_assignment" "dotnetfuncapp-data" {
 
 resource "azurerm_role_assignment" "dotnetfuncapp-table" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id
-  role_definition_name = "Storage Blob Table Contributor"
+  role_definition_name = "Storage Table Contributor"
   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
 
