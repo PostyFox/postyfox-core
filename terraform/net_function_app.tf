@@ -11,10 +11,9 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
 
   identity {
-    type = "SystemAssigned, UserAssigned"
+    type = "UserAssigned"
     identity_ids = [ azurerm_user_assigned_identity.func_apps_uai.id ]
   }
-
 
   app_settings = {
     "PostingQueue__queueServiceUri"                 = azurerm_storage_account.data_storage.primary_queue_endpoint

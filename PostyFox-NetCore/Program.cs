@@ -5,6 +5,7 @@ using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Twitch.Net.Api;
 using Azure.Security.KeyVault.Secrets;
 using Twitch.Net.EventSub;
+using Azure.Core;
 
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable") ?? throw new Exception("Configuration not found for ConfigTable");
 var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? throw new Exception("Configuration not found for StorageAccount");
@@ -14,6 +15,12 @@ var twitchCallbackUrl = Environment.GetEnvironmentVariable("TwitchCallbackUrl") 
 
 var twitchClientSecret = "";
 var twitchSignatureSecret = "";
+
+var credential = new DefaultAzureCredential(
+    new DefaultAzureCredentialOptions
+    {
+        ManagedIdentityResourceId = new ResourceIdentifier(Environment.GetEnvironmentVariable("MI_Resource_ID"))
+    });
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
@@ -31,16 +38,7 @@ var host = new HostBuilder()
             }
 #pragma warning restore CS8604
 
-            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PostyFoxDevMode")))
-            {
-                ManagedIdentityCredential managedCredential = new ManagedIdentityCredential(); // All services have a managed identity! 
-                clientBuilder.UseCredential(managedCredential);
-            } 
-            else
-            {
-                EnvironmentCredential environmentCredential = new EnvironmentCredential();
-                clientBuilder.UseCredential(environmentCredential);
-            }
+            clientBuilder.UseCredential(credential);
         });
 
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
