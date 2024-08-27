@@ -12,22 +12,8 @@ var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? thr
 var twitchClientId = Environment.GetEnvironmentVariable("TwitchClientId") ?? throw new Exception("Configuration not found for TwitchClientId");
 var twitchCallbackUrl = Environment.GetEnvironmentVariable("TwitchCallbackUrl") ?? throw new Exception("Configuration not found for TwitchCallbackUrl");
 
-var defaultCredentialOptions = new DefaultAzureCredentialOptions
-{
-    ExcludeVisualStudioCredential = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PostyFoxDevMode")),
-    ExcludeManagedIdentityCredential = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PostyFoxDevMode"))
-};
-
 var twitchClientSecret = "";
 var twitchSignatureSecret = "";
-
-if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
-{
-    // Connect to the Secret service and pull the Twitch Secrets, as we need them during initialisation
-    SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new DefaultAzureCredential(defaultCredentialOptions));
-    twitchClientSecret = _secretStore.GetSecret("TwitchClientSecret").Value.ToString();
-    twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
-}
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
@@ -45,8 +31,25 @@ var host = new HostBuilder()
             }
 #pragma warning restore CS8604
 
-            clientBuilder.UseCredential(new DefaultAzureCredential(defaultCredentialOptions));
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PostyFoxDevMode")))
+            {
+                ManagedIdentityCredential managedCredential = new ManagedIdentityCredential(); // All services have a managed identity! 
+                clientBuilder.UseCredential(managedCredential);
+            } 
+            else
+            {
+                EnvironmentCredential environmentCredential = new EnvironmentCredential();
+                clientBuilder.UseCredential(environmentCredential);
+            }
         });
+
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
+        {
+            // Connect to the Secret service and pull the Twitch Secrets, as we need them during initialisation
+            SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new ManagedIdentityCredential());
+            twitchClientSecret = _secretStore.GetSecret("TwitchClientSecret").Value.ToString();
+            twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
+        }
 
         services.AddTwitchApiClient(config =>
         {
