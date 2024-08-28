@@ -15,7 +15,6 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     identity_ids = [ azurerm_user_assigned_identity.func_apps_uai.id ]
   }
 
-
   app_settings = {
     "PostingQueue__queueServiceUri"                 = azurerm_storage_account.data_storage.primary_queue_endpoint
     "PostingQueue"                                  = azurerm_storage_account.data_storage.primary_queue_endpoint        
@@ -28,6 +27,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     "TwitchSignatureSecret"                         = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"    
     "TwitchCallbackUrl"                             = var.twitchCallbackUrl
     "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID"  = azurerm_user_assigned_identity.func_apps_uai.id
+    "MI_Resource_ID"                                = azurerm_user_assigned_identity.func_apps_uai.id
     "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED"        = 1
     "SCM_DO_BUILD_DURING_DEPLOYMENT"                = "false"
   }
@@ -122,9 +122,27 @@ resource "azurerm_monitor_diagnostic_setting" "dotnet_func_app" {
   }
 }
 
-// Add application identity to Storage Blob Reader on storage account
+// Permissions ...
 resource "azurerm_role_assignment" "dotnetfuncapp-data" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id
-  role_definition_name = "Storage Blob Data Reader"
-  principal_id         = azurerm_user_assigned_identity.func_apps_uai.principal_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "dotnetfuncapp-table" {
+  scope                = azurerm_storage_account.linux_funcnet_storage.id
+  role_definition_name = "Storage Table Data Contributor"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "dotnetfuncapp-data-posting" {
+  scope                = azurerm_storage_account.linux_funcpost_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "dotnetfuncapp-queue-posting" {
+  scope                = azurerm_storage_account.linux_funcpost_storage.id
+  role_definition_name = "Storage Queue Data Contributor"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
