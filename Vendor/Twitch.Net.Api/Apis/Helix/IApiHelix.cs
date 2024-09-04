@@ -3,4 +3,5 @@
 public interface IApiHelix
 {
     Users Users { get; }
+    Channels Channels { get; }
 }
