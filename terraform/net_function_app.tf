@@ -123,17 +123,29 @@ resource "azurerm_monitor_diagnostic_setting" "dotnet_func_app" {
 }
 
 // Permissions ...
+
+// - Func App Account 
 resource "azurerm_role_assignment" "dotnetfuncapp-data" {
   scope                = azurerm_storage_account.linux_funcnet_storage.id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
 
-resource "azurerm_role_assignment" "dotnetfuncapp-table" {
-  scope                = azurerm_storage_account.linux_funcnet_storage.id
+// - Data Account
+
+resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-blob" {
+  scope                = azurerm_storage_account.data_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-table" {
+  scope                = azurerm_storage_account.data_storage.id
   role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
+
+// - Posting Account
 
 resource "azurerm_role_assignment" "dotnetfuncapp-data-posting" {
   scope                = azurerm_storage_account.linux_funcpost_storage.id
