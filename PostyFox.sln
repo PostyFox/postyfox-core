@@ -17,6 +17,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Twitch.Net.EventSub", "Vend
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Twitch.Net.Shared", "Vendor\Twitch.Net.Shared\Twitch.Net.Shared.csproj", "{FC50F390-2EC5-4536-AF63-1D857F75B485}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostyFox-Common", "PostyFox-Common\PostyFox-Common.csproj", "{F6CB85D7-20FD-4B56-8010-91B0A58117E8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +49,10 @@ Global
 		{FC50F390-2EC5-4536-AF63-1D857F75B485}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC50F390-2EC5-4536-AF63-1D857F75B485}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC50F390-2EC5-4536-AF63-1D857F75B485}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6CB85D7-20FD-4B56-8010-91B0A58117E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6CB85D7-20FD-4B56-8010-91B0A58117E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6CB85D7-20FD-4B56-8010-91B0A58117E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6CB85D7-20FD-4B56-8010-91B0A58117E8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

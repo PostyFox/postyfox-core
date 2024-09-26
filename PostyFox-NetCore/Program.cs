@@ -16,12 +16,6 @@ var twitchCallbackUrl = Environment.GetEnvironmentVariable("TwitchCallbackUrl") 
 var twitchClientSecret = "";
 var twitchSignatureSecret = "";
 
-var credential = new DefaultAzureCredential(
-    new DefaultAzureCredentialOptions
-    {
-        ManagedIdentityResourceId = new ResourceIdentifier(Environment.GetEnvironmentVariable("MI_Resource_ID"))
-    });
-
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
@@ -38,7 +32,7 @@ var host = new HostBuilder()
             }
 #pragma warning restore CS8604
 
-            clientBuilder.UseCredential(credential);
+            clientBuilder.UseCredential(new DefaultAzureCredential());
         });
 
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))

@@ -58,7 +58,7 @@ namespace PostyFox_Posting
 
                     // TODO: LOAD TEMPLATE DATA
                     // TODO: ADD TO THE QUEUE
-                    
+
                     string responseBody = result.CallBack.Challenge ?? "";
                     HttpResponseData resp = req.CreateResponse(result.StatusCode);
                     resp.Headers.Add("content-type", "text/plain");
