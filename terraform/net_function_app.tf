@@ -27,7 +27,6 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     "TwitchCallbackUrl"                             = var.twitchCallbackUrl
     "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED"        = 1
     "SCM_DO_BUILD_DURING_DEPLOYMENT"                = "false"
-    
   }
 
   // "MI_Resource_ID"                                = azurerm_user_assigned_identity.func_apps_uai.id
