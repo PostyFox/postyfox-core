@@ -26,11 +26,13 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
     "TwitchClientSecret"                            = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"   
     "TwitchSignatureSecret"                         = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"    
     "TwitchCallbackUrl"                             = var.twitchCallbackUrl
-    "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID"  = azurerm_user_assigned_identity.func_apps_uai.id
-    "MI_Resource_ID"                                = azurerm_user_assigned_identity.func_apps_uai.id
     "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED"        = 1
     "SCM_DO_BUILD_DURING_DEPLOYMENT"                = "false"
+    
   }
+
+  // "MI_Resource_ID"                                = azurerm_user_assigned_identity.func_apps_uai.id
+  // "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID"  = azurerm_user_assigned_identity.func_apps_uai.id 
 
   site_config {
     application_stack {
