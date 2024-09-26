@@ -10,6 +10,7 @@
     "TelegramApiHash": "",
     "PostyFoxDevMode": true,
     "PostyFoxUserID": "Womble",
-    "TwitchClientId": "kuzdmn0w740xkkyuteg5yt6o0fybrq"
+    "TwitchClientId": "kuzdmn0w740xkkyuteg5yt6o0fybrq",
+    "TwitchCallbackUrl": "https://dev.post.postyfox.com/api/Twitch_SubscriptionCallBack"
   }
 }

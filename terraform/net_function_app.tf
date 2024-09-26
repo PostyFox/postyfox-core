@@ -11,8 +11,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
   service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
 
   identity {
-    type = "SystemAssigned, UserAssigned"
-    identity_ids = [ azurerm_user_assigned_identity.func_apps_uai.id ]
+    type = "SystemAssigned"
   }
 
   app_settings = {
