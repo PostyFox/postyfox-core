@@ -17,13 +17,6 @@ resource "azurerm_key_vault" "key_vault" {
 
 # A secret called client secret should be added to this vault :)
 
-resource "azurerm_role_assignment" "secret_permissions" {
-  scope                = azurerm_key_vault.key_vault.id
-  role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = azurerm_user_assigned_identity.func_apps_uai.principal_id
-}
-
-
 // These are needed for the portal to not be an idiot
 resource "azurerm_role_assignment" "dotnet_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
