@@ -31,7 +31,7 @@ if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
 }
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
+    .ConfigureFunctionsWebApplication(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
     {
         services.AddAzureClients(clientBuilder =>

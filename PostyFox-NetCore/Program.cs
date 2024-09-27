@@ -6,6 +6,7 @@ using Twitch.Net.Api;
 using Azure.Security.KeyVault.Secrets;
 using Twitch.Net.EventSub;
 using Azure.Core;
+using Microsoft.Extensions.Logging;
 
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable") ?? throw new Exception("Configuration not found for ConfigTable");
 var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? throw new Exception("Configuration not found for StorageAccount");
@@ -17,7 +18,7 @@ var twitchClientSecret = "";
 var twitchSignatureSecret = "";
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
+    .ConfigureFunctionsWebApplication(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
     {
         services.AddAzureClients(clientBuilder =>
