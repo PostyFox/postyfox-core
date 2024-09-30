@@ -21,7 +21,7 @@ var twitchSignatureSecret = "";
 
 // Create the host
 var host = new HostBuilder()
-    .ConfigureFunctionsWebApplication(worker => worker.UseNewtonsoftJson())
+    .ConfigureFunctionsWebApplication()
     .ConfigureServices(services =>
     {
 //        services.AddAzureClients(clientBuilder =>
@@ -91,6 +91,7 @@ logger.LogInformation("Table Account: {tableAccount}", tableAccount);
 logger.LogInformation("Storage Account: {storageAccount}", storageAccount);
 logger.LogInformation("Twitch Client ID: {twitchClientId}", twitchClientId);
 logger.LogInformation("Twitch Callback URL: {twitchCallbackUrl}", twitchCallbackUrl);
+
 if (string.IsNullOrEmpty(twitchClientSecret))
 {
     logger.LogInformation("Twitch Client Secret: NOT DEFINED");
