@@ -55,26 +55,26 @@ var host = new HostBuilder()
             twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
         }
 
-        if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret))
-        {
-            services.AddTwitchApiClient(config =>
-            {
-                config.ClientId = twitchClientId;
-                config.ClientSecret = twitchClientSecret;
-            });
-        }
+        //if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret))
+        //{
+        //    services.AddTwitchApiClient(config =>
+        //    {
+        //        config.ClientId = twitchClientId;
+        //        config.ClientSecret = twitchClientSecret;
+        //    });
+        //}
 
-        if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret) && 
-            !string.IsNullOrEmpty(twitchCallbackUrl) && !string.IsNullOrEmpty(twitchSignatureSecret))
-        {
-            services.AddTwitchEventSubService(config =>
-            {
-                config.SignatureSecret = twitchSignatureSecret;
-                config.ClientId = twitchClientId;
-                config.ClientSecret = twitchClientSecret;
-                config.CallbackUrl = twitchCallbackUrl;
-            });
-        }       
+        //if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret) && 
+        //    !string.IsNullOrEmpty(twitchCallbackUrl) && !string.IsNullOrEmpty(twitchSignatureSecret))
+        //{
+        //    services.AddTwitchEventSubService(config =>
+        //    {
+        //        config.SignatureSecret = twitchSignatureSecret;
+        //        config.ClientId = twitchClientId;
+        //        config.ClientSecret = twitchClientSecret;
+        //        config.CallbackUrl = twitchCallbackUrl;
+        //    });
+        //}       
     })
     .ConfigureLogging(logging =>
     {
