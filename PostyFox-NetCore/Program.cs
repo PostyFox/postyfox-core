@@ -21,7 +21,7 @@ var twitchSignatureSecret = "";
 
 // Create the host
 var host = new HostBuilder()
-    .ConfigureFunctionsWebApplication()
+    .ConfigureFunctionsWebApplication(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
     {
 //        services.AddAzureClients(clientBuilder =>
