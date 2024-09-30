@@ -24,36 +24,36 @@ var host = new HostBuilder()
     .ConfigureFunctionsWebApplication(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
     {
-        services.AddAzureClients(clientBuilder =>
-        {
-            // Register clients for each service
-#pragma warning disable CS8604
-            if (!string.IsNullOrEmpty(tableAccount))
-            {
-                clientBuilder.AddTableServiceClient(new Uri(tableAccount)).WithName("ConfigTable");
-            }
+//        services.AddAzureClients(clientBuilder =>
+//        {
+//            // Register clients for each service
+//#pragma warning disable CS8604
+//            if (!string.IsNullOrEmpty(tableAccount))
+//            {
+//                clientBuilder.AddTableServiceClient(new Uri(tableAccount)).WithName("ConfigTable");
+//            }
 
-            if (!string.IsNullOrEmpty(storageAccount))
-            {
-                clientBuilder.AddBlobServiceClient(new Uri(storageAccount)).WithName("StorageAccount");
-            }
+//            if (!string.IsNullOrEmpty(storageAccount))
+//            {
+//                clientBuilder.AddBlobServiceClient(new Uri(storageAccount)).WithName("StorageAccount");
+//            }
 
-            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
-            {
-                clientBuilder.AddSecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore"))).WithName("SecretStore");
-            }
-#pragma warning restore CS8604
+//            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
+//            {
+//                clientBuilder.AddSecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore"))).WithName("SecretStore");
+//            }
+//#pragma warning restore CS8604
 
-            clientBuilder.UseCredential(new DefaultAzureCredential());
-        });
+//            clientBuilder.UseCredential(new DefaultAzureCredential());
+//        });
 
-        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
-        {
-            // Connect to the Secret service and pull the Twitch Secrets, as we need them during initialisation
-            SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new DefaultAzureCredential());
-            twitchClientSecret = _secretStore.GetSecret("TwitchClientSecret").Value.ToString();
-            twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
-        }
+//        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
+//        {
+//            // Connect to the Secret service and pull the Twitch Secrets, as we need them during initialisation
+//            SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new DefaultAzureCredential());
+//            twitchClientSecret = _secretStore.GetSecret("TwitchClientSecret").Value.ToString();
+//            twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
+//        }
 
         //if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret))
         //{
