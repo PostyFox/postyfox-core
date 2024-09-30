@@ -39,7 +39,7 @@ var host = new HostBuilder()
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
         {
             // Connect to the Secret service and pull the Twitch Secrets, as we need them during initialisation
-            SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new ManagedIdentityCredential());
+            SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new DefaultAzureCredential());
             twitchClientSecret = _secretStore.GetSecret("TwitchClientSecret").Value.ToString();
             twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
         }
