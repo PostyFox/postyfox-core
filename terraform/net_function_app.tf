@@ -8,7 +8,7 @@ resource "azurerm_linux_function_app" "dotnet_func_app" {
 
   storage_account_name          = azurerm_storage_account.linux_funcnet_storage.name
   storage_uses_managed_identity = true
-  service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
+  service_plan_id               = azurerm_service_plan.linux_consumption_func_service_plan.id
 
   identity {
     type = "SystemAssigned"

@@ -12,11 +12,11 @@
     "SecretStore": "https://postyfox-kv-dev.vault.azure.net/",
     "TelegramApiID": 23772970,
     "TelegramApiHash": "",
-    "PostyFoxDevMode": false,
+    "PostyFoxDevMode": true,
     "PostyFoxUserID": "Womble",
     "TwitchClientId": "kuzdmn0w740xkkyuteg5yt6o0fybrq",
-    "TwitchClientSecret": "i1pxo59r0r8hpsey93hbz9r8ednc3r",
-    "TwitchSignatureSecret": "PostyFoxDevSecret",
+    "TwitchClientSecret": "",
+    "TwitchSignatureSecret": "",
     "TwitchCallbackUrl": "https://dev.post.postyfox.com/api/Twitch_SubscriptionCallBack"
   }
 }
