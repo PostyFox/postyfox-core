@@ -3,7 +3,7 @@ using Microsoft.Extensions.Azure;
 using Azure.Identity;
 using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Twitch.Net.Api;
-using Azure.Security.KeyVault.Secrets;
+using Twitch.Net.EventSub;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,8 +14,8 @@ var storageAccount = Environment.GetEnvironmentVariable("StorageAccount");
 var twitchClientId = Environment.GetEnvironmentVariable("TwitchClientId");
 var twitchCallbackUrl = Environment.GetEnvironmentVariable("TwitchCallbackUrl");
 
-var twitchClientSecret = "";
-var twitchSignatureSecret = "";
+var twitchClientSecret = Environment.GetEnvironmentVariable("TwitchClientSecret");
+var twitchSignatureSecret = Environment.GetEnvironmentVariable("TwitchSignatureSecret");
 
 // Create the host
 var host = new HostBuilder()
@@ -42,37 +42,29 @@ var host = new HostBuilder()
             }
 #pragma warning restore CS8604
 
-            //            clientBuilder.UseCredential(new DefaultAzureCredential());
-            //        });
-
-            //        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
-            //        {
-            //            // Connect to the Secret service and pull the Twitch Secrets, as we need them during initialisation
-            //            SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new DefaultAzureCredential());
-            //            twitchClientSecret = _secretStore.GetSecret("TwitchClientSecret").Value.ToString();
-            //            twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
-            //        }
-
-            //if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret))
-            //{
-            //    services.AddTwitchApiClient(config =>
-            //    {
-            //        config.ClientId = twitchClientId;
-            //        config.ClientSecret = twitchClientSecret;
-            //    });
-            //}
-
-            //if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret) && 
-            //    !string.IsNullOrEmpty(twitchCallbackUrl) && !string.IsNullOrEmpty(twitchSignatureSecret))
-            //{
-            //    services.AddTwitchEventSubService(config =>
-            //    {
-            //        config.SignatureSecret = twitchSignatureSecret;
-            //        config.ClientId = twitchClientId;
-            //        config.ClientSecret = twitchClientSecret;
-            //        config.CallbackUrl = twitchCallbackUrl;
-            //    });
+            clientBuilder.UseCredential(new DefaultAzureCredential());
         });
+
+        if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret))
+        {
+            services.AddTwitchApiClient(config =>
+            {
+                config.ClientId = twitchClientId;
+                config.ClientSecret = twitchClientSecret;
+            });
+        }
+
+        if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret) &&
+            !string.IsNullOrEmpty(twitchCallbackUrl) && !string.IsNullOrEmpty(twitchSignatureSecret))
+        {
+            services.AddTwitchEventSubService(config =>
+            {
+                config.SignatureSecret = twitchSignatureSecret;
+                config.ClientId = twitchClientId;
+                config.ClientSecret = twitchClientSecret;
+                config.CallbackUrl = twitchCallbackUrl;
+            });
+        }
     })
     .ConfigureLogging(logging =>
     {

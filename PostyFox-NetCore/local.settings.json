@@ -2,15 +2,21 @@
   "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobsDashboard__accountName": "postyfoxfuncnetstordev",
+    "AzureWebJobsStorage__accountName": "postyfoxfuncnetstordev",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-    "ConfigTable": "https://127.0.0.1:10002/devstoreaccount1",
-    "StorageAccount": "https://127.0.0.1:10000/devstoreaccount1",
-    "SecretStore": "",
+    "ConfigTable": "https://postyfoxdatastordev.table.core.windows.net/",
+    "PostingQueue": "https://postyfoxdatastordev.queue.core.windows.net/",
+    "PostingQueue__queueServiceUri": "https://postyfoxdatastordev.queue.core.windows.net/",
+    "StorageAccount": "https://postyfoxdatastordev.blob.core.windows.net/",
+    "SecretStore": "https://postyfox-kv-dev.vault.azure.net/",
     "TelegramApiID": 23772970,
     "TelegramApiHash": "",
-    "PostyFoxDevMode": true,
+    "PostyFoxDevMode": false,
     "PostyFoxUserID": "Womble",
     "TwitchClientId": "kuzdmn0w740xkkyuteg5yt6o0fybrq",
+    "TwitchClientSecret": "i1pxo59r0r8hpsey93hbz9r8ednc3r",
+    "TwitchSignatureSecret": "PostyFoxDevSecret",
     "TwitchCallbackUrl": "https://dev.post.postyfox.com/api/Twitch_SubscriptionCallBack"
   }
 }
