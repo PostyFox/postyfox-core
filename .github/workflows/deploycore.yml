@@ -116,11 +116,11 @@ jobs:
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
 
     - name: Publish dotnet Core Function App
-      run: dotnet publish -v d -o /home/runner/work/output/dotnet-fa
+      run: dotnet publish -v d -o /home/runner/work/output/dotnet-fa /p:UseAppHost=false
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Publish dotnet Posting Function App
-      run: dotnet publish -v d -o /home/runner/work/output/dotnet-posting
+      run: dotnet publish -v d -o /home/runner/work/output/dotnet-posting /p:UseAppHost=false
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
 
     - uses: actions/upload-artifact@v4
