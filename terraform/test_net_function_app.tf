@@ -35,8 +35,9 @@ resource "azurerm_linux_function_app" "test_dotnet_func_app" {
 
   https_only = true
 
+  storage_uses_managed_identity = true
+
   storage_account_name          = azurerm_storage_account.linux_test_storage.name
-  storage_account_access_key    = azurerm_storage_account.linux_test_storage.primary_access_key 
   service_plan_id               = azurerm_service_plan.linux_consumption_func_service_plan.id
 
   identity {
@@ -44,13 +45,7 @@ resource "azurerm_linux_function_app" "test_dotnet_func_app" {
   }
 
   app_settings = {
-    "PostingQueue__queueServiceUri"                 = azurerm_storage_account.data_storage.primary_queue_endpoint
-    "PostingQueue"                                  = azurerm_storage_account.data_storage.primary_queue_endpoint        
-    "ConfigTable"                                   = azurerm_storage_account.data_storage.primary_table_endpoint
-    "SecretStore"                                   = azurerm_key_vault.key_vault.vault_uri
-    "StorageAccount"                                = azurerm_storage_account.data_storage.primary_blob_endpoint
-    "TwitchClientId"                                = var.twitchClientId
-    "TwitchCallbackUrl"                             = var.twitchCallbackUrl
+
   }
 
   site_config {
