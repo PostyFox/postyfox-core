@@ -1,11 +1,12 @@
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Azure;
 using Azure.Identity;
 using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Twitch.Net.Api;
 using Twitch.Net.EventSub;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 
 // Load the configuration from the environment variables
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable");
@@ -22,6 +23,8 @@ var host = new HostBuilder()
     .ConfigureFunctionsWebApplication(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
     {
+        services.AddApplicationInsightsTelemetryWorkerService();
+        services.ConfigureFunctionsApplicationInsights();
         services.AddAzureClients(clientBuilder =>
         {
             // Register clients for each service
