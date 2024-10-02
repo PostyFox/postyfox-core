@@ -100,35 +100,39 @@ jobs:
     - name: Setup .NET Core 8.x
       uses: actions/setup-dotnet@v4
       with:
-        # Semantic version range syntax or exact version of a dotnet version
-        dotnet-version: '8.x'
+        dotnet-version: '8.0.x'
+
+    - name: Setup .NET Core (for inproc extensions)
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'      
 
     - name: Install dotnet Core dependencies
       run: dotnet restore
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Core Function App
-      run: dotnet build -c Release -v d
+      run: dotnet build -c Release
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Posting Function App
-      run: dotnet build -c Release -v d
+      run: dotnet build -c Release
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
 
     - name: Build dotnet Testing Function App
-      run: dotnet build -c Release -v d
+      run: dotnet build -c Release
       working-directory: /home/runner/work/postyfox-core/postyfox-core/TestingFunc   
 
     - name: Publish dotnet Core Function App
-      run: dotnet publish -v d -o /home/runner/work/output/dotnet-fa /p:UseAppHost=false
+      run: dotnet publish -o /home/runner/work/output/dotnet-fa /p:UseAppHost=false
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Publish dotnet Posting Function App
-      run: dotnet publish -v d -o /home/runner/work/output/dotnet-posting /p:UseAppHost=false
+      run: dotnet publish -o /home/runner/work/output/dotnet-posting /p:UseAppHost=false
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
 
     - name: Publish dotnet Testing Function App
-      run: dotnet publish -v d -o /home/runner/work/output/testingfunc /p:UseAppHost=false
+      run: dotnet publish -o /home/runner/work/output/testingfunc /p:UseAppHost=false
       working-directory: /home/runner/work/postyfox-core/postyfox-core/TestingFunc     
 
     - uses: actions/upload-artifact@v4
