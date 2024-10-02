@@ -1,3 +1,32 @@
+
+resource "azurerm_storage_account" "linux_test_storage" {
+  name                     = "${local.appname}functeststor${var.environment}"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+
+  allow_nested_items_to_be_public = true
+
+  infrastructure_encryption_enabled = true
+
+  shared_access_key_enabled = true
+
+  public_network_access_enabled = true
+
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+
+    versioning_enabled = true
+
+    container_delete_retention_policy {
+      days = 7
+    }
+  }
+}
+
 # Deploy a DotNet Core runtime Linux Function App
 resource "azurerm_linux_function_app" "test_dotnet_func_app" {
   name                = "${local.appname}-func-app-test${local.hyphen-env}"
@@ -6,7 +35,7 @@ resource "azurerm_linux_function_app" "test_dotnet_func_app" {
 
   https_only = true
 
-  storage_account_name          = azurerm_storage_account.linux_funcnet_storage.name
+  storage_account_name          = azurerm_storage_account.linux_test_storage.name
   storage_uses_managed_identity = true
   service_plan_id               = azurerm_service_plan.linux_consumption_func_service_plan.id
 
@@ -63,13 +92,13 @@ resource "azurerm_monitor_diagnostic_setting" "test_func_app" {
 
 // - Func App Account 
 resource "azurerm_role_assignment" "testfuncapp-data" {
-  scope                = azurerm_storage_account.linux_funcnet_storage.id
+  scope                = azurerm_storage_account.linux_test_storage.id
   role_definition_name = "Storage Blob Data Owner"
   principal_id         = azurerm_linux_function_app.test_dotnet_func_app.identity[0].principal_id
 }
 
 resource "azurerm_role_assignment" "testfuncapp-table" {
-  scope                = azurerm_storage_account.linux_funcnet_storage.id
+  scope                = azurerm_storage_account.linux_test_storage.id
   role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.test_dotnet_func_app.identity[0].principal_id
 }
