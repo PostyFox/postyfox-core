@@ -242,13 +242,6 @@ jobs:
           app-name: postyfox-func-app-post-${{ inputs.targetEnvironment }}
           package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-posting/.'
 
-      - name: 'Upload Dot Net Testing Function App'
-        uses: Azure/functions-action@v1.5.2
-        id: testing-fa
-        with:
-          app-name: postyfox-func-app-test-${{ inputs.targetEnvironment }}
-          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-testing/.'          
-
       - name: 'Upload NodeJS Function App'
         uses: Azure/functions-action@v1.5.2
         id: nfa
