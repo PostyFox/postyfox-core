@@ -76,13 +76,13 @@ resource "azurerm_role_assignment" "testfuncapp-table" {
 
 // - Data Account
 
-resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-blob" {
+resource "azurerm_role_assignment" "testfuncapp-data_storage-blob" {
   scope                = azurerm_storage_account.data_storage.id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_linux_function_app.test_dotnet_func_app.identity[0].principal_id
 }
 
-resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-table" {
+resource "azurerm_role_assignment" "testfuncapp-data_storage-table" {
   scope                = azurerm_storage_account.data_storage.id
   role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.test_dotnet_func_app.identity[0].principal_id
@@ -90,13 +90,13 @@ resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-table" {
 
 // - Posting Account
 
-resource "azurerm_role_assignment" "dotnetfuncapp-data-posting" {
+resource "azurerm_role_assignment" "testfuncapp-data-posting" {
   scope                = azurerm_storage_account.linux_funcpost_storage.id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_linux_function_app.test_dotnet_func_app.identity[0].principal_id
 }
 
-resource "azurerm_role_assignment" "dotnetfuncapp-queue-posting" {
+resource "azurerm_role_assignment" "testfuncapp-queue-posting" {
   scope                = azurerm_storage_account.linux_funcpost_storage.id
   role_definition_name = "Storage Queue Data Contributor"
   principal_id         = azurerm_linux_function_app.test_dotnet_func_app.identity[0].principal_id
