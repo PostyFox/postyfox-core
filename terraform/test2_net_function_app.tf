@@ -32,12 +32,10 @@ resource "azurerm_linux_function_app" "test2_dotnet_func_app" {
   name                = "${local.appname}-func-app-test2${local.hyphen-env}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
+  storage_account_name = "${local.appname}functest2stor${var.environment}"
 
   https_only = true
 
-
-  storage_account_name          = azurerm_storage_account.linux_test2_storage.name
-  storage_account_access_key    = azurerm_storage_account.linux_test2_storage.primary_access_key
   service_plan_id               = azurerm_service_plan.linux_consumption_func_service_plan.id
 
   identity {
@@ -68,6 +66,7 @@ resource "azurerm_linux_function_app" "test2_dotnet_func_app" {
     name = azurerm_storage_account.linux_test2_storage.name
     share_name = "test2"
     type = "AzureBlob"
+
   }
 }
 
