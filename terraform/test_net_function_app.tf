@@ -37,7 +37,6 @@ resource "azurerm_linux_function_app" "test_dotnet_func_app" {
 
   storage_account_name          = azurerm_storage_account.linux_test_storage.name
   storage_account_access_key    = azurerm_storage_account.linux_test_storage.primary_access_key 
-  storage_uses_managed_identity = false
   service_plan_id               = azurerm_service_plan.linux_consumption_func_service_plan.id
 
   identity {
