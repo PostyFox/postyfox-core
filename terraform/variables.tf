@@ -41,6 +41,6 @@ variable "twitchClientId" {
   type = string
 }
 
-variable "twitchCallbackUrl" { 
+variable "twitchCallbackUrl" {
   type = string
 }

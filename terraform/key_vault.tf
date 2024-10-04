@@ -21,19 +21,19 @@ resource "azurerm_key_vault" "key_vault" {
 resource "azurerm_role_assignment" "dotnet_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+  principal_id         = data.azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
 }
 
-resource "azurerm_role_assignment" "nodejs_fa_user" {
-  scope                = azurerm_key_vault.key_vault.id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
-}
+# resource "azurerm_role_assignment" "nodejs_fa_user" {
+#   scope                = azurerm_key_vault.key_vault.id
+#   role_definition_name = "Key Vault Secrets User"
+#   principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
+# }
 
 resource "azurerm_role_assignment" "posting_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
+  principal_id         = data.azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "keyvault" {
