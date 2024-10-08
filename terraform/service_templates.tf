@@ -10,7 +10,7 @@ resource "azurerm_storage_table_entity" "telegram-template" {
     IsEnabled              = true
     ServiceID              = "Telegram"
     Configuration          = "{\"PhoneNumber\":\"\"}"
-    Endpoint               = module.dotnet_function_app.name.default_hostname
+    Endpoint               = module.dotnet_function_app.default_hostname
   }
 }
 
@@ -26,7 +26,7 @@ resource "azurerm_storage_table_entity" "discordwh-template" {
     IsEnabled              = true
     ServiceID              = "DiscordWH"
     Configuration          = "{\"Webhook\":\"\"}"
-    Endpoint               = module.dotnet_function_app.name.default_hostname
+    Endpoint               = module.dotnet_function_app.default_hostname
   }
 }
 
