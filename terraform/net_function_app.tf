@@ -11,11 +11,6 @@ module "dotnet_function_app" {
   app_service_plan     = "${local.appname}-flex_asp${local.hyphen-env}"
 }
 
-data "azurerm_linux_function_app" "dotnet_func_app" {
-  name                = module.dotnet_function_app.name
-  resource_group_name = azurerm_resource_group.rg.name
-}
-
 # Todo: Disable shared access on blob
 # More settings for blob
 
@@ -93,7 +88,7 @@ data "azurerm_linux_function_app" "dotnet_func_app" {
 
 resource "azurerm_app_service_custom_hostname_binding" "dotnet_func_binding" {
   hostname            = "${local.portal-prefix}${local.mainapi-address}"
-  app_service_name    = data.azurerm_linux_function_app.dotnet_func_app.name
+  app_service_name    = module.dotnet_function_app.name
   resource_group_name = azurerm_resource_group.rg.name
 
   lifecycle {
