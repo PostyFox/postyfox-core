@@ -10,7 +10,7 @@ module "nodejs_function_app" {
   plan_name            = "${local.appname}-flex_asp${local.hyphen-env}"
   app_service_plan     = "${local.appname}-flex_asp${local.hyphen-env}"
   runtime              = "nodejs"
-  version              = "20"
+  runtime_version      = "20"
 }
 
 # resource "azurerm_linux_function_app" "nodejs_func_app" {
