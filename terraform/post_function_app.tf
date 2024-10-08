@@ -11,12 +11,6 @@ module "posting_function_app" {
   app_service_plan     = "${local.appname}-flex_asp${local.hyphen-env}"
 }
 
-data "azurerm_linux_function_app" "dotnet_funcpost_app" {
-  name                = module.posting_function_app.name
-  resource_group_name = azurerm_resource_group.rg.name
-}
-
-
 # app_settings = {
 #   "PostingQueue__queueServiceUri"          = azurerm_storage_account.data_storage.primary_queue_endpoint
 #   "PostingQueue"                           = azurerm_storage_account.data_storage.primary_queue_endpoint
