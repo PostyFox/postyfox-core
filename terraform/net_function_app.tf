@@ -7,8 +7,7 @@ module "dotnet_function_app" {
   location             = azurerm_resource_group.rg.location
   resource_group_id    = azurerm_resource_group.rg.id
   resource_group_name  = azurerm_resource_group.rg.name
-  plan_name            = "${local.appname}-flex_asp${local.hyphen-env}"
-  app_service_plan     = "${local.appname}-flex_asp${local.hyphen-env}"
+  plan_name            = "${local.appname}-flex_net${local.hyphen-env}"
 }
 
 # Todo: Disable shared access on blob
