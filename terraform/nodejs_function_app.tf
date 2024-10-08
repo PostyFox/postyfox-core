@@ -86,25 +86,25 @@ module "nodejs_function_app" {
 #   }
 # }
 
-# resource "azurerm_app_service_custom_hostname_binding" "nodejs_func_binding" {
-#   hostname            = "${local.portal-prefix}${local.nodejsapi-address}"
-#   app_service_name    = azurerm_linux_function_app.nodejs_func_app.name
-#   resource_group_name = azurerm_resource_group.rg.name
+resource "azurerm_app_service_custom_hostname_binding" "nodejs_func_binding" {
+  hostname            = "${local.portal-prefix}${local.nodejsapi-address}"
+  app_service_name    = module.nodejs_function_app.name
+  resource_group_name = azurerm_resource_group.rg.name
 
-#   lifecycle {
-#     ignore_changes = [ssl_state, thumbprint]
-#   }
-# }
+  lifecycle {
+    ignore_changes = [ssl_state, thumbprint]
+  }
+}
 
-# resource "azurerm_app_service_managed_certificate" "nodejs_func_cert" {
-#   custom_hostname_binding_id = azurerm_app_service_custom_hostname_binding.nodejs_func_binding.id
-# }
+resource "azurerm_app_service_managed_certificate" "nodejs_func_cert" {
+  custom_hostname_binding_id = azurerm_app_service_custom_hostname_binding.nodejs_func_binding.id
+}
 
-# resource "azurerm_app_service_certificate_binding" "nodejs_func_cert_binding" {
-#   hostname_binding_id = azurerm_app_service_custom_hostname_binding.nodejs_func_binding.id
-#   certificate_id      = azurerm_app_service_managed_certificate.nodejs_func_cert.id
-#   ssl_state           = "SniEnabled"
-# }
+resource "azurerm_app_service_certificate_binding" "nodejs_func_cert_binding" {
+  hostname_binding_id = azurerm_app_service_custom_hostname_binding.nodejs_func_binding.id
+  certificate_id      = azurerm_app_service_managed_certificate.nodejs_func_cert.id
+  ssl_state           = "SniEnabled"
+}
 
 # resource "azurerm_monitor_diagnostic_setting" "nodejs_func_app" {
 #   name                       = "${local.appname}-logging-app-nodejs${local.hyphen-env}"
