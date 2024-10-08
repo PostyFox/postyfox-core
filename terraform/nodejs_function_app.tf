@@ -1,4 +1,17 @@
 # # Deploy a NodeJS runtime Linux Function App, which will predominately run workloads mutually shared with PostyBirb
+module "posting_function_app" {
+  source = "github.com/aneillans/azure-flex-functionapp/terraform"
+
+  storage_account_name = "${local.appname}funcnodestr${var.environment}"
+  function_app_name    = "${local.appname}-func-app-node${local.hyphen-env}"
+  location             = azurerm_resource_group.rg.location
+  resource_group_id    = azurerm_resource_group.rg.id
+  resource_group_name  = azurerm_resource_group.rg.name
+  plan_name            = "${local.appname}-flex_asp${local.hyphen-env}"
+  app_service_plan     = "${local.appname}-flex_asp${local.hyphen-env}"
+  runtime              = "nodejs"
+  version              = "20"
+}
 
 # resource "azurerm_linux_function_app" "nodejs_func_app" {
 #   name                = "${local.appname}-func-app-nodejs${local.hyphen-env}"

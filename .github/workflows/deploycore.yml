@@ -246,6 +246,6 @@ jobs:
         uses: Azure/functions-action@v1.5.2
         id: nfa
         with:
-          app-name: postyfox-func-app-nodejs-${{ inputs.targetEnvironment }}
+          app-name: postyfox-func-app-node-${{ inputs.targetEnvironment }}
           respect-funcignore: true
           package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/nodejs-fa/.'
