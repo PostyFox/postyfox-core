@@ -1,5 +1,5 @@
 # # Deploy a NodeJS runtime Linux Function App, which will predominately run workloads mutually shared with PostyBirb
-module "posting_function_app" {
+module "nodejs_function_app" {
   source = "github.com/aneillans/azure-flex-functionapp/terraform"
 
   storage_account_name = "${local.appname}funcnodestr${var.environment}"
