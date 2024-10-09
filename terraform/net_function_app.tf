@@ -50,14 +50,9 @@ module "dotnet_function_app" {
       value = var.twitchCallbackUrl
     }
   ]
+  cors_support_credentials = true
+  cors_allowed_origins     = var.cors
 }
-
-# Todo: Disable shared access on blob
-
-
-
-
-
 
 #   application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
 
@@ -93,13 +88,6 @@ module "dotnet_function_app" {
 #     token_store_enabled               = true
 #     validate_nonce                    = true
 #   }
-# }
-
-# lifecycle {
-#   ignore_changes = [
-#     app_settings["WEBSITE_ENABLE_SYNC_UPDATE_SITE"],
-#     app_settings["WEBSITE_RUN_FROM_PACKAGE"]
-#   ]
 # }
 
 resource "azurerm_app_service_custom_hostname_binding" "dotnet_func_binding" {
