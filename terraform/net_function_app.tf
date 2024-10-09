@@ -8,37 +8,54 @@ module "dotnet_function_app" {
   resource_group_id    = azurerm_resource_group.rg.id
   resource_group_name  = azurerm_resource_group.rg.name
   plan_name            = "${local.appname}-flex_net${local.hyphen-env}"
+  app_settings         = [
+    { 
+      name  = "PostingQueue__queueServiceUri",
+      value = azurerm_storage_account.data_storage.primary_queue_endpoint
+    },
+    {
+      name  = "PostingQueue",
+      value = azurerm_storage_account.data_storage.primary_queue_endpoint
+    },
+    {
+      name  = "ConfigTable",
+      value = azurerm_storage_account.data_storage.primary_table_endpoint
+    },
+    {
+      name  = "SecretStore",
+      value = azurerm_key_vault.key_vault.vault_uri
+    },
+    {
+      name  = "StorageAccount",
+      value = azurerm_storage_account.data_storage.primary_blob_endpoint
+    },
+    {
+      name  = "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET",
+      value = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    },
+    {
+      name  = "TwitchClientId",
+      value = var.twitchClientId
+    },
+    {
+      name  = "TwitchClientSecret",
+      value = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"   
+    },
+    {
+      name  = "TwitchSignatureSecret",
+      value = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"    
+    },
+    {
+      name  = "TwitchCallbackUrl",
+      value = var.twitchCallbackUrl
+    }
+  ]
 }
 
 # Todo: Disable shared access on blob
-# More settings for blob
 
-# blob_properties {
-#   delete_retention_policy {
-#     days = 7
-#   }
 
-#   versioning_enabled = true
 
-#   container_delete_retention_policy {
-#     days = 7
-#   }
-# }
-
-# app_settings = {
-#   "PostingQueue__queueServiceUri"                 = azurerm_storage_account.data_storage.primary_queue_endpoint
-#   "PostingQueue"                                  = azurerm_storage_account.data_storage.primary_queue_endpoint        
-#   "ConfigTable"                                   = azurerm_storage_account.data_storage.primary_table_endpoint
-#   "SecretStore"                                   = azurerm_key_vault.key_vault.vault_uri
-#   "StorageAccount"                                = azurerm_storage_account.data_storage.primary_blob_endpoint
-#   "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET"        = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
-#   "TwitchClientId"                                = var.twitchClientId
-#   "TwitchClientSecret"                            = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"   
-#   "TwitchSignatureSecret"                         = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"    
-#   "TwitchCallbackUrl"                             = var.twitchCallbackUrl
-#   "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED"        = 1
-#   "SCM_DO_BUILD_DURING_DEPLOYMENT"                = "false"
-# }
 
 
 
