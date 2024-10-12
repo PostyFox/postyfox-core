@@ -8,6 +8,15 @@ module "dotnet_function_app" {
   resource_group_id    = azurerm_resource_group.rg.id
   resource_group_name  = azurerm_resource_group.rg.name
   plan_name            = "${local.appname}-flex_net${local.hyphen-env}"
+
+  auth_client_id = var.func_app_registered_client_id
+  auth_client_secret_setting_name = "OPENID_PROVIDER_AUTHENTICATION_SECRET"
+  auth_enabled = true
+  auth_openid_well_known_configuration = var.auth_openid_well_known_configuration
+  auth_require_authentication = true
+  auth_require_https = true
+  auth_unauthentication_action = "Return401"
+
   app_settings         = [
     { 
       name  = "PostingQueue__queueServiceUri",
@@ -30,7 +39,7 @@ module "dotnet_function_app" {
       value = azurerm_storage_account.data_storage.primary_blob_endpoint
     },
     {
-      name  = "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET",
+      name  = "OPENID_PROVIDER_AUTHENTICATION_SECRET",
       value = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
     },
     {
@@ -48,35 +57,17 @@ module "dotnet_function_app" {
     {
       name  = "TwitchCallbackUrl",
       value = var.twitchCallbackUrl
+    },
+    {
+     name  =  "APPLICATIONINSIGHTS_CONNECTION_STRING",
+     value = azurerm_application_insights.application_insights.connection_string
     }
   ]
   cors_support_credentials = true
   cors_allowed_origins     = var.cors
 }
 
-#   application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
 
-#   cors {
-#     allowed_origins     = var.cors
-#     support_credentials = true
-#   }
-# }
-
-# auth_settings_v2 {
-#   auth_enabled             = true
-#   forward_proxy_convention = "NoProxy"
-#   http_route_api_prefix    = "/.auth"
-#   require_authentication   = true
-#   require_https            = true
-#   runtime_version          = "~1"
-#   unauthenticated_action   = "Return401"
-#   default_provider         = "AAD_B2C"
-
-#   custom_oidc_v2 {
-#     name                          = "AAD_B2C"
-#     client_id                     = var.func_app_registered_client_id
-#     openid_configuration_endpoint = var.openid_configuration_endpoint
-#   }
 
 #   login {
 #     cookie_expiration_convention      = "FixedTime"

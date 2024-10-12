@@ -44,3 +44,7 @@ variable "twitchClientId" {
 variable "twitchCallbackUrl" {
   type = string
 }
+
+variable "auth_openid_well_known_configuration" {
+  type = string
+}
