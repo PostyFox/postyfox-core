@@ -11,13 +11,32 @@ module "nodejs_function_app" {
   runtime              = "node"
   runtime_version      = "20"
 
-  auth_client_id = var.func_app_registered_client_id
-  auth_client_secret_setting_name = "OPENID_PROVIDER_AUTHENTICATION_SECRET"
-  auth_enabled = true
+  auth_client_id                       = var.func_app_registered_client_id
+  auth_client_secret_setting_name      = "OPENID_PROVIDER_AUTHENTICATION_SECRET"
+  auth_enabled                         = true
   auth_openid_well_known_configuration = var.auth_openid_well_known_configuration
-  auth_require_authentication = true
-  auth_require_https = true
-  auth_unauthentication_action = "Return401"
+  auth_require_authentication          = true
+  auth_require_https                   = true
+  auth_unauthentication_action         = "Return401"
+
+  auth_login_token_store_enabled = true
+  auth_login_token_refresh_hours = 72
+  auth_login_validate_nonce      = true
+  auth_login_logout_endpoint     = "/.auth/logout"
+
+  cors_support_credentials = true
+  cors_allowed_origins     = var.cors
+
+  app_settings = [
+    {
+      name  = "SecretStore",
+      value = azurerm_key_vault.key_vault.vault_uri
+    },
+    {
+      name  = "OPENID_PROVIDER_AUTHENTICATION_SECRET",
+      value = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    }
+  ]
 }
 
 # resource "azurerm_linux_function_app" "nodejs_func_app" {
