@@ -14,7 +14,7 @@ module "nodejs_function_app" {
   auth_client_id                       = var.func_app_registered_client_id
   auth_client_secret_setting_name      = "OPENID_PROVIDER_AUTHENTICATION_SECRET"
   auth_enabled                         = true
-  auth_openid_well_known_configuration = var.auth_openid_well_known_configuration
+  auth_openid_well_known_configuration = var.openid_configuration_endpoint
   auth_require_authentication          = true
   auth_require_https                   = true
   auth_unauthentication_action         = "Return401"
