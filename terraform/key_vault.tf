@@ -18,23 +18,23 @@ resource "azurerm_key_vault" "key_vault" {
 # A secret called client secret should be added to this vault :)
 
 // These are needed for the portal to not be an idiot
-# resource "azurerm_role_assignment" "dotnet_fa_user" {
-#   scope                = azurerm_key_vault.key_vault.id
-#   role_definition_name = "Key Vault Secrets User"
-#   principal_id         = module.dotnet_function_app.identity_id
-# }
+resource "azurerm_role_assignment" "dotnet_fa_user" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.dotnet_function_app.identity_id
+}
 
-# resource "azurerm_role_assignment" "nodejs_fa_user" {
-#   scope                = azurerm_key_vault.key_vault.id
-#   role_definition_name = "Key Vault Secrets User"
-#   principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
-# }
+resource "azurerm_role_assignment" "nodejs_fa_user" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.nodejs_function_app.identity_id
+}
 
-# resource "azurerm_role_assignment" "posting_fa_user" {
-#   scope                = azurerm_key_vault.key_vault.id
-#   role_definition_name = "Key Vault Secrets User"
-#   principal_id         = module.dotnet_function_app.identity_id
-# }
+resource "azurerm_role_assignment" "posting_fa_user" {
+  scope                = azurerm_key_vault.key_vault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.dotnet_function_app.identity_id
+}
 
 resource "azurerm_monitor_diagnostic_setting" "keyvault" {
   name                       = "${local.appname}-logging-keyvault${local.hyphen-env}"

@@ -31,3 +31,7 @@ provider "azurerm" {
     }
   }
 }
+
+provider "azapi" {
+  enable_preflight = true
+}
