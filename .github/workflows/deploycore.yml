@@ -119,10 +119,6 @@ jobs:
       run: dotnet build -c Release
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
 
-    - name: Build dotnet Testing Function App
-      run: dotnet build -c Release
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/TestingFunc   
-
     - name: Publish dotnet Core Function App
       run: dotnet publish -o /home/runner/work/output/dotnet-fa /p:UseAppHost=false
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
@@ -130,10 +126,6 @@ jobs:
     - name: Publish dotnet Posting Function App
       run: dotnet publish -o /home/runner/work/output/dotnet-posting /p:UseAppHost=false
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
-
-    - name: Publish dotnet Testing Function App
-      run: dotnet publish -o /home/runner/work/output/testingfunc /p:UseAppHost=false
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/TestingFunc     
 
     - uses: actions/upload-artifact@v4
       name: Upload DotNet Core Function App Artifact
@@ -148,13 +140,6 @@ jobs:
       with:
         name: dotnet-posting
         path: /home/runner/work/output/dotnet-posting      
-
-    - uses: actions/upload-artifact@v4
-      name: Upload DotNet Testing Function App Artifact
-      id: upload-dotnet-testingfa
-      with:
-        name: dotnet-testing
-        path: /home/runner/work/output/testingfunc    
 
     - name: Setup Node v20
       uses: actions/setup-node@v4
@@ -209,12 +194,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: nodejs-fa
-          path: ./artifacts/nodejs-fa
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: dotnet-testing
-          path: ./artifacts/dotnet-testing         
+          path: ./artifacts/nodejs-fa 
 
       - name: Unzip artifact for deployment
         run: unzip ./artifacts/nodejs-fa/nodejs-fa.zip
