@@ -96,6 +96,21 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Download MS Key for apt-get
+      run: curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
+   
+    - name: Add MS Key
+      run: sudo mv microsoft.gpg /etc/apt/trusted.gpg.d/microsoft.gpg
+
+    - name: Add source
+      run: sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-$(lsb_release -cs 2>/dev/null)-prod $(lsb_release -cs 2>/dev/null) main" > /etc/apt/sources.list.d/dotnetdev.list'
+
+    - name: Refresh apt
+      run: sudo apt-get update
+
+    - name: Install Function App Core Tools
+      run: sudo apt-get install azure-functions-core-tools-4 -y
+
     # Build the .NET core Function App
     - name: Setup .NET Core 8.x
       uses: actions/setup-dotnet@v4
