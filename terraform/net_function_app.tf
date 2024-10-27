@@ -69,6 +69,10 @@ module "dotnet_function_app" {
     {
       name  = "APPLICATIONINSIGHTS_CONNECTION_STRING",
       value = azurerm_application_insights.application_insights.connection_string
+    },
+    {
+      name  = "FUNCTIONS_WORKER_RUNTIME",
+      value = "dotnet-isolated"     
     }
   ]
 }
