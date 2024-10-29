@@ -22,6 +22,9 @@ module "dotnet_function_app" {
   auth_login_validate_nonce      = true
   auth_login_logout_endpoint     = "/.auth/logout"
 
+  runtime = "dotnet-isolated"
+  runtime_version = "8.0"
+
   cors_support_credentials = true
   cors_allowed_origins     = var.cors
 
@@ -69,10 +72,6 @@ module "dotnet_function_app" {
     {
       name  = "APPLICATIONINSIGHTS_CONNECTION_STRING",
       value = azurerm_application_insights.application_insights.connection_string
-    },
-    {
-      name  = "FUNCTIONS_WORKER_RUNTIME",
-      value = "dotnet-isolated"     
     }
   ]
 }
