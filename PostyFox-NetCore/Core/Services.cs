@@ -33,12 +33,6 @@ namespace PostyFox_NetCore
             _secretStore = secretClientFactory.CreateClient("SecretStore");
         }
 
-        public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
-        {
-            _logger = loggerFactory.CreateLogger<Services>();
-            _configTable = clientFactory.CreateClient("ConfigTable");
-        }
-
         [Function("Services_Ping")]
         public HttpResponseData Ping([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {

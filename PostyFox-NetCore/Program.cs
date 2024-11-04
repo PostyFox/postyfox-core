@@ -7,6 +7,7 @@ using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Twitch.Net.Api;
 using Twitch.Net.EventSub;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 // Load the configuration from the environment variables
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable");
@@ -23,6 +24,10 @@ var host = new HostBuilder()
     .ConfigureFunctionsWebApplication(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
     {
+        services.Configure<KestrelServerOptions>(options =>
+        {
+            options.AllowSynchronousIO = true;
+        });
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
         services.AddAzureClients(clientBuilder =>
