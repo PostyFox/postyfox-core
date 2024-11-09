@@ -143,7 +143,7 @@ jobs:
     - name: Upload the dotnet Function App
       shell: pwsh
       run: |
-        func azure functionapp publish postyfox-func-app-dotnet-dev --csharp --nozip
+        func azure functionapp publish postyfox-func-app-dotnet-dev --worker-runtime dotnet-isolated --nozip
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Posting Function App
