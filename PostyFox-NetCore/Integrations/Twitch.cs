@@ -77,6 +77,8 @@ namespace PostyFox_NetCore.Integrations
                     {
                         // No user found
                         _logger.LogInformation("No user found for: {user} when attempting to register subscription", registerSub.channelName);
+                        response = req.CreateResponse(HttpStatusCode.NotFound);
+                        return response;
                     }
                     else
                     {
@@ -136,9 +138,19 @@ namespace PostyFox_NetCore.Integrations
                         if (twitchModel.HasValue)
                         {
                             var twitchResult = await _eventSubService.Subscribe(twitchModel.ValueOrFailure());
-                            
+                            if (twitchResult.AlreadyRegistered)
+                            {
+                                _logger.LogInformation("Subscription already registered for {user}", user.Id);
+                            }
+                            else
+                            {
+                                _logger.LogInformation("Subscription registered for {user}", user.Id);
+                            }
                         }
-                        
+
+                        // We should get a callback from Twitch at this point checking our callback url ... at that point we know we will get notifications going forwards.
+
+                        response = req.CreateResponse(HttpStatusCode.OK);
                         return response;
                     }
                 }
@@ -146,5 +158,6 @@ namespace PostyFox_NetCore.Integrations
             response = req.CreateResponse(HttpStatusCode.Unauthorized);
             return response;
         }
+   
     }
 }

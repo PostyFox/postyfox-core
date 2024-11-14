@@ -117,7 +117,7 @@ namespace PostyFox_NetCore
             }
         }
 
-        [OpenApiOperation(tags: ["services"], Summary = "Delete an API token", Description = "Delete an API token from a user profile", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiOperation(tags: ["profile"], Summary = "Delete an API token", Description = "Delete an API token from a user profile", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.OK, Summary = "The result of the delete operation", Description = "")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(ProfileAPIKeyDTO), Required = true)]

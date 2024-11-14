@@ -7,3 +7,6 @@ kv_logs = ["AuditEvent"]
 
 cors = ["https://cp.postyfox.com"]
 allowed_ips = []
+
+twitchClientId    = "kuzdmn0w740xkkyuteg5yt6o0fybrq"
+twitchCallbackUrl = "https://post.postyfox.com/api/Twitch_SubscriptionCallBack"

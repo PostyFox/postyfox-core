@@ -17,30 +17,23 @@ resource "azurerm_key_vault" "key_vault" {
 
 # A secret called client secret should be added to this vault :)
 
-resource "azurerm_role_assignment" "secret_permissions" {
-  scope                = azurerm_key_vault.key_vault.id
-  role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = azurerm_user_assigned_identity.func_apps_uai.principal_id
-}
-
-
 // These are needed for the portal to not be an idiot
 resource "azurerm_role_assignment" "dotnet_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
+  principal_id         = module.dotnet_function_app.identity_id
 }
 
 resource "azurerm_role_assignment" "nodejs_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
+  principal_id         = module.nodejs_function_app.identity_id
 }
 
 resource "azurerm_role_assignment" "posting_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
+  principal_id         = module.posting_function_app.identity_id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "keyvault" {

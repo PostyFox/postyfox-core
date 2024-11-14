@@ -1,60 +1,81 @@
 # Deploy a DotNet Core runtime Linux Function App
-resource "azurerm_linux_function_app" "dotnet_funcpost_app" {
-  name                = "${local.appname}-func-app-post${local.hyphen-env}"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
+module "posting_function_app" {
+  source = "github.com/aneillans/azure-flex-functionapp/terraform"
 
-  https_only = true
+  storage_account_name = "${local.appname}funcpststr${var.environment}"
+  function_app_name    = "${local.appname}-func-app-post${local.hyphen-env}"
+  location             = azurerm_resource_group.rg.location
+  resource_group_id    = azurerm_resource_group.rg.id
+  resource_group_name  = azurerm_resource_group.rg.name
+  plan_name            = "${local.appname}-flex_post${local.hyphen-env}"
 
-  storage_account_name          = azurerm_storage_account.linux_funcpost_storage.name
-  storage_uses_managed_identity = true
-  service_plan_id               = azurerm_service_plan.linux_func_service_plan.id
+  auth_client_id                       = var.func_app_registered_client_id
+  auth_client_secret_setting_name      = "OPENID_PROVIDER_AUTHENTICATION_SECRET"
+  auth_enabled                         = true
+  auth_openid_well_known_configuration = var.openid_configuration_endpoint
+  auth_require_authentication          = true
+  auth_require_https                   = true
+  auth_unauthentication_action         = "Return401"
 
-  identity {
-    type = "SystemAssigned, UserAssigned"
-    identity_ids = [ azurerm_user_assigned_identity.func_apps_uai.id ]
-  }
+  auth_login_token_store_enabled = true
+  auth_login_token_refresh_hours = 72
+  auth_login_validate_nonce      = true
+  auth_login_logout_endpoint     = "/.auth/logout"
 
-  app_settings = {
-    "PostingQueue__queueServiceUri"                 = azurerm_storage_account.data_storage.primary_queue_endpoint    
-    "PostingQueue"                                  = azurerm_storage_account.data_storage.primary_queue_endpoint    
-    "ConfigTable"                                   = azurerm_storage_account.data_storage.primary_table_endpoint
-    "SecretStore"                                   = azurerm_key_vault.key_vault.vault_uri
-    "StorageAccount"                                = azurerm_storage_account.data_storage.primary_blob_endpoint
-    "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET"        = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
-    "TwitchClientId"                                = var.twitchClientId
-    "TwitchClientSecret"                            = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"   
-    "TwitchSignatureSecret"                         = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"    
-    "TwitchCallbackUrl"                             = var.twitchCallbackUrl
-    "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID"  = azurerm_user_assigned_identity.func_apps_uai.id
-    "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED"        = 1
-    "SCM_DO_BUILD_DURING_DEPLOYMENT"                = "false"
-  }
+  cors_support_credentials = true
+  cors_allowed_origins     = var.cors
 
-  site_config {
-    application_stack {
-      dotnet_version              = "8.0"
-      use_dotnet_isolated_runtime = true
+  app_settings = [
+    {
+      name  = "PostingQueue__queueServiceUri",
+      value = azurerm_storage_account.data_storage.primary_queue_endpoint
+    },
+    {
+      name  = "PostingQueue",
+      value = azurerm_storage_account.data_storage.primary_queue_endpoint
+    },
+    {
+      name  = "ConfigTable",
+      value = azurerm_storage_account.data_storage.primary_table_endpoint
+    },
+    {
+      name  = "SecretStore",
+      value = azurerm_key_vault.key_vault.vault_uri
+    },
+    {
+      name  = "StorageAccount",
+      value = azurerm_storage_account.data_storage.primary_blob_endpoint
+    },
+    {
+      name  = "OPENID_PROVIDER_AUTHENTICATION_SECRET",
+      value = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    },
+    {
+      name  = "TwitchClientId",
+      value = var.twitchClientId
+    },
+    {
+      name  = "TwitchClientSecret",
+      value = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"
+    },
+    {
+      name  = "TwitchSignatureSecret",
+      value = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"
+    },
+    {
+      name  = "TwitchCallbackUrl",
+      value = var.twitchCallbackUrl
+    },
+    {
+      name  = "APPLICATIONINSIGHTS_CONNECTION_STRING",
+      value = azurerm_application_insights.application_insights.connection_string
     }
-
-    application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
-
-    cors {
-      allowed_origins = ["*"]
-    }
-  }
-
-  lifecycle {
-    ignore_changes = [
-      app_settings["WEBSITE_ENABLE_SYNC_UPDATE_SITE"],
-      app_settings["WEBSITE_RUN_FROM_PACKAGE"]
-    ]
-  }
+  ]
 }
 
 resource "azurerm_app_service_custom_hostname_binding" "dotnet_funcpost_binding" {
   hostname            = "${local.portal-prefix}${local.posting-address}"
-  app_service_name    = azurerm_linux_function_app.dotnet_funcpost_app.name
+  app_service_name    = module.posting_function_app.name
   resource_group_name = azurerm_resource_group.rg.name
 
   lifecycle {
@@ -72,34 +93,34 @@ resource "azurerm_app_service_certificate_binding" "dotnet_funcpost_cert_binding
   ssl_state           = "SniEnabled"
 }
 
-// Logging
+# // Logging
 
-resource "azurerm_monitor_diagnostic_setting" "dotnet_funcpost_app" {
-  name                       = "${local.appname}-logging-app-dotnetpost${local.hyphen-env}"
-  target_resource_id         = azurerm_linux_function_app.dotnet_funcpost_app.id
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
+# resource "azurerm_monitor_diagnostic_setting" "dotnet_funcpost_app" {
+#   name                       = "${local.appname}-logging-app-dotnetpost${local.hyphen-env}"
+#   target_resource_id         = azurerm_linux_function_app.dotnet_funcpost_app.id
+#   log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
 
-  metric {
-    category = "AllMetrics"
-    enabled  = true
-  }
+#   metric {
+#     category = "AllMetrics"
+#     enabled  = true
+#   }
 
-  dynamic "enabled_log" {
-    for_each = var.app_logs
-    content {
-      category = enabled_log.value
-    }
-  }
-}
+#   dynamic "enabled_log" {
+#     for_each = var.app_logs
+#     content {
+#       category = enabled_log.value
+#     }
+#   }
+# }
 
-resource "azurerm_role_assignment" "funcpost-data-posting" {
-  scope                = azurerm_storage_account.linux_funcpost_storage.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
-}
+# resource "azurerm_role_assignment" "funcpost-data-posting" {
+#   scope                = azurerm_storage_account.linux_funcpost_storage.id
+#   role_definition_name = "Storage Blob Data Contributor"
+#   principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
+# }
 
-resource "azurerm_role_assignment" "funcpost-queue-posting" {
-  scope                = azurerm_storage_account.linux_funcpost_storage.id
-  role_definition_name = "Storage Queue Data Contributor"
-  principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
-}
+# resource "azurerm_role_assignment" "funcpost-queue-posting" {
+#   scope                = azurerm_storage_account.linux_funcpost_storage.id
+#   role_definition_name = "Storage Queue Data Contributor"
+#   principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
+# }

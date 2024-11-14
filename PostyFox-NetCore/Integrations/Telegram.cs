@@ -39,21 +39,6 @@ namespace PostyFox_NetCore.Integrations
             apiHash = _secretStore.GetSecret("TelegramApiHash").Value.Value;
         }
 
-        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
-        {
-            // This constructor will be used when there is no secretStore provided by dependency injection - i.e. we are running locally.
-
-            _logger = loggerFactory.CreateLogger<Telegram>();
-            _configTable = clientFactory.CreateClient("ConfigTable");
-
-#pragma warning disable CS8604 // Possible null reference argument.
-            apiId = int.Parse(Environment.GetEnvironmentVariable("TelegramApiID"));
-#pragma warning restore CS8604 // Possible null reference argument.
-#pragma warning disable CS8601 // Possible null reference assignment.
-            apiHash = Environment.GetEnvironmentVariable("TelegramApiHash");
-#pragma warning restore CS8601 // Possible null reference assignment.
-        }
-
         [Function("Telegram_Ping")]
         public HttpResponseData Ping([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {

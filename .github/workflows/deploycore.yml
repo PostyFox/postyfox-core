@@ -86,56 +86,69 @@ jobs:
         ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}      
 
-  codebuild:
-    name: 'Code Build'
+  code:
+    name: 'Code Build + Deploy'
+    needs: [terraform]
     runs-on: ubuntu-latest
-    outputs:
-      output1: ${{ steps.upload-dotnet-fa.outputs.artifact-id }}
 
     steps:
+    - name: Azure Login
+      shell: pwsh
+      run: |
+        az login --service-principal -u $env:ARM_CLIENT_ID -p $env:ARM_CLIENT_SECRET --tenant $env:ARM_TENANT_ID
+      env:
+        ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
+
     - name: Checkout
       uses: actions/checkout@v4
 
-    # Build the .NET core Function App
+    - name: Download MS Key for apt-get
+      run: curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
+    
+    - name: Add MS Key
+      run: sudo mv microsoft.gpg /etc/apt/trusted.gpg.d/microsoft.gpg
+
+    - name: Add source
+      run: sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-$(lsb_release -cs 2>/dev/null)-prod $(lsb_release -cs 2>/dev/null) main" > /etc/apt/sources.list.d/dotnetdev.list'
+
+    - name: Refresh apt
+      run: sudo apt-get update
+
+    - name: Install Function App Core Tools
+      run: sudo apt-get install azure-functions-core-tools-4 -y
+
     - name: Setup .NET Core 8.x
       uses: actions/setup-dotnet@v4
       with:
-        # Semantic version range syntax or exact version of a dotnet version
-        dotnet-version: '8.x'
+        dotnet-version: '8.0.x'
+
+    - name: Setup .NET Core (for inproc extensions)
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'      
 
     - name: Install dotnet Core dependencies
       run: dotnet restore
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Core Function App
-      run: dotnet build -c Release -v d
+      run: dotnet build -c Release
+      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
+
+    # Run the Func command to deploy, as this actually works for Flex Consumption Apps 
+
+    - name: Upload the dotnet Function App
+      shell: pwsh
+      run: |
+        func azure functionapp publish postyfox-func-app-dotnet-dev --worker-runtime dotnet-isolated --nozip
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Posting Function App
-      run: dotnet build -c Release -v d
+      run: dotnet build -c Release
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
-
-    - name: Publish dotnet Core Function App
-      run: dotnet publish -v d -o /home/runner/work/output/dotnet-fa
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
-
-    - name: Publish dotnet Posting Function App
-      run: dotnet publish -v d -o /home/runner/work/output/dotnet-posting
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting
-
-    - uses: actions/upload-artifact@v4
-      name: Upload DotNet Core Function App Artifact
-      id: upload-dotnet-fa
-      with:
-        name: dotnet-fa
-        path: /home/runner/work/output/dotnet-fa
-
-    - uses: actions/upload-artifact@v4
-      name: Upload DotNet Posting Function App Artifact
-      id: upload-dotnet-postingfa
-      with:
-        name: dotnet-posting
-        path: /home/runner/work/output/dotnet-posting      
 
     - name: Setup Node v20
       uses: actions/setup-node@v4
@@ -149,79 +162,3 @@ jobs:
     - name: npm build
       run: npm run build
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
-
-    - name: Zip NodeJS Artifact
-      run: zip -r nodejs-fa.zip . --exclude @.funcignore --exclude .funcignore
-      working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
-
-    - uses: actions/upload-artifact@v4
-      name: Upload NodeJS Function App Artifact
-      id: upload-nodejs-fa
-      with:
-        name: nodejs-fa
-        path: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript/nodejs-fa.zip
-
-  deploy:
-    needs: [terraform, codebuild]
-    name: 'Deployment of Code'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Azure Login
-        shell: pwsh
-        run: |
-          az login --service-principal -u $env:ARM_CLIENT_ID -p $env:ARM_CLIENT_SECRET --tenant $env:ARM_TENANT_ID
-        env:
-          ARM_CLIENT_ID: ${{ vars.ARM_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-          ARM_TENANT_ID: ${{ vars.ARM_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: dotnet-fa
-          path: ./artifacts/dotnet-fa
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: dotnet-posting
-          path: ./artifacts/dotnet-posting
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: nodejs-fa
-          path: ./artifacts/nodejs-fa
-
-      - name: Unzip artifact for deployment
-        run: unzip ./artifacts/nodejs-fa/nodejs-fa.zip
-
-      - name: Listing
-        run: |
-          pwd
-          ls -laR
-
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 'Upload Dot Net Function App'
-        uses: Azure/functions-action@v1.5.2
-        id: fa
-        with:
-          app-name: postyfox-func-app-dotnet-${{ inputs.targetEnvironment }}
-          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-fa/.'
-
-      - name: 'Upload Dot Net Posting Function App'
-        uses: Azure/functions-action@v1.5.2
-        id: posting-fa
-        with:
-          app-name: postyfox-func-app-post-${{ inputs.targetEnvironment }}
-          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/dotnet-posting/.'
-
-      - name: 'Upload NodeJS Function App'
-        uses: Azure/functions-action@v1.5.2
-        id: nfa
-        with:
-          app-name: postyfox-func-app-nodejs-${{ inputs.targetEnvironment }}
-          respect-funcignore: true
-          package: '/home/runner/work/postyfox-core/postyfox-core/artifacts/nodejs-fa/.'

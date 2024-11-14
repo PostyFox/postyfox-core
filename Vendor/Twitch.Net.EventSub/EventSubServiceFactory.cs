@@ -57,6 +57,6 @@ public static class EventSubServiceFactory
             
         serviceCollection.TryAddSingleton<ITokenResolver, ClientCredentialTokenResolver>();
         serviceCollection.TryAddSingleton<EventSubModelConverter>();
-        serviceCollection.TryAddSingleton<IEventSubService, EventSubService>();
+        serviceCollection.TryAddSingleton<IEventSubService2, EventSubService>();
     }
 }

@@ -3,8 +3,6 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Optional;
@@ -12,11 +10,10 @@ using Optional.Unsafe;
 using Twitch.Net.EventSub.Events;
 using Twitch.Net.EventSub.Models;
 using Twitch.Net.Shared.Credential;
-using Twitch.Net.Shared.Extensions;
 
 namespace Twitch.Net.EventSub;
 
-public class EventSubService : IEventSubService
+public class EventSubService : IEventSubService2
 {
     private readonly ILogger<EventSubService> _logger;
     private readonly IHttpClientFactory _factory;
@@ -45,47 +42,46 @@ public class EventSubService : IEventSubService
 
     public IEventSubEventHandler Events => _eventHandler;
 
-    public async Task<IActionResult> Handle(HttpRequest request)
+    public SubscribeCallbackResponse Handle(HttpHeaders headers, string raw)
     {
         try
         {
-            var type = request.Headers[EventSubHeaderConst.MessageType].ToString();
-            var raw = await request.GetRawBodyStringAsync(); // we need the raw request for "hmac verification"
-            if (!HandleVerification(request.Headers, raw, out var verification))
-                return new BadRequestResult();
-                
+            var type = headers.GetValues(EventSubHeaderConst.MessageType).FirstOrDefault();
+            if (!HandleVerification(headers, raw, out var verification))
+                return new SubscribeCallbackResponse(HttpStatusCode.BadRequest);
+
             switch (type)
             {
                 case "webhook_callback_verification":
-                    return new OkObjectResult(verification.Challenge); // HandleVerification handles this indirectly
+                    return new SubscribeCallbackResponse(HttpStatusCode.OK, verification); // HandleVerification handles this indirectly
                 case "notification":
-                    HandleNotification(request, raw);
-                    return new OkResult();
+                    HandleNotification(headers, raw);
+                    return new SubscribeCallbackResponse(HttpStatusCode.OK);
                 case "revocation":
-                    return new OkResult(); // we do not do anything for now, but at least it is being "handled"
+                    return new SubscribeCallbackResponse(HttpStatusCode.OK); // we do not do anything for now, but at least it is being "handled"
                 default:
                     // so we can handle future stuff, in-case twitch add something new we will get an information log about it.
                     _logger.LogInformation("The event type {Type} of EventSub was not being handled", type);
-                    return new BadRequestResult();
+                    return new SubscribeCallbackResponse(HttpStatusCode.BadRequest);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to handle request");
-            return new BadRequestResult();
+            return new SubscribeCallbackResponse(HttpStatusCode.BadRequest);
         }
     }
-
-    private bool HandleVerification(IHeaderDictionary headers, string raw, out SubscribeCallbackModel model)
+    //Changed this method to public
+    public bool HandleVerification(HttpHeaders headers, string raw, out SubscribeCallbackModel model)
     {
         var hmac =
-            headers[EventSubHeaderConst.MessageId] +
-            headers[EventSubHeaderConst.MessageTimestamp] +
+            headers.GetValues(EventSubHeaderConst.MessageId).FirstOrDefault() +
+            headers.GetValues(EventSubHeaderConst.MessageTimestamp).FirstOrDefault() +
             raw;
         var sign = $"sha256={GetHash(hmac, _config.SignatureSecret)}";
 
         model = JsonSerializer.Deserialize<SubscribeCallbackModel>(raw)!;
-        return sign == headers[EventSubHeaderConst.MessageSignature];
+        return sign == headers.GetValues(EventSubHeaderConst.MessageSignature).FirstOrDefault();
     }
         
     private static string GetHash(string text, string key)
@@ -101,10 +97,10 @@ public class EventSubService : IEventSubService
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
     }
 
-    private void HandleNotification(HttpRequest request, string raw)
+    private void HandleNotification(HttpHeaders headers, string raw)
     {
-        var type = request.Headers[EventSubHeaderConst.SubscriptionType].ToString();
-        var version = request.Headers[EventSubHeaderConst.SubscriptionVersion].ToString();
+        var type = headers.GetValues(EventSubHeaderConst.SubscriptionType).FirstOrDefault("");
+        var version = headers.GetValues(EventSubHeaderConst.SubscriptionVersion).FirstOrDefault();
         var model = _converter.GetModel(raw, type);
 
         if (!model.HasValue)
@@ -200,7 +196,7 @@ public class EventSubService : IEventSubService
             if (!string.IsNullOrWhiteSpace(pagination))
                 parameters.Add("after", pagination);
             if (parameters.Any())
-                path = $"{path}?{parameters.Select(x => $"{x.Key}={x.Value}").Join('&')}";
+                path = $"{path}?{String.Join('&',parameters.Select(x => $"{x.Key}={x.Value}"))}";
             
             var request = new HttpRequestMessage(HttpMethod.Get, path);
 

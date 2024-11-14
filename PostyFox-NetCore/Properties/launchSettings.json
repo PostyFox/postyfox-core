@@ -2,8 +2,22 @@
   "profiles": {
     "PostyFox_NetCore": {
       "commandName": "Project",
-      "commandLineArgs": "--port 7150",
-      "launchBrowser": false
+      "commandLineArgs": "--port 7150"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker",
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "environmentVariables": {
+        "ConfigTable": "https://postyfoxdatastordev.table.core.windows.net/",
+        "StorageAccount": "https://postyfoxdatastordev.blob.core.windows.net/",
+        "SecretStore": "https://postyfox-kv-dev.vault.azure.net/",
+        "TwitchCallbackUrl": "https://localhost/",
+        "TwitchClientId": "tttt",
+        "TelegramApiID": "11111"
+      },
+      "DockerfileRunArguments": "--init",
+      "httpPort": 32029,
+      "useSSL": false
     }
   }
 }

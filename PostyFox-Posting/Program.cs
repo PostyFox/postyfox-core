@@ -31,7 +31,7 @@ if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
 }
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults(worker => worker.UseNewtonsoftJson())
+    .ConfigureFunctionsWebApplication(worker => worker.UseNewtonsoftJson())
     .ConfigureServices(services =>
     {
         services.AddAzureClients(clientBuilder =>
@@ -50,19 +50,26 @@ var host = new HostBuilder()
             clientBuilder.UseCredential(new DefaultAzureCredential(defaultCredentialOptions));
         });
 
-        services.AddTwitchEventSubService(config =>
+        if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret) &&
+            !string.IsNullOrEmpty(twitchCallbackUrl) && !string.IsNullOrEmpty(twitchSignatureSecret))
         {
-            config.ClientId = twitchClientId;
-            config.ClientSecret = twitchClientSecret;
-            config.CallbackUrl = twitchCallbackUrl;
-            config.SignatureSecret = twitchSignatureSecret;
-        });
+            services.AddTwitchEventSubService(config =>
+            {
+                config.ClientId = twitchClientId;
+                config.ClientSecret = twitchClientSecret;
+                config.CallbackUrl = twitchCallbackUrl;
+                config.SignatureSecret = twitchSignatureSecret;
+            });
 
-        services.AddTwitchApiClient(config =>
+            services.AddTwitchApiClient(config =>
+            {
+                config.ClientId = twitchClientId;
+                config.ClientSecret = twitchClientSecret;
+            });
+        } else
         {
-            config.ClientId = twitchClientId;
-            config.ClientSecret = twitchClientSecret;
-        });
+            Console.Write("TWITCH NOT FULLY CONFIGURED");
+        }
 
         //services.AddHostedService<TwitchNotificationService>();
         //services.AddTransient<EventSubBuilder>();

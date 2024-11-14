@@ -7,6 +7,7 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using Twitch.Net.EventSub;
+using Twitch.Net.EventSub.Models;
 
 namespace PostyFox_Posting
 {
@@ -16,9 +17,9 @@ namespace PostyFox_Posting
         private readonly TableServiceClient _configTable;
         private readonly SecretClient? _secretStore;
         private readonly BlobServiceClient _blobStorageAccount;
-        private readonly IEventSubService _eventSubService;
+        private readonly IEventSubService2 _eventSubService;
 
-        public Twitch(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory, IEventSubService eventSubService)
+        public Twitch(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory, IEventSubService2 eventSubService)
         {
             _logger = loggerFactory.CreateLogger<Twitch>();
             _configTable = clientFactory.CreateClient("ConfigTable");
@@ -32,38 +33,41 @@ namespace PostyFox_Posting
         }
 
 
-        [Function("Twitch_Callback")]
-        public async Task<HttpResponseData> Callback([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+        [Function("Twitch_SubscriptionCallBack")]
+        public async Task<HttpResponseData> Callback([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequestData req,
+            FunctionContext executionContext)
         {
-            // Extract the Twitch headers
-            var messageType = req.Headers.GetValues(EventSubHeaderConst.MessageType).FirstOrDefault();
-            var messageId = req.Headers.GetValues(EventSubHeaderConst.MessageId).FirstOrDefault();
+            string? messageType = req.Headers.GetValues(EventSubHeaderConst.MessageType).FirstOrDefault();
+            string? messageId = req.Headers.GetValues(EventSubHeaderConst.MessageId).FirstOrDefault();
+            string[] requestList = Array.Empty<string>();
 
             var response = req.CreateResponse(HttpStatusCode.OK);
 
+            // For notification events, we need to keep track of duplicate requests.
             if (messageType != null && messageId != null && messageType.ToLower() == "notification")
             {
                 _configTable.CreateTableIfNotExists("TwitchRequests");
                 var body = await (new StreamReader(req.Body).ReadToEndAsync());
 
-                //        // Check for duplicated requests (Twitch can sometimes send multiple, so check ID and drop dupes)
-                //        if (TwitchHelpers.RequestLogger.LogRequest("", messageId, _configTable.GetTableClient("TwitchRequests")))
-                //        {
-                //            // Log
-                //            _logger.LogInformation("Twitch Callback received {0}: {1}", messageId, body);
+                // Check for duplicated requests (Twitch can sometimes send multiple, so check ID and drop dupes)
+                if (TwitchHelpers.RequestLogger.LogRequest("", messageId, _configTable.GetTableClient("TwitchRequests")))
+                {
+                    // If we get here it wasnt a duplicate, so get on with raising it
+                    _logger.LogInformation("Twitch Callback received {0}: {1}", messageId, body);
+                    SubscribeCallbackResponse result = _eventSubService.Handle(req.Headers, body);
 
-                //            // Decode and validate
-                //            _eventSubService.Handle(req)
+                    // TODO: LOAD TEMPLATE DATA
+                    // TODO: ADD TO THE QUEUE
 
-                //            // Queue up whatever we need to go notify
-
-                //        }
+                    string responseBody = result.CallBack.Challenge ?? "";
+                    HttpResponseData resp = req.CreateResponse(result.StatusCode);
+                    resp.Headers.Add("content-type", "text/plain");
+                    resp.WriteString(responseBody);
+                    return resp;
+                }
             }
 
-            // Send back OK (otherwise Twitch has a hissy fit and kills our service subscriptions off)
-
-            return response;
+            return req.CreateResponse(HttpStatusCode.OK);
         }
-
     }
 }

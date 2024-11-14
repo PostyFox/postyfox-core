@@ -18,6 +18,8 @@ public class ApiHelix : AbstractApiBase, IApiHelix
         Config = config;
 
         Users = new Users(this);
+
+        Channels = new Channels(this);
     }
 
     public override string BaseUrl => "https://api.twitch.tv/helix";
@@ -28,4 +30,5 @@ public class ApiHelix : AbstractApiBase, IApiHelix
         
     // API:s
     public Users Users { get; }
+    public Channels Channels { get; }
 }

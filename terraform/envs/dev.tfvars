@@ -5,9 +5,8 @@ openid_configuration_endpoint="https://postyfoxdev.b2clogin.com/postyfoxdev.onmi
 app_logs = ["FunctionAppLogs"]
 kv_logs = ["AuditEvent"]
 
-cors = ["https://dev.cp.postyfox.com", "http://localhost:4200"]
+cors = ["https://dev.cp.postyfox.com", "http://localhost:4200", "https://portal.azure.com"]
 allowed_ips = ["81.187.251.125"]
 
-
 twitchClientId    = "kuzdmn0w740xkkyuteg5yt6o0fybrq"
-twitchCallbackUrl = "https://api.dev.postyfox.com/api/Twitch_Callback"
+twitchCallbackUrl = "https://dev.post.postyfox.com/api/Twitch_SubscriptionCallBack"

@@ -3,8 +3,10 @@ terraform {
 
   required_providers {
     azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.2.0"
+      source = "hashicorp/azurerm"
+    }
+    azapi = {
+      source = "Azure/azapi"
     }
   }
 
@@ -28,4 +30,8 @@ provider "azurerm" {
       recover_soft_deleted_key_vaults = true
     }
   }
+}
+
+provider "azapi" {
+  enable_preflight = true
 }
