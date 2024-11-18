@@ -42,7 +42,7 @@ resource "azurerm_cdn_frontdoor_origin" "fd_container_origin" {
   cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.fd_origin_group.id
 
   enabled                        = true
-  host_name                      = azurerm_storage_account.spa_storage.primary_web_microsoft_host
+  host_name                      = azurerm_storage_account.spa_storage.primary_web_host
   http_port                      = 80
   https_port                     = 443
   origin_host_header             = azurerm_storage_account.spa_storage.primary_web_host
