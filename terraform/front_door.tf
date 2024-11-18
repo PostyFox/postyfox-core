@@ -1,7 +1,7 @@
 locals {
-  front_door_profile_name         = "SPA"
+  front_door_profile_name         = "${local.appname}-afd-SPA${local.hyphen-env}"
   front_door_sku_name             = "Standard_AzureFrontDoor"
-  front_door_endpoint_name        = "${local.appname}-afd${local.hyphen-env}"
+  front_door_endpoint_name        = "${local.appname}${local.hyphen-env}"
   front_door_origin_group_name    = "OriginGroup"
   front_door_origin_name          = "ContainerOrigin"
   front_door_route_name           = "MyRoute"
