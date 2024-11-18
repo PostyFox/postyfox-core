@@ -27,8 +27,4 @@ resource "azurerm_storage_account" "spa_storage" {
   static_website {
     index_document = "index.html"
   }
-
-  custom_domain {
-    name = "${local.portal-prefix}${local.portal-address}"
-  }
 }
