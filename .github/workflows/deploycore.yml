@@ -157,10 +157,10 @@ jobs:
     - name: Upload the dotnet Function App
       shell: pwsh
       env:
-        ACCESS_TOKEN: ${{ steps.token.AccessToken }}
+        ACCESS_TOKEN: ${{ steps.token.outputs.AccessToken }}
       run: |
         Write-Output $env:ACCESS_TOKEN
-        func azure functionapp publish postyfox-func-app-dotnet-dev --worker-runtime dotnet-isolated --nozip --access-token $token.AccessToken
+        func azure functionapp publish postyfox-func-app-dotnet-dev --worker-runtime dotnet-isolated --nozip --access-token $env:ACCESS_TOKEN
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Posting Function App
