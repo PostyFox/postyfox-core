@@ -143,7 +143,12 @@ jobs:
     - name: Upload the dotnet Function App
       shell: pwsh
       run: |
-        func azure functionapp publish postyfox-func-app-dotnet-dev --worker-runtime dotnet-isolated --nozip
+        Install-Module -Name Msal.PS -Force -AllowClobber
+        $plainTextPassword = $env:API_CLIENT_SECRET
+        $securePassword = $plainTextPassword | ConvertTo-SecureString -AsPlainText -Force
+        $token = Get-MsalToken -ClientId $env:API_CLIENT_ID -ClientSecret $securePassword -TenantId $env:API_TENANT_ID
+
+        func azure functionapp publish postyfox-func-app-dotnet-dev --worker-runtime dotnet-isolated --nozip --access-token $token.AccessToken
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Posting Function App
