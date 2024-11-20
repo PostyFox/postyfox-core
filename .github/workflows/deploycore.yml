@@ -142,6 +142,10 @@ jobs:
 
     - name: Upload the dotnet Function App
       shell: pwsh
+      env:
+        API_CLIENT_ID: ${{ vars.API_CLIENT_ID }}
+        API_TENANT_ID: ${{ vars.API_TENANT_ID }}
+        API_CLIENT_SECRET: ${{ secrets.API_CLIENT_SECRET }}      
       run: |
         Install-Module -Name Msal.PS -Force -AllowClobber
         $plainTextPassword = $env:API_CLIENT_SECRET
@@ -167,3 +171,4 @@ jobs:
     - name: npm build
       run: npm run build
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-TypeScript
+
