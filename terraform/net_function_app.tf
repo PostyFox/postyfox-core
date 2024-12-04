@@ -15,7 +15,7 @@ module "dotnet_function_app" {
   auth_openid_well_known_configuration = var.openid_configuration_endpoint
   auth_require_authentication          = false
   auth_require_https                   = true
-  auth_unauthentication_action         = "Return401"
+  auth_unauthentication_action         = "AllowAnonymous"
 
   auth_login_token_store_enabled = true
   auth_login_token_refresh_hours = 72
