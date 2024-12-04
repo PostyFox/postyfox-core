@@ -138,29 +138,12 @@ jobs:
       run: dotnet build -c Release
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
-    - name: Get Access Token
-      shell: pwsh
-      id: token
-      env:
-        API_CLIENT_ID: ${{ vars.API_CLIENT_ID }}
-        API_TENANT_ID: ${{ vars.API_TENANT_ID }}
-        API_CLIENT_SECRET: ${{ secrets.API_CLIENT_SECRET }}      
-      run: |
-        Install-Module -Name Msal.PS -Force -AllowClobber
-        $plainTextPassword = $env:API_CLIENT_SECRET
-        $securePassword = $plainTextPassword | ConvertTo-SecureString -AsPlainText -Force
-        $token = Get-MsalToken -ClientId $env:API_CLIENT_ID -ClientSecret $securePassword -TenantId $env:API_TENANT_ID
-        Write-Output "AccessToken=$($token.AccessToken)" >> $env:GITHUB_OUTPUT
-
     # Run the Func command to deploy, as this actually works for Flex Consumption Apps 
 
     - name: Upload the dotnet Function App
       shell: pwsh
-      env:
-        ACCESS_TOKEN: ${{ steps.token.outputs.AccessToken }}
       run: |
-        Write-Output $env:ACCESS_TOKEN
-        func azure functionapp publish postyfox-func-app-dotnet-dev --worker-runtime dotnet-isolated --nozip --access-token $env:ACCESS_TOKEN
+        func azure functionapp publish postyfox-func-app-dotnet-dev --worker-runtime dotnet-isolated --nozip
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
 
     - name: Build dotnet Posting Function App
