@@ -9,19 +9,22 @@ locals {
 }
 
 resource "azurerm_cdn_frontdoor_profile" "fd_profile" {
+  count               = var.environment == "prod" ? 1 : 0 
   name                = local.front_door_profile_name
   resource_group_name = azurerm_resource_group.rg.name
   sku_name            = local.front_door_sku_name
 }
 
 resource "azurerm_cdn_frontdoor_endpoint" "fd_endpoint" {
+  count                    = var.environment == "prod" ? 1 : 0 
   name                     = local.front_door_endpoint_name
-  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile.id
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile[0].id
 }
 
 resource "azurerm_cdn_frontdoor_origin_group" "fd_origin_group" {
+  count                    = var.environment == "prod" ? 1 : 0 
   name                     = local.front_door_origin_group_name
-  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile.id
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile[0].id
   session_affinity_enabled = true
 
   load_balancing {
@@ -38,8 +41,9 @@ resource "azurerm_cdn_frontdoor_origin_group" "fd_origin_group" {
 }
 
 resource "azurerm_cdn_frontdoor_origin" "fd_container_origin" {
+  count                         = var.environment == "prod" ? 1 : 0 
   name                          = local.front_door_origin_name
-  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.fd_origin_group.id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.fd_origin_group[0].id
 
   enabled                        = true
   host_name                      = azurerm_storage_account.spa_storage.primary_web_host
@@ -52,10 +56,11 @@ resource "azurerm_cdn_frontdoor_origin" "fd_container_origin" {
 }
 
 resource "azurerm_cdn_frontdoor_route" "fd_route" {
+  count                         = var.environment == "prod" ? 1 : 0 
   name                          = local.front_door_route_name
-  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.fd_endpoint.id
-  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.fd_origin_group.id
-  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.fd_container_origin.id]
+  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.fd_endpoint[0].id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.fd_origin_group[0].id
+  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.fd_container_origin[0].id]
 
   supported_protocols       = ["Http", "Https"]
   patterns_to_match         = ["/*"]
@@ -64,13 +69,14 @@ resource "azurerm_cdn_frontdoor_route" "fd_route" {
   https_redirect_enabled    = true
 
   cdn_frontdoor_custom_domain_ids = [
-    azurerm_cdn_frontdoor_custom_domain.fd_custom_domain.id
+    azurerm_cdn_frontdoor_custom_domain.fd_custom_domain[0].id
    ]
 }
 
 resource "azurerm_cdn_frontdoor_custom_domain" "fd_custom_domain" {
+  count                    = var.environment == "prod" ? 1 : 0 
   name                     = local.front_door_custom_domain_name
-  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile.id
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile[0].id
   host_name                = "${local.portal-prefix}${local.portal-address}"
 
   tls {
