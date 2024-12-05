@@ -28,7 +28,10 @@ resource "azurerm_storage_account" "spa_storage" {
     index_document = "index.html"
   }
 
-  custom_domain {
-    name = "${local.portal-prefix}${local.portal-address}"
+  dynamic "custom_domain" {
+    for_each = (var.environment == "prod" ? [] : [1])
+    content {
+      name = "${local.portal-prefix}${local.portal-address}"
+    }
   }
 }
