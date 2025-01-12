@@ -113,14 +113,14 @@ resource "azurerm_app_service_certificate_binding" "dotnet_funcpost_cert_binding
 #   }
 # }
 
-# resource "azurerm_role_assignment" "funcpost-data-posting" {
-#   scope                = azurerm_storage_account.linux_funcpost_storage.id
-#   role_definition_name = "Storage Blob Data Contributor"
-#   principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
-# }
+resource "azurerm_role_assignment" "postfuncapp-data_storage-blob" {
+  scope                = azurerm_storage_account.data_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = module.posting_function_app.identity_id
+}
 
-# resource "azurerm_role_assignment" "funcpost-queue-posting" {
-#   scope                = azurerm_storage_account.linux_funcpost_storage.id
-#   role_definition_name = "Storage Queue Data Contributor"
-#   principal_id         = azurerm_linux_function_app.dotnet_funcpost_app.identity[0].principal_id
-# }
+resource "azurerm_role_assignment" "postfuncapp-data_storage-table" {
+  scope                = azurerm_storage_account.data_storage.id
+  role_definition_name = "Storage Table Data Contributor"
+  principal_id         = module.posting_function_app.identity_id
+}
