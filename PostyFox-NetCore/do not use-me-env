@@ -1,0 +1,13 @@
+AzureWebJobsDashboard__accountName=postyfoxfuncnetstordev
+AzureWebJobsStorage__accountName=postyfoxfuncnetstordev
+FUNCTIONS_WORKER_RUNTIME=dotnet-isolated
+ConfigTable=https://postyfoxdatastordev.table.core.windows.net/
+PostingQueue=https://postyfoxdatastordev.queue.core.windows.net/
+PostingQueue__queueServiceUri=https://postyfoxdatastordev.queue.core.windows.net/
+StorageAccount=https://postyfoxdatastordev.blob.core.windows.net/
+SecretStore=https://postyfox-kv-dev.vault.azure.net/
+TelegramApiID=23772970
+PostyFoxDevMode=true
+PostyFoxUserID=Womble
+TwitchClientId=kuzdmn0w740xkkyuteg5yt6o0fybrq
+TwitchCallbackUrl=https://dev.post.postyfox.com/api/Twitch_SubscriptionCallBack
