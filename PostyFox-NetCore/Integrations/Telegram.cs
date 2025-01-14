@@ -78,17 +78,10 @@ namespace PostyFox_NetCore.Integrations
                     {
                         string loginPayload = serviceConfig.PhoneNumber;
 
-                        TelegramStore store = new TelegramStore(userId, _blobStorageAccount);
-                        using WTelegram.Client telegramClient = new((val) =>
-                        {
-                            if (val == "api_id") return apiId.ToString();
-                            if (val == "api_hash") return apiHash;
-                            if (val == "phone_number") return loginPayload;
-                            return null;
-                        }, store);
+                        WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount);
                         var response = req.CreateResponse(HttpStatusCode.OK);
                         ValueTask valueTask;
-                        if (telegramClient.UserId != 0)
+                        if (telegramClient != null && telegramClient.UserId != 0)
                         {
                             var t = telegramClient.Login(loginPayload);
                             t.Wait();
@@ -249,8 +242,6 @@ namespace PostyFox_NetCore.Integrations
 #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
 
                     WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount);
-                    var t = telegramClient.Login(serviceConfig.PhoneNumber);
-                    t.Wait();
                     if (telegramClient.User != null)
                     {
                         // We are logged in all authed, so should be good to grab a list of the channels & chats we can post to 
