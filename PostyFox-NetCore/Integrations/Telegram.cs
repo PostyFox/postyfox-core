@@ -225,6 +225,7 @@ namespace PostyFox_NetCore.Integrations
         [Function("Telegram_GetChannelsAndChats")]
         public HttpResponseData GetChannelsAndChats([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
+            HttpResponseData response;
             if (AuthHelper.ValidateAuth(req, _logger))
             {
 
@@ -255,17 +256,26 @@ namespace PostyFox_NetCore.Integrations
                     if (telegramClient.User != null)
                     {
                         // We are logged in all authed, so should be good to grab a list of the channels & chats we can post to 
+                        Dictionary<long, string> chats = new Dictionary<long, string>();
+                        var chatsResult = telegramClient.Messages_GetAllChats();
+                        chatsResult.Wait();
+                        foreach (var chat in chatsResult.Result.chats)
+                        {
+                            chats.Add(chat.Value.ID, chat.Value.Title);
+                        }
 
-
+                        response = req.CreateResponse(HttpStatusCode.OK);
+                        response.WriteAsJsonAsync(chats);
+                        return response;
                     }
                 }
 
-                var response = req.CreateResponse(HttpStatusCode.NotFound); // No configuration saved
+                response = req.CreateResponse(HttpStatusCode.NotFound); // No configuration saved
                 return response;
             }
             else
             {
-                var response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                response = req.CreateResponse(HttpStatusCode.Unauthorized);
                 return response;
             }
         }
