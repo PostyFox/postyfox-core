@@ -259,7 +259,7 @@ namespace PostyFox_NetCore.Integrations
                         response.WriteAsJsonAsync(chats);
                         return response;
                     } else {
-                        response = req.CreateResponse(HttpStatusCode.NotFound);
+                        response = req.CreateResponse(HttpStatusCode.MethodNotAllowed);
                         response.WriteString("{\"error\":\"NotLoggedIn\"}");
                         return response;
 
