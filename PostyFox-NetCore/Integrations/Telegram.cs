@@ -15,6 +15,7 @@ using PostyFox_NetCore.Helpers;
 using TL;
 using PostyFox_DataLayer;
 using static PostyFox_NetCore.Services;
+using System;
 
 namespace PostyFox_NetCore.Integrations
 {
@@ -256,11 +257,16 @@ namespace PostyFox_NetCore.Integrations
                         response = req.CreateResponse(HttpStatusCode.OK);
                         response.WriteAsJsonAsync(chats);
                         return response;
-                    }
-                }
+                    } else {
+                        response = req.CreateResponse(HttpStatusCode.NotFound);
+                        response.WriteString("{\"error\":\"NotLoggedIn\"}");
+                        return response;
 
-                response = req.CreateResponse(HttpStatusCode.NotFound); // No configuration saved
-                return response;
+                    }
+                } else {
+                    response = req.CreateResponse(HttpStatusCode.NotFound); // No configuration saved
+                    return response;
+                }
             }
             else
             {
