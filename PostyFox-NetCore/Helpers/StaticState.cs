@@ -18,6 +18,11 @@ namespace PostyFox_NetCore.Helpers
         {
             if (TelegramClients.ContainsKey(userId))
             {
+                if (TelegramClients[userId].Disconnected)
+                {
+                    TelegramClients[userId].LoginUserIfNeeded();
+                }
+
                 return TelegramClients[userId];
             } 
             else
