@@ -5,12 +5,13 @@ resource "azurerm_storage_table_entity" "telegram-template" {
   row_key       = "Telegram"
 
   entity = {
-    ServiceName            = "Telegram"
-    "IsEnabled@odata.type" = "Edm.Boolean"
-    IsEnabled              = true
-    ServiceID              = "Telegram"
-    Configuration          = "{\"PhoneNumber\":\"\"}"
-    Endpoint               = module.dotnet_function_app.default_hostname
+    ServiceName             = "Telegram"
+    "IsEnabled@odata.type"  = "Edm.Boolean"
+    IsEnabled               = true
+    ServiceID               = "Telegram"
+    Configuration           = "{\"PhoneNumber\":\"\",\"DefaultPostingTarget\":\"\"}"
+    ConfigurationReferences = "{\"DefaultPostingTarget\":\"Telegram_GetChannelsAndChats\"}"
+    Endpoint                = module.dotnet_function_app.default_hostname
   }
 }
 
