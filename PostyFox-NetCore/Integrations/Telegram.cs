@@ -319,7 +319,7 @@ namespace PostyFox_NetCore.Integrations
                         {
                             var chats = telegramClient.Messages_GetAllChats();
                             chats.Wait();
-                            if (chats.Result.chats.ContainsKey(message.TargetID))
+                            if (chats.Result.chats[message.TargetID] != null)
                             {
                                 telegramClient.SendMessageAsync(chats.Result.chats[message.TargetID], message.Message);
                             }
