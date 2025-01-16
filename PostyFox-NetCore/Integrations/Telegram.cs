@@ -79,7 +79,7 @@ namespace PostyFox_NetCore.Integrations
                     {
                         string loginPayload = serviceConfig.PhoneNumber;
 
-                        WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount);
+                        WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount, loginPayload);
                         var response = req.CreateResponse(HttpStatusCode.OK);
                         ValueTask valueTask;
                         if (telegramClient != null && telegramClient.UserId != 0)
@@ -247,8 +247,9 @@ namespace PostyFox_NetCore.Integrations
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
                     dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
 #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+                    string phoneNo = serviceConfig.PhoneNumber;
 
-                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount);
+                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount, phoneNo);
                     if (telegramClient.User != null)
                     {
                         // We are logged in all authed, so should be good to grab a list of the channels & chats we can post to 
@@ -281,6 +282,13 @@ namespace PostyFox_NetCore.Integrations
             }
         }
 
+
+        class Msg
+        {
+            public string TargetID { get; set; }
+            public string Message { get; set; }
+        }
+
         [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.OK)]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
@@ -290,6 +298,7 @@ namespace PostyFox_NetCore.Integrations
         [Function("Telegram_SendMessage")]
         public HttpResponseData SendMessage([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
+
             HttpResponseData response;
             if (AuthHelper.ValidateAuth(req, _logger))
             {
@@ -307,13 +316,12 @@ namespace PostyFox_NetCore.Integrations
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
                     dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
 #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+                    string phoneNo = serviceConfig.PhoneNumber;
 
-                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount);
+                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount, phoneNo);
                     if (telegramClient.User != null)
                     {
-
-                        // Unwrap the config to see what we have 
-                        dynamic message = JsonConvert.DeserializeObject(postBody.Param);
+                        Msg? message = JsonConvert.DeserializeObject<Msg>(postBody.Param);
                         long chatId = 0;
                         if (message != null && message.TargetID != null && message.Message != null && long.TryParse(message.TargetID, out chatId))
                         {
