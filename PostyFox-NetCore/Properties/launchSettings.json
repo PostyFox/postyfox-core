@@ -13,11 +13,13 @@
         "SecretStore": "https://postyfox-kv-dev.vault.azure.net/",
         "TwitchCallbackUrl": "https://localhost/",
         "TwitchClientId": "tttt",
-        "TelegramApiID": "11111"
+        "PostyFoxDevMode": "true",
+        "PostyFoxUserID": ""
       },
       "DockerfileRunArguments": "--init",
       "httpPort": 32029,
-      "useSSL": false
+      "useSSL": false,
+      "containerRunEnvironmentFiles": "C:\\Temp\\additional.envs"
     }
   }
 }

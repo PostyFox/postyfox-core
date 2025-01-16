@@ -15,6 +15,7 @@ using PostyFox_NetCore.Helpers;
 using TL;
 using PostyFox_DataLayer;
 using static PostyFox_NetCore.Services;
+using System;
 
 namespace PostyFox_NetCore.Integrations
 {
@@ -78,17 +79,10 @@ namespace PostyFox_NetCore.Integrations
                     {
                         string loginPayload = serviceConfig.PhoneNumber;
 
-                        TelegramStore store = new TelegramStore(userId, _blobStorageAccount);
-                        using WTelegram.Client telegramClient = new((val) =>
-                        {
-                            if (val == "api_id") return apiId.ToString();
-                            if (val == "api_hash") return apiHash;
-                            if (val == "phone_number") return loginPayload;
-                            return null;
-                        }, store);
+                        WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount, loginPayload);
                         var response = req.CreateResponse(HttpStatusCode.OK);
                         ValueTask valueTask;
-                        if (telegramClient.UserId != 0)
+                        if (telegramClient != null && telegramClient.UserId != 0)
                         {
                             var t = telegramClient.Login(loginPayload);
                             t.Wait();
@@ -131,6 +125,7 @@ namespace PostyFox_NetCore.Integrations
             /// </summary>
             [OpenApiPropertyAttribute(Description = "The value that has been requested by the Telegram API", Nullable = true)]
             public string? Value { get; set; }
+            [OpenApiPropertyAttribute(Description = "Service ID to interact with")]
             public string ID { get; set; }
         }
 
@@ -153,11 +148,20 @@ namespace PostyFox_NetCore.Integrations
             public string? Label { get; set; }
         }
 
-        [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
+        public class RequestParameters
+        {
+            [OpenApiPropertyAttribute(Description = "Service ID to interact with")]
+            public string ID { get; set; }
+
+            [OpenApiPropertyAttribute(Description = "Parameters for the specific function you are calling for the service, if required", Nullable = true)]
+            public string? Param { get; set; }
+        }
+
+        [OpenApiOperation(tags: ["telegram"], Summary = "Complete User Service Authentication", Description = "", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(LoginResponse), Summary = "Returns with details for authentication flow", Description = "Returns with a JSON object detailing the Value required to proceed with authentication; submit via POST as a JSON body to continue.")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
-        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(LoginParameters), Required = false)]
+        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(LoginParameters), Required = true)]
         [Function("Telegram_DoLogin")]
         public HttpResponseData DoLogin([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
@@ -186,7 +190,6 @@ namespace PostyFox_NetCore.Integrations
                     }
 
                     WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount);
-                    telegramClient.OnOther += TelegramClient_OnOther;
                     var t = telegramClient.Login(loginPayload);
                     t.Wait();
                     var response = req.CreateResponse(HttpStatusCode.OK);
@@ -218,9 +221,143 @@ namespace PostyFox_NetCore.Integrations
             }
         }
 
-        private Task TelegramClient_OnOther(IObject arg)
+        [OpenApiOperation(tags: ["telegram"], Summary = "Get Channels and Chats (Not user 2 user)", Description = "", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(Dictionary<long, string>), Summary = "Returns the users accessible chats and channels", Description = "Returns with a JSON object detailing the users accessible chats and channels which the platform can post into")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.MethodNotAllowed, contentType: "application/json", bodyType: typeof(KeyValuePair), Summary = "Service not authenticated", Description = "")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
+        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(RequestParameters), Required = true)]
+        [Function("Telegram_GetChannelsAndChats")]
+        public HttpResponseData GetChannelsAndChats([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
-            return Task.CompletedTask;
+            HttpResponseData response;
+            if (AuthHelper.ValidateAuth(req, _logger))
+            {
+                var client = _configTable.GetTableClient("ConfigTable");
+                string userId = AuthHelper.GetAuthId(req);
+                string requestBody = new StreamReader(req.Body).ReadToEnd();
+                RequestParameters postBody = JsonConvert.DeserializeObject<RequestParameters>(requestBody);
+                string id = postBody.ID;
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == id);
+
+                // Trigger the login flow, and see if we need more information - pass this back to client in response.
+                ServiceTableEntity? entity = query.FirstOrDefault();
+                if (entity != null && entity.Configuration != null && entity.ServiceID == "Telegram")
+                {
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+                    dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+                    string phoneNo = serviceConfig.PhoneNumber;
+
+                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount, phoneNo);
+                    if (telegramClient.User != null)
+                    {
+                        // We are logged in all authed, so should be good to grab a list of the channels & chats we can post to 
+                        Dictionary<long, string> chats = new Dictionary<long, string>();
+                        var chatsResult = telegramClient.Messages_GetAllChats();
+                        chatsResult.Wait();
+                        foreach (var chat in chatsResult.Result.chats)
+                        {
+                            chats.Add(chat.Value.ID, chat.Value.Title);
+                        }
+
+                        response = req.CreateResponse(HttpStatusCode.OK);
+                        response.WriteAsJsonAsync(chats);
+                        return response;
+                    } else {
+                        response = req.CreateResponse(HttpStatusCode.MethodNotAllowed);
+                        response.WriteString("{\"error\":\"NotLoggedIn\"}");
+                        return response;
+
+                    }
+                } else {
+                    response = req.CreateResponse(HttpStatusCode.NotFound); // No configuration saved
+                    return response;
+                }
+            }
+            else
+            {
+                response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                return response;
+            }
+        }
+
+
+        class Msg
+        {
+            public string TargetID { get; set; }
+            public string Message { get; set; }
+        }
+
+        [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.OK)]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.MethodNotAllowed, contentType: "application/json", bodyType: typeof(KeyValuePair), Summary = "Service not authenticated", Description = "")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
+        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(RequestParameters), Required = true, Description = "Parameters must contain a JSON structure of TargetID and Message")]
+        [Function("Telegram_SendMessage")]
+        public HttpResponseData SendMessage([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+        {
+
+            HttpResponseData response;
+            if (AuthHelper.ValidateAuth(req, _logger))
+            {
+                var client = _configTable.GetTableClient("ConfigTable");
+                string userId = AuthHelper.GetAuthId(req);
+                string requestBody = new StreamReader(req.Body).ReadToEnd();
+                RequestParameters postBody = JsonConvert.DeserializeObject<RequestParameters>(requestBody);
+                string id = postBody.ID;
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.RowKey == id);
+
+                // Trigger the login flow, and see if we need more information - pass this back to client in response.
+                ServiceTableEntity? entity = query.FirstOrDefault();
+                if (entity != null && entity.Configuration != null && entity.ServiceID == "Telegram")
+                {
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+                    dynamic serviceConfig = JsonConvert.DeserializeObject(entity.Configuration);
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+                    string phoneNo = serviceConfig.PhoneNumber;
+
+                    WTelegram.Client telegramClient = StaticState.GetTelegramClient(apiId, apiHash, userId, _blobStorageAccount, phoneNo);
+                    if (telegramClient.User != null)
+                    {
+                        Msg? message = JsonConvert.DeserializeObject<Msg>(postBody.Param);
+                        long chatId = 0;
+                        if (message != null && message.TargetID != null && message.Message != null && long.TryParse(message.TargetID, out chatId))
+                        {
+                            var chats = telegramClient.Messages_GetAllChats();
+                            chats.Wait();
+                            
+                            if (chats.Result.chats[chatId] != null)
+                            {
+                                telegramClient.SendMessageAsync(chats.Result.chats[chatId], message.Message);
+                            }
+                            response = req.CreateResponse(HttpStatusCode.OK);
+                            return response;
+                        } else {
+                            response = req.CreateResponse(HttpStatusCode.BadRequest);
+                            return response;
+                        }
+                    }
+                    else
+                    {
+                        response = req.CreateResponse(HttpStatusCode.MethodNotAllowed);
+                        response.WriteString("{\"error\":\"NotLoggedIn\"}");
+                        return response;
+
+                    }
+                }
+                else
+                {
+                    response = req.CreateResponse(HttpStatusCode.NotFound); // No configuration saved
+                    return response;
+                }
+            }
+            else
+            {
+                response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                return response;
+            }
         }
     }
 }

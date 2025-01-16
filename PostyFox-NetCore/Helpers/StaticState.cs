@@ -14,10 +14,15 @@ namespace PostyFox_NetCore.Helpers
         /// Holds Telegram Clients that are being used for authentication; userId is used as the hash.
         /// </summary>
         internal static Dictionary<string, WTelegram.Client> TelegramClients = new();
-        internal static WTelegram.Client GetTelegramClient(int apiId, string apiHash, string userId, BlobServiceClient blobServiceClient)
+        internal static WTelegram.Client GetTelegramClient(int apiId, string apiHash, string userId, BlobServiceClient blobServiceClient, string userPhoneNumber = "")
         {
             if (TelegramClients.ContainsKey(userId))
             {
+                if (TelegramClients[userId].Disconnected)
+                {
+                    TelegramClients[userId].LoginUserIfNeeded();
+                }
+
                 return TelegramClients[userId];
             } 
             else
@@ -27,8 +32,11 @@ namespace PostyFox_NetCore.Helpers
                 {
                     if (val == "api_id") return apiId.ToString();
                     if (val == "api_hash") return apiHash;
+                    if (val == "phone_number") return userPhoneNumber;
                     return null;
                 }, store);
+                var task = client.LoginUserIfNeeded();
+                task.Wait();
                 TelegramClients.Add(userId, client);
                 return client;
             }
