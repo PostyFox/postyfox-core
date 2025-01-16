@@ -34,6 +34,7 @@ namespace PostyFox_NetCore.Helpers
                     if (val == "api_hash") return apiHash;
                     return null;
                 }, store);
+                client.LoginUserIfNeeded();
                 TelegramClients.Add(userId, client);
                 return client;
             }
