@@ -314,14 +314,15 @@ namespace PostyFox_NetCore.Integrations
 
                         // Unwrap the config to see what we have 
                         dynamic message = JsonConvert.DeserializeObject(postBody.Param);
-
-                        if (message != null && message.TargetID != null && message.Message != null)
+                        long chatId = 0;
+                        if (message != null && message.TargetID != null && message.Message != null && long.TryParse(message.TargetID, out chatId))
                         {
                             var chats = telegramClient.Messages_GetAllChats();
                             chats.Wait();
-                            if (chats.Result.chats[message.TargetID] != null)
+                            
+                            if (chats.Result.chats[chatId] != null)
                             {
-                                telegramClient.SendMessageAsync(chats.Result.chats[message.TargetID], message.Message);
+                                telegramClient.SendMessageAsync(chats.Result.chats[chatId], message.Message);
                             }
                             response = req.CreateResponse(HttpStatusCode.OK);
                             return response;
