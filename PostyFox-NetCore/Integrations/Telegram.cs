@@ -150,9 +150,9 @@ namespace PostyFox_NetCore.Integrations
         public class RequestParam
         {
             [OpenApiPropertyAttribute(Description = "Service ID to interact with")]
-            public required string ID { get; set; }
+            public string ID { get; set; }
 
-            [OpenApiPropertyAttribute(Description = "Parameters for the specific function you are calling for the service, if required")]
+            [OpenApiPropertyAttribute(Description = "Parameters for the specific function you are calling for the service, if required", Nullable = true)]
             public string? Parameters { get; set; }
         }
 
@@ -281,11 +281,11 @@ namespace PostyFox_NetCore.Integrations
         }
 
         [OpenApiOperation(tags: ["telegram"], Summary = "", Description = "", Visibility = OpenApiVisibilityType.Important)]
-        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(Dictionary<long, string>), Summary = "Sends a message to the specified channel or chat", Description = "")]
+        //[OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(Dictionary<long, string>), Summary = "Sends a message to the specified channel or chat", Description = "")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.MethodNotAllowed, contentType: "application/json", bodyType: typeof(KeyValuePair), Summary = "Service not authenticated", Description = "")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
-        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(RequestParam), Required = true, Description = "Parameters must contain a JSON structure of TargetID and Message")]
+        //[OpenApiRequestBody(contentType: "application/json", bodyType: typeof(RequestParam), Required = true, Description = "Parameters must contain a JSON structure of TargetID and Message")]
         [Function("Telegram_SendMessage")]
         public HttpResponseData SendMessage([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
