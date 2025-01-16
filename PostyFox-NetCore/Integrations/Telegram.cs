@@ -154,7 +154,7 @@ namespace PostyFox_NetCore.Integrations
             public string ID { get; set; }
 
             [OpenApiPropertyAttribute(Description = "Parameters for the specific function you are calling for the service, if required", Nullable = true)]
-            public string? Params { get; set; }
+            public string? Param { get; set; }
         }
 
         [OpenApiOperation(tags: ["telegram"], Summary = "Complete User Service Authentication", Description = "", Visibility = OpenApiVisibilityType.Important)]
@@ -313,17 +313,22 @@ namespace PostyFox_NetCore.Integrations
                     {
 
                         // Unwrap the config to see what we have 
-                        dynamic message = JsonConvert.DeserializeObject(postBody.Params);
+                        dynamic message = JsonConvert.DeserializeObject(postBody.Param);
 
-                        var chats = telegramClient.Messages_GetAllChats();
-                        chats.Wait();
-                        if (chats.Result.chats.ContainsKey(message.TargetID))
+                        if (message != null && message.TargetID != null && message.Message != null)
                         {
-                            telegramClient.SendMessageAsync(chats.Result.chats[message.TargetID], message.Message);
+                            var chats = telegramClient.Messages_GetAllChats();
+                            chats.Wait();
+                            if (chats.Result.chats.ContainsKey(message.TargetID))
+                            {
+                                telegramClient.SendMessageAsync(chats.Result.chats[message.TargetID], message.Message);
+                            }
+                            response = req.CreateResponse(HttpStatusCode.OK);
+                            return response;
+                        } else {
+                            response = req.CreateResponse(HttpStatusCode.BadRequest);
+                            return response;
                         }
-
-                        response = req.CreateResponse(HttpStatusCode.OK);
-                        return response;
                     }
                     else
                     {
