@@ -82,6 +82,49 @@ namespace PostyFox_NetCore
             }
         }
 
+        [OpenApiOperation(tags: ["services"], Summary = "Fetch Specific Available Service", Description = "", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(ServiceDTO), Summary = "", Description = "")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
+        [Function("Services_GetAvailableService")]
+        public HttpResponseData GetAvailableService([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        {
+            string serviceName = req.Query["service"];
+            ServiceDTO? dto = null;
+            if (AuthHelper.ValidateAuth(req, _logger))
+            {
+                if (!string.IsNullOrEmpty(serviceName)) {
+                    _configTable.CreateTableIfNotExists("AvailableServices");
+                    string userId = AuthHelper.GetAuthId(req);
+
+                    List<ServiceDTO> ls = new();
+                    var client = _configTable.GetTableClient("AvailableServices");
+                    var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == "Service" && x.RowKey.ToLower() == serviceName.ToLower()).FirstOrDefault();
+                    
+                    if (query != null)
+                    {
+                        dto = new()
+                        {
+                            ID = query.RowKey,
+                            ServiceID = query.ServiceID,
+                            ServiceName = query.ServiceName,
+                            IsEnabled = query.IsEnabled, // Not sure if this will actually have a use for the "Available" definition? 
+                            Configuration = query.Configuration, // In this context, configuration will define what needs to be provided
+                            SecureConfiguration = query.SecureConfiguration
+                        };
+                    }
+                }
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                var valueTask = response.WriteAsJsonAsync(dto);
+                valueTask.AsTask().GetAwaiter().GetResult();
+                return response;
+            }
+            else
+            {
+                var response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                return response;
+            }
+        }
+
         [OpenApiOperation(tags: ["services"], Summary = "Fetch User Services", Description = "Fetches the state of configured user services", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(List<ServiceDTO>), Summary = "List of user configured services", Description = "This returns the response of configured services, a list of objects")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
