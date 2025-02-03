@@ -93,13 +93,12 @@ namespace PostyFox_NetCore
             if (AuthHelper.ValidateAuth(req, _logger))
             {
                 if (!string.IsNullOrEmpty(serviceName)) {
-                    serviceName = serviceName.ToLower();
                     _configTable.CreateTableIfNotExists("AvailableServices");
                     string userId = AuthHelper.GetAuthId(req);
 
                     List<ServiceDTO> ls = new();
                     var client = _configTable.GetTableClient("AvailableServices");
-                    var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == "Service" && x.RowKey.ToLower() == serviceName).FirstOrDefault();
+                    var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == "Service" && x.RowKey == serviceName).FirstOrDefault();
                     
                     if (query != null)
                     {
