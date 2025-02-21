@@ -169,16 +169,9 @@ namespace PostyFox_NetCore
             }
         }
 
-        public class UserServiceRequest
-        {
-            public string ServiceID { get; set; }
-            public string ServiceName { get; set; }
-        }
-
         [OpenApiOperation(tags: ["services"], Summary = "Fetch User Service", Description = "Fetches the state of a configured user service", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(ServiceDTO), Summary = "A single user service", Description = "This returns the response of configured service")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
-        [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(UserServiceRequest), Required = true)]
         [Function("Services_GetUserService")]
         public HttpResponseData GetUserService([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
@@ -189,7 +182,9 @@ namespace PostyFox_NetCore
                 _configTable.CreateTableIfNotExists("ConfigTable");
                 string userId = AuthHelper.GetAuthId(req);
                 string requestBody = new StreamReader(req.Body).ReadToEnd();
-                UserServiceRequest data = JsonConvert.DeserializeObject<UserServiceRequest>(requestBody);
+
+                string serviceName = req.Query["service"];
+                string serviceId = req.Query["serviceId"];
 
                 _logger.LogInformation("Request for user services received", userId);
 
