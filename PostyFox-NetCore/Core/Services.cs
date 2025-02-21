@@ -191,7 +191,7 @@ namespace PostyFox_NetCore
                 // Check what services the user has enabled, and return a config object
                 List<ServiceDTO> ls = new();
                 var client = _configTable.GetTableClient("ConfigTable");
-                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.ServiceID == data.ServiceID && x.ServiceName == data.ServiceName);
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.ServiceID == serviceId && x.ServiceName == serviceName);
                 foreach (var service in query.AsEnumerable())
                 {
                     ServiceDTO dto = new()
