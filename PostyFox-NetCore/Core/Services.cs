@@ -98,7 +98,7 @@ namespace PostyFox_NetCore
 
                     List<ServiceDTO> ls = new();
                     var client = _configTable.GetTableClient("AvailableServices");
-                    var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == "Service" && x.RowKey.ToLower() == serviceName.ToLower()).FirstOrDefault();
+                    var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == "Service" && x.RowKey == serviceName).FirstOrDefault();
                     
                     if (query != null)
                     {
@@ -128,8 +128,8 @@ namespace PostyFox_NetCore
         [OpenApiOperation(tags: ["services"], Summary = "Fetch User Services", Description = "Fetches the state of configured user services", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(List<ServiceDTO>), Summary = "List of user configured services", Description = "This returns the response of configured services, a list of objects")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
-        [Function("Services_GetUserService")]
-        public HttpResponseData GetUserService([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        [Function("Services_GetUserServices")]
+        public HttpResponseData GetUserServices([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {
             // Check if authenticated on AAD; if not, return 401 Unauthorized.
             // To do this need to extract the claim and see - this is done on the headers - detailed here
@@ -168,6 +168,55 @@ namespace PostyFox_NetCore
                 return response;
             }
         }
+
+        [OpenApiOperation(tags: ["services"], Summary = "Fetch User Service", Description = "Fetches the state of a configured user service", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(ServiceDTO), Summary = "A single user service", Description = "This returns the response of configured service")]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
+        [Function("Services_GetUserService")]
+        public HttpResponseData GetUserService([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        {
+            // Check if authenticated on AAD; if not, return 401 Unauthorized.
+            // To do this need to extract the claim and see - this is done on the headers - detailed here
+            if (AuthHelper.ValidateAuth(req, _logger))
+            {
+                _configTable.CreateTableIfNotExists("ConfigTable");
+                string userId = AuthHelper.GetAuthId(req);
+                string requestBody = new StreamReader(req.Body).ReadToEnd();
+
+                string serviceName = req.Query["service"];
+                string serviceId = req.Query["serviceId"];
+
+                _logger.LogInformation("Request for user services received", userId);
+
+                // Check what services the user has enabled, and return a config object
+                List<ServiceDTO> ls = new();
+                var client = _configTable.GetTableClient("ConfigTable");
+                var query = client.Query<ServiceTableEntity>(x => x.PartitionKey == userId && x.ServiceID == serviceId && x.ServiceName == serviceName);
+                foreach (var service in query.AsEnumerable())
+                {
+                    ServiceDTO dto = new()
+                    {
+                        ID = service.RowKey,
+                        ServiceID = service.ServiceID,
+                        ServiceName = service.ServiceName,
+                        IsEnabled = service.IsEnabled,
+                        Configuration = service.Configuration
+                    };
+                    ls.Add(dto);
+                }
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                var valueTask = response.WriteAsJsonAsync(ls);
+                valueTask.AsTask().GetAwaiter().GetResult();
+                return response;
+            }
+            else
+            {
+                var response = req.CreateResponse(HttpStatusCode.Unauthorized);
+                return response;
+            }
+        }
+
 
         [OpenApiOperation(tags: ["services"], Summary = "Set Details for a user service", Description = "Saves the configuration for a service for a given user", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.OK, Summary = "The result of the save operation", Description = "")]
