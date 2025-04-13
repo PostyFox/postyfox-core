@@ -11,7 +11,7 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "@atproto/api": "^0.12.2",
+    "@atproto/api": "^0.14.10",
     "@azure/data-tables": "^13.2.2",
     "@azure/functions": "^4.6.0",
     "@azure/identity": "^4.2.1",
