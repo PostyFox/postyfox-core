@@ -13,9 +13,9 @@
   "dependencies": {
     "@atproto/api": "^0.14.10",
     "@azure/data-tables": "^13.2.2",
-    "@azure/functions": "^4.6.0",
+    "@azure/functions": "^4.7.0",
     "@azure/identity": "^4.2.1",
-    "@azure/keyvault-secrets": "^4.8.0",
+    "@azure/keyvault-secrets": "^4.9.0",
     "tumblr.js": "^5.0.0"
   },
   "devDependencies": {
