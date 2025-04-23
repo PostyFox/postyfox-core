@@ -156,10 +156,10 @@ jobs:
         func azure functionapp publish postyfox-func-app-post-dev --worker-runtime dotnet-isolated --nozip
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting      
 
-    - name: Setup Node v20
+    - name: Setup Node v23
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: 23.x
 
     - name: npm install
       run: npm install 
