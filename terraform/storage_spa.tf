@@ -12,6 +12,8 @@ resource "azurerm_storage_account" "spa_storage" {
 
   public_network_access_enabled = true
 
+  min_tls_version = "TLS1_2"
+
   blob_properties {
     delete_retention_policy {
       days = 7
