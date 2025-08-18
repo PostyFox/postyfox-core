@@ -42,7 +42,7 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Setup OpenTofu
       uses: opentofu/setup-opentofu@v1
@@ -103,7 +103,7 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Download MS Key for apt-get
       run: curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
