@@ -103,15 +103,17 @@ namespace PostyFox_Posting
                     // Given the max size of a queue item is 64Kb, we save off anything we can to blob storage for the post
 
                     // Extract out and save the common post data to storage
-                    // Save Description and tags data
-                    _postContainerClient.UploadBlob(postId + "/description", BinaryData.FromString(para.Description));
-                    _postContainerClient.UploadBlob(postId + "/description-html", BinaryData.FromString(para.HTMLDescription));
-                    _postContainerClient.UploadBlob(postId + "/tags", BinaryData.FromString(JsonConvert.SerializeObject(para.Tags)));
+                    // Save Title, Description and tags data
+                    _postContainerClient.UploadBlob(postId + "/title", BinaryData.FromString(para.Title ?? ""));
+                    _postContainerClient.UploadBlob(postId + "/description", BinaryData.FromString(para.Description ?? ""));
+                    _postContainerClient.UploadBlob(postId + "/description-html", BinaryData.FromString(para.HTMLDescription ?? ""));
+                    _postContainerClient.UploadBlob(postId + "/tags", BinaryData.FromString(JsonConvert.SerializeObject(para.Tags ?? new List<string>())));
+                    _postContainerClient.UploadBlob(postId + "/media", BinaryData.FromString(JsonConvert.SerializeObject(para.Media ?? new List<string>())));
                     // Save Images 
                     // TODO: Images, pull them over from the temporary upload location
 
                     // Extract out and save the PLATFORM SPECIFIC post data to storage
-                    foreach (var targetPlatform in para.TargetPlatforms)
+                    foreach (var targetPlatform in para.TargetPlatforms ?? new List<string>())
                     {
                         // Save the post to queue - Parse out the targets and convert each to a QueueEntity and save to queue
                         QueueEntry queueEntry = new QueueEntry()
@@ -121,7 +123,8 @@ namespace PostyFox_Posting
                             PostId = Guid.NewGuid().ToString(),
                             User = para.APIKey.UserID,
                             TargetPlatformServiceId = targetPlatform,
-                            Status = (int)PostStatus.Queued
+                            Status = (int)PostStatus.Queued,
+                            Media = para.Media ?? new List<string>()
                         };
 
                         // Write a "lock" file so we don't try and delete the root containing post folder with the data
@@ -130,10 +133,22 @@ namespace PostyFox_Posting
                         // Schedule as required
 
                         QueueClient queueClient = _postingQueueClient.GetQueueClient("postingqueue");
+                        queueClient.CreateIfNotExists();
                         queueClient.SendMessage(JsonConvert.SerializeObject(queueEntry));
                         
                     }
+
+                    // Return post details to the client
+                    PostResponse postResponse = new PostResponse()
+                    {
+                        PostId = postId,
+                        Status = PostStatus.Queued,
+                        MediaSavedUri = $"post/{postId}/media"
+                    };
+
                     var response = req.CreateResponse(HttpStatusCode.OK);
+                    var responseTask = response.WriteAsJsonAsync(postResponse);
+                    responseTask.GetAwaiter().GetResult();
                     return response;
                 } 
                 else
