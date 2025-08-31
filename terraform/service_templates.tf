@@ -11,7 +11,7 @@ resource "azurerm_storage_table_entity" "telegram-template" {
     ServiceID               = "Telegram"
     Configuration           = "{\"PhoneNumber\":\"\",\"DefaultPostingTarget\":\"\"}"
     ConfigurationReferences = "{\"DefaultPostingTarget\":\"Telegram_GetChannelsAndChats\"}"
-    Endpoint                = module.dotnet_function_app.default_hostname
+    Endpoint                = module.dotnet_function_app.resource_uri
   }
 }
 
@@ -27,7 +27,7 @@ resource "azurerm_storage_table_entity" "discordwh-template" {
     IsEnabled              = true
     ServiceID              = "DiscordWH"
     Configuration          = "{\"Webhook\":\"\"}"
-    Endpoint               = module.dotnet_function_app.default_hostname
+    Endpoint               = module.dotnet_function_app.resource_uri
   }
 }
 
