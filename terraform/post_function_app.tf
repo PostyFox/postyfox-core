@@ -22,6 +22,9 @@ module "posting_function_app" {
   auth_login_validate_nonce      = true
   auth_login_logout_endpoint     = "/.auth/logout"
 
+  runtime         = "dotnet-isolated"
+  runtime_version = "8.0"
+
   cors_support_credentials = true
   cors_allowed_origins     = var.cors
 
