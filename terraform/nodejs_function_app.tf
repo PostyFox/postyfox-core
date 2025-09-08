@@ -8,7 +8,7 @@ module "nodejs_function_app" {
   os_type                       = "Linux"
   service_plan_resource_id      = azurerm_service_plan.asp_flex.id
   storage_account_name          = azurerm_storage_account.funcapp_storage.name
-  storage_container_endpoint    = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}/${azurerm_storage_container.nodejs_container.name}"
+  storage_container_endpoint    = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}${azurerm_storage_container.nodejs_container.name}"
   storage_uses_managed_identity = true
   storage_container_type        = "blobContainer"
   enable_application_insights   = false # Use a shared AppInsights
@@ -27,6 +27,7 @@ module "nodejs_function_app" {
   }
 
   site_config = {
+    application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
     cors = {
       cors1 = {
         allowed_origins     = var.cors
@@ -36,13 +37,12 @@ module "nodejs_function_app" {
   }
 
   app_settings = {
-    "PostingQueue__queueServiceUri"          = azurerm_storage_account.data_storage.primary_queue_endpoint
-    "ConfigTable"                            = azurerm_storage_account.data_storage.primary_table_endpoint
-    "SecretStore"                            = azurerm_key_vault.key_vault.vault_uri
-    "StorageAccount"                         = azurerm_storage_account.data_storage.primary_blob_endpoint
-    "AAD_B2C_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
-    "SCM_DO_BUILD_DURING_DEPLOYMENT"         = "false"
-    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.application_insights.connection_string
+    "PostingQueue__queueServiceUri"            = azurerm_storage_account.data_storage.primary_queue_endpoint
+    "ConfigTable"                              = azurerm_storage_account.data_storage.primary_table_endpoint
+    "SecretStore"                              = azurerm_key_vault.key_vault.vault_uri
+    "StorageAccount"                           = azurerm_storage_account.data_storage.primary_blob_endpoint
+    "MICROSOFT_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    "SCM_DO_BUILD_DURING_DEPLOYMENT"           = "false"
   }
 
   auth_settings_v2 = {

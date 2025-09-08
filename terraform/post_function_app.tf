@@ -1,13 +1,13 @@
 module "dotnet_posting_function_app" {
-  source                        = "Azure/avm-res-web-site/azurerm"
-  name                          = "${local.appname}-func-app-post${local.hyphen-env}"
-  resource_group_name           = azurerm_resource_group.rg.name
-  location                      = azurerm_resource_group.rg.location
-  kind                          = "functionapp"
-  os_type                       = "Linux"
-  service_plan_resource_id      = azurerm_service_plan.asp_flex.id
-  storage_account_name          = azurerm_storage_account.funcapp_storage.name
-  storage_container_endpoint    = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}/${azurerm_storage_container.posting_container.name}"
+  source                     = "Azure/avm-res-web-site/azurerm"
+  name                       = "${local.appname}-func-app-post${local.hyphen-env}"
+  resource_group_name        = azurerm_resource_group.rg.name
+  location                   = azurerm_resource_group.rg.location
+  kind                       = "functionapp"
+  os_type                    = "Linux"
+  service_plan_resource_id   = azurerm_service_plan.asp_flex.id
+  storage_account_name       = azurerm_storage_account.funcapp_storage.name
+  storage_container_endpoint = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}${azurerm_storage_container.posting_container.name}"
 
   storage_uses_managed_identity = true
   storage_container_type        = "blobContainer"
@@ -27,6 +27,7 @@ module "dotnet_posting_function_app" {
   }
 
   site_config = {
+    application_insights_connection_string = azurerm_application_insights.application_insights.connection_string
     cors = {
       cors1 = {
         allowed_origins     = var.cors
@@ -36,16 +37,15 @@ module "dotnet_posting_function_app" {
   }
 
   app_settings = {
-    "PostingQueue__queueServiceUri"         = azurerm_storage_account.data_storage.primary_queue_endpoint
-    "PostingQueue"                          = azurerm_storage_account.data_storage.primary_queue_endpoint
-    "ConfigTable"                           = azurerm_storage_account.data_storage.primary_table_endpoint
-    "SecretStore"                           = azurerm_key_vault.key_vault.vault_uri
-    "OPENID_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
-    "TwitchClientId"                        = var.twitchClientId
-    "TwitchClientSecret"                    = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"
-    "TwitchSignatureSecret"                 = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"
-    "TwitchCallbackUrl"                     = var.twitchCallbackUrl
-    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.application_insights.connection_string
+    "PostingQueue__queueServiceUri"            = azurerm_storage_account.data_storage.primary_queue_endpoint
+    "PostingQueue"                             = azurerm_storage_account.data_storage.primary_queue_endpoint
+    "ConfigTable"                              = azurerm_storage_account.data_storage.primary_table_endpoint
+    "SecretStore"                              = azurerm_key_vault.key_vault.vault_uri
+    "MICROSOFT_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    "TwitchClientId"                           = var.twitchClientId
+    "TwitchClientSecret"                       = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"
+    "TwitchSignatureSecret"                    = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"
+    "TwitchCallbackUrl"                        = var.twitchCallbackUrl
   }
 
   auth_settings_v2 = {
