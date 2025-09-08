@@ -41,7 +41,7 @@ module "dotnet_posting_function_app" {
     "PostingQueue"                             = azurerm_storage_account.data_storage.primary_queue_endpoint
     "ConfigTable"                              = azurerm_storage_account.data_storage.primary_table_endpoint
     "SecretStore"                              = azurerm_key_vault.key_vault.vault_uri
-    "MICROSOFT_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    "AzureActiveDirectory_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
     "TwitchClientId"                           = var.twitchClientId
     "TwitchClientSecret"                       = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"
     "TwitchSignatureSecret"                    = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"

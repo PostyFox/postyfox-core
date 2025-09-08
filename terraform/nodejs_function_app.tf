@@ -41,7 +41,7 @@ module "nodejs_function_app" {
     "ConfigTable"                              = azurerm_storage_account.data_storage.primary_table_endpoint
     "SecretStore"                              = azurerm_key_vault.key_vault.vault_uri
     "StorageAccount"                           = azurerm_storage_account.data_storage.primary_blob_endpoint
-    "MICROSOFT_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
+    "AzureActiveDirectory_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
     "SCM_DO_BUILD_DURING_DEPLOYMENT"           = "false"
   }
 
