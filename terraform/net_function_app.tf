@@ -7,7 +7,7 @@ module "dotnet_function_app" {
   os_type                       = "Linux"
   service_plan_resource_id      = azurerm_service_plan.asp_flex.id
   storage_account_name          = azurerm_storage_account.funcapp_storage.name
-  storage_container_endpoint    = azurerm_storage_container.dotnet_container.id
+  storage_container_endpoint    = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}/${azurerm_storage_container.dotnet_container.name}"
   storage_uses_managed_identity = true
   storage_container_type        = "blobContainer"
   enable_application_insights   = false # Use a shared AppInsights
@@ -26,6 +26,8 @@ module "dotnet_function_app" {
   }
 
   site_config = {
+
+    application_insights_connection_string  = azurerm_application_insights.application_insights.connection_string
     cors = {
       cors1 = {
         allowed_origins     = var.cors
@@ -44,7 +46,6 @@ module "dotnet_function_app" {
     "TwitchClientSecret"                    = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"
     "TwitchSignatureSecret"                 = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"
     "TwitchCallbackUrl"                     = var.twitchCallbackUrl
-    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.application_insights.connection_string
   }
 
   auth_settings_v2 = {
