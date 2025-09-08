@@ -1,11 +1,16 @@
 module "dotnet_function_app" {
-  source                   = "Azure/avm-res-web-site/azurerm"
-  name                     = "${local.appname}-func-app-dotnet${local.hyphen-env}"
-  resource_group_name      = azurerm_resource_group.rg.name
-  location                 = azurerm_resource_group.rg.location
-  kind                     = "functionapp"
-  os_type                  = "Linux"
-  service_plan_resource_id = azurerm_service_plan.dotnet_asp_flex.id
+  source                        = "Azure/avm-res-web-site/azurerm"
+  name                          = "${local.appname}-func-app-dotnet${local.hyphen-env}"
+  resource_group_name           = azurerm_resource_group.rg.name
+  location                      = azurerm_resource_group.rg.location
+  kind                          = "functionapp"
+  os_type                       = "Linux"
+  service_plan_resource_id      = azurerm_service_plan.asp_flex.id
+  storage_account_name          = azurerm_storage_account.funcapp_storage.name
+  storage_container_endpoint    = azurerm_storage_container.dotnet_container.id
+  storage_uses_managed_identity = true
+  storage_container_type        = "blobContainer"
+  enable_application_insights   = false # Use a shared AppInsights
 
   fc1_runtime_name      = "dotnet-isolated"
   fc1_runtime_version   = "8.0"
@@ -15,8 +20,10 @@ module "dotnet_function_app" {
 
   instance_memory_in_mb       = 2048
   storage_authentication_type = "SystemAssignedIdentity"
-  # Do I want to predefine the storage  ?
-  storage_container_type = "blobContainer"
+
+  managed_identities = {
+    system_assigned = true
+  }
 
   site_config = {
     cors = {
@@ -109,30 +116,21 @@ resource "azurerm_app_service_certificate_binding" "dotnet_func_cert_binding" {
 #   }
 # }
 
-# // Permissions ...
-
-# // - Func App Account 
-# resource "azurerm_role_assignment" "dotnetfuncapp-data" {
-#   scope                = azurerm_storage_account.linux_funcnet_storage.id
-#   role_definition_name = "Storage Blob Data Contributor"
-#   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
-# }
-
-# resource "azurerm_role_assignment" "dotnetfuncapp-table" {
-#   scope                = azurerm_storage_account.linux_funcnet_storage.id
-#   role_definition_name = "Storage Table Data Contributor"
-#   principal_id         = azurerm_linux_function_app.dotnet_func_app.identity[0].principal_id
-# }
+resource "azurerm_role_assignment" "dotnetfuncapp-storage-blob" {
+  scope                = azurerm_storage_account.funcapp_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = module.dotnet_function_app.identity_principal_id
+}
 
 # // - Data Account
 resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-blob" {
   scope                = azurerm_storage_account.data_storage.id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = module.dotnet_function_app.system_assigned_mi_principal_id
+  principal_id         = module.dotnet_function_app.identity_principal_id
 }
 
 resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-table" {
   scope                = azurerm_storage_account.data_storage.id
   role_definition_name = "Storage Table Data Contributor"
-  principal_id         = module.dotnet_function_app.system_assigned_mi_principal_id
+  principal_id         = module.dotnet_function_app.identity_principal_id
 }

@@ -24,17 +24,17 @@ resource "azurerm_role_assignment" "dotnet_fa_user" {
   principal_id         = module.dotnet_function_app.system_assigned_mi_principal_id
 }
 
-resource "azurerm_role_assignment" "nodejs_fa_user" {
-  scope                = azurerm_key_vault.key_vault.id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = module.nodejs_function_app.identity_id
-}
+# resource "azurerm_role_assignment" "nodejs_fa_user" {
+#   scope                = azurerm_key_vault.key_vault.id
+#   role_definition_name = "Key Vault Secrets User"
+#   principal_id         = module.nodejs_function_app.identity_id
+# }
 
-resource "azurerm_role_assignment" "posting_fa_user" {
-  scope                = azurerm_key_vault.key_vault.id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = module.posting_function_app.identity_id
-}
+# resource "azurerm_role_assignment" "posting_fa_user" {
+#   scope                = azurerm_key_vault.key_vault.id
+#   role_definition_name = "Key Vault Secrets User"
+#   principal_id         = module.posting_function_app.identity_id
+# }
 
 resource "azurerm_monitor_diagnostic_setting" "keyvault" {
   name                       = "${local.appname}-logging-keyvault${local.hyphen-env}"
