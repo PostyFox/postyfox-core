@@ -121,12 +121,12 @@ jobs:
       run: sudo apt-get install azure-functions-core-tools-4 -y
 
     - name: Setup .NET Core 8.x
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '8.0.x'
 
     - name: Setup .NET Core (for inproc extensions)
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '6.0.x'      
 
