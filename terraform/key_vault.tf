@@ -21,19 +21,19 @@ resource "azurerm_key_vault" "key_vault" {
 resource "azurerm_role_assignment" "dotnet_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = module.dotnet_function_app.identity_principal_id
+  principal_id         = module.dotnet_function_app.identity_id
 }
 
 resource "azurerm_role_assignment" "nodejs_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = module.nodejs_function_app.identity_principal_id
+  principal_id         = module.nodejs_function_app.identity_id
 }
 
 resource "azurerm_role_assignment" "posting_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = module.dotnet_posting_function_app.identity_principal_id
+  principal_id         = module.posting_function_app.identity_id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "keyvault" {
