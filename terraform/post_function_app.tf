@@ -16,7 +16,7 @@ module "dotnet_posting_function_app" {
   service_plan_resource_id    = azurerm_service_plan.post_asp_flex.id
   storage_account_name        = azurerm_storage_account.funcapp_storage.name
   storage_container_endpoint  = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}${azurerm_storage_container.posting_container.name}"
-  #storage_container_type      = "blobContainer"
+  storage_container_type      = "blobContainer"
   enable_application_insights = false # Use a shared AppInsights
 
   fc1_runtime_name      = "dotnet-isolated"
