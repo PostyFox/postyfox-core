@@ -21,6 +21,7 @@ module "nodejs_function_app" {
   storage_uses_managed_identity = true
   storage_container_type        = "blobContainer"
   enable_application_insights   = false # Use a shared AppInsights
+  storage_authentication_type   = "SystemAssignedIdentity"
 
   fc1_runtime_name      = "node"
   fc1_runtime_version   = "20"
