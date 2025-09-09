@@ -119,7 +119,13 @@ resource "azurerm_app_service_certificate_binding" "dotnet_func_cert_binding" {
 
 resource "azurerm_role_assignment" "dotnetfuncapp-storage-blob" {
   scope                = azurerm_storage_account.funcapp_storage.id
-  role_definition_name = "Storage Blob Data Contributor"
+  role_definition_name = "Storage Blob Data Owner"
+  principal_id         = module.dotnet_function_app.identity_principal_id
+}
+
+resource "azurerm_role_assignment" "dotnetfuncapp-storage-table" {
+  scope                = azurerm_storage_account.funcapp_storage.id
+  role_definition_name = "Storage Table Data Contributor"
   principal_id         = module.dotnet_function_app.identity_principal_id
 }
 
@@ -131,6 +137,12 @@ resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-blob" {
 }
 
 resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-table" {
+  scope                = azurerm_storage_account.data_storage.id
+  role_definition_name = "Storage Table Data Contributor"
+  principal_id         = module.dotnet_function_app.identity_principal_id
+}
+
+resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-queue" {
   scope                = azurerm_storage_account.data_storage.id
   role_definition_name = "Storage Table Data Contributor"
   principal_id         = module.dotnet_function_app.identity_principal_id
