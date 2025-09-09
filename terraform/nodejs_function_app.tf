@@ -9,18 +9,17 @@ resource "azurerm_service_plan" "node_asp_flex" {
 
 
 module "nodejs_function_app" {
-  source                        = "Azure/avm-res-web-site/azurerm"
-  name                          = "${local.appname}-func-app-nodejs${local.hyphen-env}"
-  resource_group_name           = azurerm_resource_group.rg.name
-  location                      = azurerm_resource_group.rg.location
-  kind                          = "functionapp"
-  os_type                       = "Linux"
-  service_plan_resource_id      = azurerm_service_plan.node_asp_flex.id
-  storage_account_name          = azurerm_storage_account.funcapp_storage.name
-  storage_container_endpoint    = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}${azurerm_storage_container.nodejs_container.name}"
-  storage_uses_managed_identity = true
-  storage_container_type        = "blobContainer"
-  enable_application_insights   = false # Use a shared AppInsights
+  source                      = "Azure/avm-res-web-site/azurerm"
+  name                        = "${local.appname}-func-app-nodejs${local.hyphen-env}"
+  resource_group_name         = azurerm_resource_group.rg.name
+  location                    = azurerm_resource_group.rg.location
+  kind                        = "functionapp"
+  os_type                     = "Linux"
+  service_plan_resource_id    = azurerm_service_plan.node_asp_flex.id
+  storage_account_name        = azurerm_storage_account.funcapp_storage.name
+  storage_container_endpoint  = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}${azurerm_storage_container.nodejs_container.name}"
+  #storage_container_type      = "blobContainer"
+  enable_application_insights = false # Use a shared AppInsights
 
   fc1_runtime_name      = "node"
   fc1_runtime_version   = "20"
@@ -29,10 +28,12 @@ module "nodejs_function_app" {
   enable_telemetry = true
 
   instance_memory_in_mb       = 2048
-  storage_authentication_type = "SystemAssignedIdentity"
-
+  storage_authentication_type = "UserAssignedIdentity"
   managed_identities = {
     system_assigned = true
+    user_assigned_resource_ids = [
+      azurerm_user_assigned_identity.storage_fa_user.id
+    ]
   }
 
   site_config = {
@@ -131,20 +132,20 @@ resource "azurerm_app_service_certificate_binding" "nodejs_func_cert_binding" {
 # #   principal_id         = azurerm_linux_function_app.nodejs_func_app.identity[0].principal_id
 # # }
 
-resource "azurerm_role_assignment" "nodejsfuncapp-storage-blob" {
-  scope                = azurerm_storage_account.funcapp_storage.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = module.nodejs_function_app.identity_principal_id
-}
+# resource "azurerm_role_assignment" "nodejsfuncapp-storage-blob" {
+#   scope                = azurerm_storage_account.funcapp_storage.id
+#   role_definition_name = "Storage Blob Data Contributor"
+#   principal_id         = module.nodejs_function_app.identity_principal_id
+# }
 
-resource "azurerm_role_assignment" "nodejsfuncapp-data_storage-blob" {
-  scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = module.nodejs_function_app.identity_principal_id
-}
+# resource "azurerm_role_assignment" "nodejsfuncapp-data_storage-blob" {
+#   scope                = azurerm_storage_account.data_storage.id
+#   role_definition_name = "Storage Blob Data Contributor"
+#   principal_id         = module.nodejs_function_app.identity_principal_id
+# }
 
-resource "azurerm_role_assignment" "nodejsfuncapp-data_storage-table" {
-  scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Table Data Contributor"
-  principal_id         = module.nodejs_function_app.identity_principal_id
-}
+# resource "azurerm_role_assignment" "nodejsfuncapp-data_storage-table" {
+#   scope                = azurerm_storage_account.data_storage.id
+#   role_definition_name = "Storage Table Data Contributor"
+#   principal_id         = module.nodejs_function_app.identity_principal_id
+# }
