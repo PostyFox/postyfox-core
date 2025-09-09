@@ -46,6 +46,8 @@ module "dotnet_posting_function_app" {
     "TwitchClientSecret"                       = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchClientSecret)"
     "TwitchSignatureSecret"                    = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=TwitchSignatureSecret)"
     "TwitchCallbackUrl"                        = var.twitchCallbackUrl
+    "AzureWebJobsDashboard__accountName"       = azurerm_storage_account.funcapp_storage.name
+    "AzureWebJobsStorage__accountName"         = azurerm_storage_account.funcapp_storage.name
   }
 
   auth_settings_v2 = {

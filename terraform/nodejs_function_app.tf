@@ -43,6 +43,8 @@ module "nodejs_function_app" {
     "StorageAccount"                           = azurerm_storage_account.data_storage.primary_blob_endpoint
     "AzureActiveDirectory_PROVIDER_AUTHENTICATION_SECRET" = "@Microsoft.KeyVault(VaultName=${local.appname}-kv${local.hyphen-env};SecretName=clientsecret)"
     "SCM_DO_BUILD_DURING_DEPLOYMENT"           = "false"
+    "AzureWebJobsDashboard__accountName"       = azurerm_storage_account.funcapp_storage.name
+    "AzureWebJobsStorage__accountName"         = azurerm_storage_account.funcapp_storage.name
   }
 
   auth_settings_v2 = {
