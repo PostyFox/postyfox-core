@@ -27,8 +27,9 @@ module "nodejs_function_app" {
 
   enable_telemetry = true
 
-  instance_memory_in_mb       = 2048
-  storage_authentication_type = "UserAssignedIdentity"
+  instance_memory_in_mb             = 2048
+  storage_authentication_type       = "UserAssignedIdentity"
+  storage_user_assigned_identity_id = azurerm_user_assigned_identity.storage_fa_user.id
   managed_identities = {
     system_assigned = true
     user_assigned_resource_ids = [
