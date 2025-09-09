@@ -13,7 +13,7 @@ resource "azurerm_storage_account" "funcapp_storage" {
 
   public_network_access_enabled = true
 
-  min_tls_version = "TLS1_3"
+  min_tls_version = "TLS1_2" # Storage only supports 1.2 at present
 
   blob_properties {
     delete_retention_policy {
