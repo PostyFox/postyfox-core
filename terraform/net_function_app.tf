@@ -144,6 +144,6 @@ resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-table" {
 
 resource "azurerm_role_assignment" "dotnetfuncapp-data_storage-queue" {
   scope                = azurerm_storage_account.data_storage.id
-  role_definition_name = "Storage Table Data Contributor"
+  role_definition_name = "Storage Queue Data Contributor"
   principal_id         = module.dotnet_function_app.identity_principal_id
 }
