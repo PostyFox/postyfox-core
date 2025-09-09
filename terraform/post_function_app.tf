@@ -7,20 +7,18 @@ resource "azurerm_service_plan" "post_asp_flex" {
 }
 
 module "dotnet_posting_function_app" {
-  source                     = "Azure/avm-res-web-site/azurerm"
-  name                       = "${local.appname}-func-app-post${local.hyphen-env}"
-  resource_group_name        = azurerm_resource_group.rg.name
-  location                   = azurerm_resource_group.rg.location
-  kind                       = "functionapp"
-  os_type                    = "Linux"
-  service_plan_resource_id   = azurerm_service_plan.post_asp_flex.id
-  storage_account_name       = azurerm_storage_account.funcapp_storage.name
-  storage_container_endpoint = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}${azurerm_storage_container.posting_container.name}"
-
+  source                        = "Azure/avm-res-web-site/azurerm"
+  name                          = "${local.appname}-func-app-post${local.hyphen-env}"
+  resource_group_name           = azurerm_resource_group.rg.name
+  location                      = azurerm_resource_group.rg.location
+  kind                          = "functionapp"
+  os_type                       = "Linux"
+  service_plan_resource_id      = azurerm_service_plan.post_asp_flex.id
+  storage_account_name          = azurerm_storage_account.funcapp_storage.name
+  storage_container_endpoint    = "${azurerm_storage_account.funcapp_storage.primary_blob_endpoint}${azurerm_storage_container.posting_container.name}"
   storage_uses_managed_identity = true
   storage_container_type        = "blobContainer"
   enable_application_insights   = false # Use a shared AppInsights
-  storage_authentication_type   = "SystemAssignedIdentity"
 
   fc1_runtime_name      = "dotnet-isolated"
   fc1_runtime_version   = "8.0"
@@ -28,8 +26,7 @@ module "dotnet_posting_function_app" {
 
   enable_telemetry = true
 
-  instance_memory_in_mb       = 2048
-  storage_authentication_type = "SystemAssignedIdentity"
+  instance_memory_in_mb = 2048
 
   managed_identities = {
     system_assigned = true

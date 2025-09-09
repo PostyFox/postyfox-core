@@ -20,7 +20,6 @@ module "dotnet_function_app" {
   storage_uses_managed_identity = true
   storage_container_type        = "blobContainer"
   enable_application_insights   = false # Use a shared AppInsights
-  storage_authentication_type   = "SystemAssignedIdentity"
 
   fc1_runtime_name      = "dotnet-isolated"
   fc1_runtime_version   = "8.0"
@@ -28,8 +27,7 @@ module "dotnet_function_app" {
 
   enable_telemetry = true
 
-  instance_memory_in_mb       = 2048
-  storage_authentication_type = "SystemAssignedIdentity"
+  instance_memory_in_mb = 2048
 
   managed_identities = {
     system_assigned = true

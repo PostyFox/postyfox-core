@@ -13,7 +13,7 @@ resource "azurerm_storage_account" "funcapp_storage" {
 
   public_network_access_enabled = true
 
-  min_tls_version = "TLS1_2"
+  min_tls_version = "TLS1_3"
 
   blob_properties {
     delete_retention_policy {
@@ -25,6 +25,11 @@ resource "azurerm_storage_account" "funcapp_storage" {
     container_delete_retention_policy {
       days = 7
     }
+  }
+
+  network_rules {
+    default_action = "Allow"
+    bypass         = ["AzureServices"]
   }
 }
 
