@@ -44,3 +44,8 @@ variable "twitchClientId" {
 variable "twitchCallbackUrl" {
   type = string
 }
+
+variable "entra_tenant_id" {
+  type        = string
+  description = "(Required) The Entra External ID tenant domain name"
+}
