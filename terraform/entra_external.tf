@@ -9,4 +9,6 @@ module "extra_external_id" {
   country_code      = "GB"
   location          = "europe"
 
+  sku_name = "Base"
+
 }
