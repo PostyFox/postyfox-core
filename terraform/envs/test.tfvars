@@ -8,7 +8,7 @@ openid_configuration_endpoint="https://auth.postyfox.com/realms/PostyFox/.well-k
 
 kv_logs = ["AuditEvent"]
 
-cors = ["htps://test.cp.postyfox.com"]
+cors = ["https://test.cp.postyfox.com"]
 
 twitchClientId    = "kuzdmn0w740xkkyuteg5yt6o0fybrq"
 twitchCallbackUrl = "https://test.post.postyfox.com/api/Twitch_SubscriptionCallBack"
