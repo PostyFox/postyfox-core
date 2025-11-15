@@ -121,12 +121,12 @@ jobs:
       run: sudo apt-get install azure-functions-core-tools-4 -y
 
     - name: Setup .NET Core 8.x
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '8.0.x'
 
     - name: Setup .NET Core (for inproc extensions)
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '6.0.x'      
 
@@ -157,7 +157,7 @@ jobs:
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-Posting      
 
     - name: Setup Node v24
-      uses: actions/setup-node@v5
+      uses: actions/setup-node@v4
       with:
         node-version: 24.x
 

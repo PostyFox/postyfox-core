@@ -28,7 +28,22 @@ You can spin up a Function App host locally, once the FA functions are compiled 
 
 Postman is one of the easiest ways to experiment with the API's that are deployed. But in order to do this you need to authenticate and get a Bearer Token or you will receive 401's.
 
-The process to receive a token is fairly straight forward. [Click here](https://postyfoxdev.b2clogin.com/postyfoxdev.onmicrosoft.com/oauth2/v2.0/authorize?p=B2C_1_Signin&client_id=2b89259d-3cc3-41fe-adbf-5f9acb15e622&nonce=defaultNonce&redirect_uri=https%3A%2F%2Fjwt.ms&scope=openid&response_type=id_token&prompt=login), and login.  You will be presented with a token in the test JWT.MS application, copy this into your clipboard.
+The process to receive a token depends on your OIDC provider configuration. 
+
+**For Development/Testing:**
+1. Navigate to your OIDC provider's authorization endpoint
+2. Authenticate with your credentials
+3. You will receive a JWT token which you can use for API requests
+
+**Example OIDC Authorization Flow:**
+```
+GET https://your-oidc-provider.example.com/auth?
+  client_id=YOUR_CLIENT_ID&
+  redirect_uri=https://jwt.ms&
+  scope=openid profile email&
+  response_type=id_token&
+  nonce=defaultNonce
+```
 
 Open up Postman, and start a request to an API - for example - https://postyfox-func-app-dotnet-dev.azurewebsites.net/api/Services? - and formulate it with the correct parameters. Switch to the Authentication tab, select Bearer Token and paste your token into the box. Click Send. And that is it! If you have provided all the right parameters, and everything is working, you will get a response.
 
@@ -45,7 +60,14 @@ Replace username with a username for display and processing in the UI.
 
 ### Testing the API / Checking the Swagger Docs
 
-Point your browser at a deployed instance, such as the [dev one](https://postyfox-func-app-dotnet-dev.azurewebsites.net/api/swagger/ui). If you have not already logged in, you will need to complete this [first](https://postyfoxdev.b2clogin.com/postyfoxdev.onmicrosoft.com/oauth2/v2.0/authorize?p=B2C_1_Signin&client_id=2b89259d-3cc3-41fe-adbf-5f9acb15e622&nonce=defaultNonce&redirect_uri=https%3A%2F%2Fpostyfox-func-app-dotnet-dev.azurewebsites.net%2F.auth%2Flogin%2FOpenIDAuth%2Fcallback&scope=openid&response_type=id_token&prompt=login). You will be able to send test requests to the API and review the responses. Note that this functionality is not enabled on all deployments.
+Point your browser at a deployed instance, such as the [dev one](https://postyfox-func-app-dotnet-dev.azurewebsites.net/api/swagger/ui). 
+
+**Note:** If authentication is enabled, you will need to authenticate through your OIDC provider before accessing the Swagger UI. The authentication flow will redirect you to login at:
+```
+https://postyfox-func-app-dotnet-dev.azurewebsites.net/.auth/login/OpenIDAuth/callback
+```
+
+You will be able to send test requests to the API and review the responses. Note that this functionality is not enabled on all deployments.
 
 ## REMINDER
 

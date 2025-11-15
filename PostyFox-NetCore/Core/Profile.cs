@@ -45,8 +45,8 @@ namespace PostyFox_NetCore
         {
             if (AuthHelper.ValidateAuth(req, _logger))
             {
-                _configTable.CreateTableIfNotExists("UserProfiles_APIKeys");
-                var client = _configTable.GetTableClient("UserProfiles_APIKeys");
+                _configTable.CreateTableIfNotExists("UserProfilesAPIKeys");
+                var client = _configTable.GetTableClient("UserProfilesAPIKeys");
                 string userId = AuthHelper.GetAuthId(req);
 
                 Random random = new Random();
@@ -88,8 +88,8 @@ namespace PostyFox_NetCore
         {
             if (AuthHelper.ValidateAuth(req, _logger))
             {
-                _configTable.CreateTableIfNotExists("UserProfiles_APIKeys");
-                var client = _configTable.GetTableClient("UserProfiles_APIKeys");
+                _configTable.CreateTableIfNotExists("UserProfilesAPIKeys");
+                var client = _configTable.GetTableClient("UserProfilesAPIKeys");
                 string userId = AuthHelper.GetAuthId(req);
 
                 List<ProfileAPIKeyDTO> ls = new();
@@ -126,8 +126,8 @@ namespace PostyFox_NetCore
         {
             if (AuthHelper.ValidateAuth(req, _logger))
             {
-                _configTable.CreateTableIfNotExists("UserProfiles_APIKeys");
-                var client = _configTable.GetTableClient("UserProfiles_APIKeys");
+                _configTable.CreateTableIfNotExists("UserProfilesAPIKeys");
+                var client = _configTable.GetTableClient("UserProfilesAPIKeys");
                 string userId = AuthHelper.GetAuthId(req);
 
                 string requestBody = new StreamReader(req.Body).ReadToEnd();
