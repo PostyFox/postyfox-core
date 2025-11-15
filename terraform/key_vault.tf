@@ -8,14 +8,17 @@ resource "azurerm_key_vault" "key_vault" {
   tenant_id                       = data.azurerm_client_config.current.tenant_id
   soft_delete_retention_days      = 7
   purge_protection_enabled        = true
-  enable_rbac_authorization       = true
 
   public_network_access_enabled = true
 
   sku_name = "standard"
 }
 
-# A secret called client secret should be added to this vault :)
+# Secrets that should be manually added to this Key Vault:
+# - "clientsecret": OIDC client secret for authentication
+# - "TwitchClientSecret": Twitch application client secret
+# - "TwitchSignatureSecret": Twitch webhook signature secret
+# - "ContainerRegistryPassword": Container registry password for pulling images
 
 // These are needed for the portal to not be an idiot
 resource "azurerm_role_assignment" "dotnet_fa_user" {
@@ -34,22 +37,4 @@ resource "azurerm_role_assignment" "posting_fa_user" {
   scope                = azurerm_key_vault.key_vault.id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = module.posting_function_app.identity_id
-}
-
-resource "azurerm_monitor_diagnostic_setting" "keyvault" {
-  name                       = "${local.appname}-logging-keyvault${local.hyphen-env}"
-  target_resource_id         = azurerm_key_vault.key_vault.id
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
-
-  metric {
-    category = "AllMetrics"
-    enabled  = false
-  }
-
-  dynamic "enabled_log" {
-    for_each = var.kv_logs
-    content {
-      category = enabled_log.value
-    }
-  }
 }

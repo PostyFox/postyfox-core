@@ -9,7 +9,7 @@ module "posting_function_app" {
   resource_group_name  = azurerm_resource_group.rg.name
   plan_name            = "${local.appname}-flex_post${local.hyphen-env}"
 
-  auth_client_id                       = var.func_app_registered_client_id
+  auth_client_id                       = var.oidc_client_id
   auth_client_secret_setting_name      = "OPENID_PROVIDER_AUTHENTICATION_SECRET"
   auth_enabled                         = true
   auth_openid_well_known_configuration = var.openid_configuration_endpoint
