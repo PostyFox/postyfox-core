@@ -15,7 +15,11 @@ resource "azurerm_key_vault" "key_vault" {
   sku_name = "standard"
 }
 
-# A secret called client secret should be added to this vault :)
+# Secrets that should be manually added to this Key Vault:
+# - "clientsecret": OIDC client secret for authentication
+# - "TwitchClientSecret": Twitch application client secret
+# - "TwitchSignatureSecret": Twitch webhook signature secret
+# - "ContainerRegistryPassword": Container registry password for pulling images
 
 // These are needed for the portal to not be an idiot
 resource "azurerm_role_assignment" "dotnet_fa_user" {

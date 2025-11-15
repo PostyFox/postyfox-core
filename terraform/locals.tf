@@ -9,7 +9,5 @@ locals {
   posting-address   = "post.postyfox.com"
   mainapi-address   = "api.postyfox.com"
   nodejsapi-address = "api2.postyfox.com"
-
-
-  b2ctenant = var.environment == "prod" ? "postyfox" : "postyfox${var.environment}"
+  container-app-address = "container.postyfox.com"
 }
