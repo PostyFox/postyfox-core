@@ -12,12 +12,3 @@ cors = ["https://dev.cp.postyfox.com", "http://localhost:4200", "https://portal.
 
 twitchClientId    = "kuzdmn0w740xkkyuteg5yt6o0fybrq"
 twitchCallbackUrl = "https://dev.post.postyfox.com/api/Twitch_SubscriptionCallBack"
-
-# Container App Configuration
-container_registry_url              = "ghcr.io"
-container_registry_username         = "postyfox"
-# Note: container_registry_password is stored in Key Vault as "ContainerRegistryPassword"
-container_image_name                = "postyfox/postyfox-frontend"
-container_image_tag                 = "dev-d35cea8"
-container_app_custom_domain_enabled = false
-container_app_logs                  = ["ContainerAppConsoleLogs", "ContainerAppSystemLogs"]
