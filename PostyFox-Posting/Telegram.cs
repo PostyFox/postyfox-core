@@ -1,6 +1,5 @@
 using System.Net;
 using Azure.Data.Tables;
-using Azure.Security.KeyVault.Secrets;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -13,6 +12,7 @@ using PostyFox_DataLayer.TableEntities;
 using TL;
 using PostyFox_DataLayer;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
+using PostyFox_Secrets;
 
 namespace PostyFox_Posting
 {
@@ -20,21 +20,34 @@ namespace PostyFox_Posting
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
-        private readonly SecretClient? _secretStore;
+        private readonly ISecureStore? _secureStore;
         private readonly BlobServiceClient _blobStorageAccount;
         private int apiId = 0;
         private string apiHash = string.Empty;
 
-        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
+        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, ISecureStore? secureStore, IAzureClientFactory<BlobServiceClient> blobClientFactory)
         {
             _logger = loggerFactory.CreateLogger<Telegram>();
             _configTable = clientFactory.CreateClient("ConfigTable");
             _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
-            _secretStore = secretClientFactory.CreateClient("SecretStore");
+            _secureStore = secureStore;
 
-            // Load the configuration for Telegram from KeyVault
-            apiId = int.Parse(_secretStore.GetSecret("TelegramApiID").Value.Value);
-            apiHash = _secretStore.GetSecret("TelegramApiHash").Value.Value;
+            if (_secureStore != null)
+            {
+                var id = _secureStore.GetSecretAsync("TelegramApiID").GetAwaiter().GetResult();
+                var hash = _secureStore.GetSecretAsync("TelegramApiHash").GetAwaiter().GetResult();
+                if (!string.IsNullOrEmpty(id)) apiId = int.Parse(id);
+                apiHash = hash ?? string.Empty;
+            }
+            else
+            {
+#pragma warning disable CS8604 // Possible null reference argument.
+                apiId = int.Parse(Environment.GetEnvironmentVariable("TelegramApiID"));
+#pragma warning restore CS8604 // Possible null reference argument.
+#pragma warning disable CS8601 // Possible null reference assignment.
+                apiHash = Environment.GetEnvironmentVariable("TelegramApiHash");
+#pragma warning restore CS8601 // Possible null reference assignment.
+            }
         }
 
         public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)

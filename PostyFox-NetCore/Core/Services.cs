@@ -1,6 +1,5 @@
 using System.Net;
 using Azure.Data.Tables;
-using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -12,6 +11,7 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer;
 using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
+using PostyFox_Secrets;
 
 namespace PostyFox_NetCore
 {
@@ -19,18 +19,18 @@ namespace PostyFox_NetCore
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
-        private readonly SecretClient? _secretStore;
+        private readonly ISecureStore? _secureStore;
 
         public class ServiceRequest
         {
             public string ID { get; set; }
         }
 
-        public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory)
+        public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, ISecureStore? secureStore)
         {
             _logger = loggerFactory.CreateLogger<Services>();
             _configTable = clientFactory.CreateClient("ConfigTable");
-            _secretStore = secretClientFactory.CreateClient("SecretStore");
+            _secureStore = secureStore;
         }
 
         [Function("Services_Ping")]
@@ -254,11 +254,10 @@ namespace PostyFox_NetCore
                     if (data.SecureConfiguration != null)
                     {
                         // We have secure configuration data to unwrap and save to Key Vault
-                        if (_secretStore != null)
+                        if (_secureStore != null)
                         {
                             // Key Vault Secrets have a max of 127 chars in length.  This should be around 73 / 74 chars.
-                            KeyVaultSecret secret = new KeyVaultSecret(data.ID+"-"+userId, data.SecureConfiguration);
-                            _secretStore.SetSecret(secret);
+                            _secureStore.SetSecretAsync(data.ID + "-" + userId, data.SecureConfiguration).GetAwaiter().GetResult();
                         }
                     }
                 }

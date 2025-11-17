@@ -8,6 +8,7 @@ using Twitch.Net.Api;
 using Twitch.Net.EventSub;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using PostyFox_Secrets;
 
 // Load the configuration from the environment variables
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable");
@@ -18,6 +19,29 @@ var twitchCallbackUrl = Environment.GetEnvironmentVariable("TwitchCallbackUrl");
 
 var twitchClientSecret = Environment.GetEnvironmentVariable("TwitchClientSecret");
 var twitchSignatureSecret = Environment.GetEnvironmentVariable("TwitchSignatureSecret");
+
+var infisicalBaseUrl = Environment.GetEnvironmentVariable("Infisical_Url");
+var infisicalApiKey = Environment.GetEnvironmentVariable("Infisical_ApiKey");
+var secretStoreUri = Environment.GetEnvironmentVariable("SecretStore");
+
+var defaultCredentialOptions = new DefaultAzureCredentialOptions
+{
+    ExcludeVisualStudioCredential = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PostyFoxDevMode")),
+    ExcludeManagedIdentityCredential = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PostyFoxDevMode"))
+};
+
+// If startup secrets not present in environment, try to fetch them from the configured secret store through the abstraction
+if (string.IsNullOrEmpty(twitchClientSecret) && !string.IsNullOrEmpty(secretStoreUri))
+{
+    var kv = new KeyVaultStore(secretStoreUri, defaultCredentialOptions);
+    twitchClientSecret = kv.GetSecretAsync("TwitchClientSecret").GetAwaiter().GetResult();
+}
+
+if (string.IsNullOrEmpty(twitchSignatureSecret) && !string.IsNullOrEmpty(secretStoreUri))
+{
+    var kv = new KeyVaultStore(secretStoreUri, defaultCredentialOptions);
+    twitchSignatureSecret = kv.GetSecretAsync("TwitchSignatureSecret").GetAwaiter().GetResult();
+}
 
 // Create the host
 var host = new HostBuilder()
@@ -30,9 +54,10 @@ var host = new HostBuilder()
         });
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
+
+        // Register clients for each service (table/blob)
         services.AddAzureClients(clientBuilder =>
         {
-            // Register clients for each service
 #pragma warning disable CS8604
             if (!string.IsNullOrEmpty(tableAccount))
             {
@@ -43,16 +68,15 @@ var host = new HostBuilder()
             {
                 clientBuilder.AddBlobServiceClient(new Uri(storageAccount)).WithName("StorageAccount");
             }
-
-            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
-            {
-                clientBuilder.AddSecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore"))).WithName("SecretStore");
-            }
 #pragma warning restore CS8604
 
             clientBuilder.UseCredential(new DefaultAzureCredential());
         });
 
+        // Register secret store implementations and map ISecureStore to the selected provider.
+        services.AddSecureStore(secretStoreUri, infisicalBaseUrl, infisicalApiKey, defaultCredentialOptions);
+
+        // Configure Twitch clients
         if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret))
         {
             services.AddTwitchApiClient(config =>
@@ -98,11 +122,20 @@ if (string.IsNullOrEmpty(twitchSignatureSecret))
 {
     logger.LogInformation("Twitch Signature Secret: NOT DEFINED");
 }
-if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore"))) {
-    logger.LogInformation("Secret Store: NOT DEFINED");
-} else
+if (string.IsNullOrEmpty(secretStoreUri))
 {
-    logger.LogInformation("Secret Store: {secretStore}", Environment.GetEnvironmentVariable("SecretStore"));
+    if (!string.IsNullOrEmpty(infisicalBaseUrl))
+    {
+        logger.LogInformation("Using Infisical secret store: {infisical}", infisicalBaseUrl);
+    }
+    else
+    {
+        logger.LogInformation("Secret Store: NOT DEFINED");
+    }
+}
+else
+{
+    logger.LogInformation("Using Key Vault secret store: {secretStore}", secretStoreUri);
 }
 
 host.Run();

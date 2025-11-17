@@ -4,7 +4,8 @@ using Azure.Identity;
 using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Twitch.Net.Api;
 using Twitch.Net.EventSub;
-using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.DependencyInjection;
+using PostyFox_Secrets;
 
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable") ?? throw new Exception("Configuration not found for ConfigTable");
 var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? throw new Exception("Configuration not found for StorageAccount");
@@ -22,12 +23,13 @@ var defaultCredentialOptions = new DefaultAzureCredentialOptions
 var twitchClientSecret = "";
 var twitchSignatureSecret = "";
 
-if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
+var secretStoreUri = Environment.GetEnvironmentVariable("SecretStore");
+if (!string.IsNullOrEmpty(secretStoreUri))
 {
-    // Connect to the Secret service and pull the Twitch Secrets, as we need them during initialisation
-    SecretClient _secretStore = new SecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore")), new DefaultAzureCredential(defaultCredentialOptions));
-    twitchClientSecret = _secretStore.GetSecret("TwitchClientSecret").Value.ToString();
-    twitchSignatureSecret = _secretStore.GetSecret("TwitchSignatureSecret").Value.ToString(); ;
+    // Use the KeyVaultStore abstraction to fetch initial secrets without referencing SecretClient
+    var kv = new KeyVaultStore(secretStoreUri, defaultCredentialOptions);
+    twitchClientSecret = kv.GetSecretAsync("TwitchClientSecret").GetAwaiter().GetResult() ?? string.Empty;
+    twitchSignatureSecret = kv.GetSecretAsync("TwitchSignatureSecret").GetAwaiter().GetResult() ?? string.Empty;
 }
 
 var host = new HostBuilder()
@@ -41,14 +43,37 @@ var host = new HostBuilder()
             clientBuilder.AddTableServiceClient(new Uri(tableAccount)).WithName("ConfigTable");
             clientBuilder.AddBlobServiceClient(new Uri(storageAccount)).WithName("StorageAccount");
             clientBuilder.AddQueueServiceClient(new Uri(queueAccount)).WithName("PostingQueue");
-            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SecretStore")))
-            {
-                clientBuilder.AddSecretClient(new Uri(Environment.GetEnvironmentVariable("SecretStore"))).WithName("SecretStore");
-            }
 #pragma warning restore CS8604
             
             clientBuilder.UseCredential(new DefaultAzureCredential(defaultCredentialOptions));
         });
+
+        // Register secret stores for this project
+        if (!string.IsNullOrEmpty(secretStoreUri))
+        {
+            // Register KeyVaultStore directly so callers don't need KeyVault SDK types
+            services.AddSingleton<IKeyVaultStore>(sp => new KeyVaultStore(secretStoreUri, defaultCredentialOptions));
+            services.AddSingleton<ISecureStore>(sp => sp.GetRequiredService<IKeyVaultStore>());
+        }
+
+        var infisicalBaseUrl = Environment.GetEnvironmentVariable("Infisical_Url");
+        var infisicalApiKey = Environment.GetEnvironmentVariable("Infisical_ApiKey");
+        if (!string.IsNullOrEmpty(infisicalBaseUrl))
+        {
+            services.AddHttpClient<IInfisicalStore, InfisicalStore>(client =>
+            {
+                client.BaseAddress = new Uri(infisicalBaseUrl);
+                if (!string.IsNullOrEmpty(infisicalApiKey))
+                {
+                    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {infisicalApiKey}");
+                }
+            });
+
+            if (string.IsNullOrEmpty(secretStoreUri))
+            {
+                services.AddSingleton<ISecureStore>(sp => sp.GetRequiredService<IInfisicalStore>());
+            }
+        }
 
         if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret) &&
             !string.IsNullOrEmpty(twitchCallbackUrl) && !string.IsNullOrEmpty(twitchSignatureSecret))
