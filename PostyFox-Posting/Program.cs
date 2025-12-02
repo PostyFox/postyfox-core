@@ -5,7 +5,9 @@ using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Twitch.Net.Api;
 using Twitch.Net.EventSub;
 using Microsoft.Extensions.DependencyInjection;
-using PostyFox_Secrets;
+using Neillans.Adapters.Secrets.Core;
+using Neillans.Adapters.Secrets.AzureKeyVault;
+using Neillans.Adapters.Secrets.Infisical;
 
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable") ?? throw new Exception("Configuration not found for ConfigTable");
 var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? throw new Exception("Configuration not found for StorageAccount");
@@ -26,10 +28,7 @@ var twitchSignatureSecret = "";
 var secretStoreUri = Environment.GetEnvironmentVariable("SecretStore");
 if (!string.IsNullOrEmpty(secretStoreUri))
 {
-    // Use the KeyVaultStore abstraction to fetch initial secrets without referencing SecretClient
-    var kv = new KeyVaultStore(secretStoreUri, defaultCredentialOptions);
-    twitchClientSecret = kv.GetSecretAsync("TwitchClientSecret").GetAwaiter().GetResult() ?? string.Empty;
-    twitchSignatureSecret = kv.GetSecretAsync("TwitchSignatureSecret").GetAwaiter().GetResult() ?? string.Empty;
+    // Attempt to read secrets later via DI-registered provider
 }
 
 var host = new HostBuilder()
@@ -48,31 +47,23 @@ var host = new HostBuilder()
             clientBuilder.UseCredential(new DefaultAzureCredential(defaultCredentialOptions));
         });
 
-        // Register secret stores for this project
+        // Register adapters-secrets providers
+        var infisicalBaseUrl = Environment.GetEnvironmentVariable("Infisical_Url");
         if (!string.IsNullOrEmpty(secretStoreUri))
         {
-            // Register KeyVaultStore directly so callers don't need KeyVault SDK types
-            services.AddSingleton<IKeyVaultStore>(sp => new KeyVaultStore(secretStoreUri, defaultCredentialOptions));
-            services.AddSingleton<ISecureStore>(sp => sp.GetRequiredService<IKeyVaultStore>());
+            services.AddAzureKeyVaultSecretsProvider(options => { options.VaultUri = secretStoreUri!; });
         }
-
-        var infisicalBaseUrl = Environment.GetEnvironmentVariable("Infisical_Url");
-        var infisicalApiKey = Environment.GetEnvironmentVariable("Infisical_ApiKey");
-        if (!string.IsNullOrEmpty(infisicalBaseUrl))
+        else if (!string.IsNullOrEmpty(infisicalBaseUrl))
         {
-            services.AddHttpClient<IInfisicalStore, InfisicalStore>(client =>
+            services.AddInfisicalSecretsProvider(options =>
             {
-                client.BaseAddress = new Uri(infisicalBaseUrl);
-                if (!string.IsNullOrEmpty(infisicalApiKey))
-                {
-                    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {infisicalApiKey}");
-                }
+                options.SiteUrl = infisicalBaseUrl!;
+                options.ClientId = Environment.GetEnvironmentVariable("INFISICAL_CLIENT_ID") ?? string.Empty;
+                options.ClientSecret = Environment.GetEnvironmentVariable("INFISICAL_CLIENT_SECRET") ?? string.Empty;
+                options.ProjectId = Environment.GetEnvironmentVariable("INFISICAL_PROJECT_ID") ?? string.Empty;
+                options.Environment = Environment.GetEnvironmentVariable("INFISICAL_ENVIRONMENT") ?? "dev";
+                options.SecretPath = Environment.GetEnvironmentVariable("INFISICAL_SECRET_PATH") ?? "/";
             });
-
-            if (string.IsNullOrEmpty(secretStoreUri))
-            {
-                services.AddSingleton<ISecureStore>(sp => sp.GetRequiredService<IInfisicalStore>());
-            }
         }
 
         if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret) &&

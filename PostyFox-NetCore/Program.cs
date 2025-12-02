@@ -73,8 +73,26 @@ var host = new HostBuilder()
             clientBuilder.UseCredential(new DefaultAzureCredential());
         });
 
-        // Register secret store implementations and map ISecureStore to the selected provider.
-        services.AddSecureStore(secretStoreUri, infisicalBaseUrl, infisicalApiKey, defaultCredentialOptions);
+        // Register adapters-secrets providers via package extensions
+        if (!string.IsNullOrEmpty(secretStoreUri))
+        {
+            Neillans.Adapters.Secrets.AzureKeyVault.InstallerExtensions.AddAzureKeyVaultSecretsProvider(services, options =>
+            {
+                options.VaultUri = secretStoreUri!;
+            });
+        }
+        else if (!string.IsNullOrEmpty(infisicalBaseUrl))
+        {
+            Neillans.Adapters.Secrets.Infisical.InfisicalServiceCollectionExtensions.AddInfisicalSecretsProvider(services, options =>
+            {
+                options.SiteUrl = infisicalBaseUrl!;
+                options.ClientId = Environment.GetEnvironmentVariable("INFISICAL_CLIENT_ID") ?? string.Empty;
+                options.ClientSecret = Environment.GetEnvironmentVariable("INFISICAL_CLIENT_SECRET") ?? string.Empty;
+                options.ProjectId = Environment.GetEnvironmentVariable("INFISICAL_PROJECT_ID") ?? string.Empty;
+                options.Environment = Environment.GetEnvironmentVariable("INFISICAL_ENVIRONMENT") ?? "dev";
+                options.SecretPath = Environment.GetEnvironmentVariable("INFISICAL_SECRET_PATH") ?? "/";
+            });
+        }
 
         // Configure Twitch clients
         if (!string.IsNullOrEmpty(twitchClientId) && !string.IsNullOrEmpty(twitchClientSecret))
