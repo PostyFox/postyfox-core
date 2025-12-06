@@ -5,9 +5,6 @@ using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Twitch.Net.Api;
 using Twitch.Net.EventSub;
 using Microsoft.Extensions.DependencyInjection;
-using Neillans.Adapters.Secrets.Core;
-using Neillans.Adapters.Secrets.AzureKeyVault;
-using Neillans.Adapters.Secrets.Infisical;
 
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable") ?? throw new Exception("Configuration not found for ConfigTable");
 var storageAccount = Environment.GetEnvironmentVariable("StorageAccount") ?? throw new Exception("Configuration not found for StorageAccount");
