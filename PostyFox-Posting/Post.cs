@@ -14,6 +14,7 @@ using Microsoft.Extensions.Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 
 namespace PostyFox_Posting
 {
