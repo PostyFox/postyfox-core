@@ -3,7 +3,6 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
@@ -11,7 +10,6 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer.TableEntities;
 using TL;
 using PostyFox_DataLayer;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using PostyFox_Secrets;
 
 namespace PostyFox_Posting
