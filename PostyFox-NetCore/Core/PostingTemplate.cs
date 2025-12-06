@@ -10,6 +10,7 @@ using PostyFox_NetCore.Helpers;
 using System.Net;
 using static PostyFox_NetCore.Integrations.Telegram;
 using static PostyFox_NetCore.Services;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 
 namespace PostyFox_NetCore
 {
