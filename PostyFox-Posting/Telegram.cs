@@ -20,22 +20,22 @@ namespace PostyFox_Posting
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
-        private readonly ISecureStore? _secureStore;
+        private readonly ISecretsProvider? _secretsProvider;
         private readonly BlobServiceClient _blobStorageAccount;
         private int apiId = 0;
         private string apiHash = string.Empty;
 
-        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, ISecureStore? secureStore, IAzureClientFactory<BlobServiceClient> blobClientFactory)
+        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, ISecretsProvider? secretsProvider, IAzureClientFactory<BlobServiceClient> blobClientFactory)
         {
             _logger = loggerFactory.CreateLogger<Telegram>();
             _configTable = clientFactory.CreateClient("ConfigTable");
             _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
-            _secureStore = secureStore;
+            _secretsProvider = secretsProvider;
 
-            if (_secureStore is not null)
+            if (_secretsProvider is not null)
             {
-                var id = _secureStore.GetSecretAsync("TelegramApiID").GetAwaiter().GetResult();
-                var hash = _secureStore.GetSecretAsync("TelegramApiHash").GetAwaiter().GetResult();
+                var id = _secretsProvider.GetSecretAsync("TelegramApiID").GetAwaiter().GetResult();
+                var hash = _secretsProvider.GetSecretAsync("TelegramApiHash").GetAwaiter().GetResult();
                 if (!string.IsNullOrEmpty(id)) apiId = int.Parse(id);
                 apiHash = hash ?? string.Empty;
             }
@@ -52,7 +52,7 @@ namespace PostyFox_Posting
 
         public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
         {
-            // This constructor will be used when there is no secretStore provided by dependency injection - i.e. we are running locally.
+            // This constructor will be used when there is no secrets provider provided by dependency injection - i.e. we are running locally.
 
             _logger = loggerFactory.CreateLogger<Telegram>();
             _configTable = clientFactory.CreateClient("ConfigTable");
