@@ -13,6 +13,7 @@ using Azure.Data.Tables;
 using Microsoft.Extensions.Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 
 namespace PostyFox_Posting
 {
