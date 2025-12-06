@@ -12,6 +12,9 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="aneillans.adapters-secrets.AzureKeyVault" Version="1.0.7" />
+		<PackageReference Include="aneillans.adapters-secrets.Core" Version="1.0.7" />
+		<PackageReference Include="aneillans.adapters-secrets.Infisical" Version="1.0.7" />
 		<PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
 		<PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.50.0" />
 		<PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
@@ -40,7 +43,6 @@
 		<ProjectReference Include="..\Vendor\Twitch.Net.Api\Twitch.Net.Api.csproj" />
 		<ProjectReference Include="..\Vendor\Twitch.Net.EventSub\Twitch.Net.EventSub.csproj" />
 		<ProjectReference Include="..\Vendor\Twitch.Net.Shared\Twitch.Net.Shared.csproj" />
-		<ProjectReference Include="..\PostyFox-Secrets\PostyFox-Secrets.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Update="host.json">
