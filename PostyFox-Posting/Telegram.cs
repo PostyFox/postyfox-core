@@ -12,6 +12,7 @@ using TL;
 using PostyFox_DataLayer;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
+using Neillans.Adapters.Secrets.Core;
 
 namespace PostyFox_Posting
 {
@@ -31,7 +32,7 @@ namespace PostyFox_Posting
             _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
             _secureStore = secureStore;
 
-            if (_secureStore != null)
+            if (_secureStore is not null)
             {
                 var id = _secureStore.GetSecretAsync("TelegramApiID").GetAwaiter().GetResult();
                 var hash = _secureStore.GetSecretAsync("TelegramApiHash").GetAwaiter().GetResult();
