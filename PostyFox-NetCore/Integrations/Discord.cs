@@ -5,7 +5,6 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using System.Net;
-using PostyFox_Secrets;
 
 namespace PostyFox_NetCore.Integrations
 {
