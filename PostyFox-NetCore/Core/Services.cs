@@ -41,7 +41,7 @@ namespace PostyFox_NetCore
             return response;
         }
 
-        [OpenApiOperation(tags: ["services"], Summary = "Fetch All Available Services", Description = "Fetch all available services a user can configure on the platform", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiOperation(tags: ["services"], Summary = "Fetch All Available Services", Description = "Fetch all available services a user can configure on the platform", Visibility = Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums.OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(List<ServiceDTO>), Summary = "List of services", Description = "This returns the response of available services, a list of objects")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [Function("Services_GetAvailable")]
@@ -81,7 +81,7 @@ namespace PostyFox_NetCore
             }
         }
 
-        [OpenApiOperation(tags: ["services"], Summary = "Fetch Specific Available Service", Description = "", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiOperation(tags: ["services"], Summary = "Fetch Specific Available Service", Description = "", Visibility = Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums.OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(ServiceDTO), Summary = "", Description = "")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [Function("Services_GetAvailableService")]
@@ -124,7 +124,7 @@ namespace PostyFox_NetCore
             }
         }
 
-        [OpenApiOperation(tags: ["services"], Summary = "Fetch User Services", Description = "Fetches the state of configured user services", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiOperation(tags: ["services"], Summary = "Fetch User Services", Description = "Fetches the state of configured user services", Visibility = Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums.OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(List<ServiceDTO>), Summary = "List of user configured services", Description = "This returns the response of configured services, a list of objects")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [Function("Services_GetUserServices")]
@@ -168,7 +168,7 @@ namespace PostyFox_NetCore
             }
         }
 
-        [OpenApiOperation(tags: ["services"], Summary = "Fetch User Service", Description = "Fetches the state of a configured user service", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiOperation(tags: ["services"], Summary = "Fetch User Service", Description = "Fetches the state of a configured user service", Visibility = Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums.OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(ServiceDTO), Summary = "A single user service", Description = "This returns the response of configured service")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [Function("Services_GetUserService")]
@@ -217,7 +217,7 @@ namespace PostyFox_NetCore
         }
 
 
-        [OpenApiOperation(tags: ["services"], Summary = "Set Details for a user service", Description = "Saves the configuration for a service for a given user", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiOperation(tags: ["services"], Summary = "Set Details for a user service", Description = "Saves the configuration for a service for a given user", Visibility = Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums.OpenApiVisibilityType.Important)]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.OK, Summary = "The result of the save operation", Description = "")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(ServiceDTO), Required = true)]
@@ -271,7 +271,7 @@ namespace PostyFox_NetCore
             }
         }
 
-        [OpenApiOperation(tags: ["services"], Summary = "Delete a service a user has configured", Description = "Delete a user that a user has already configured and no longer wants to use", Visibility = OpenApiVisibilityType.Important)]
+        [OpenApiOperation(tags: ["services"], Summary = "Delete a service a user has configured", Description = "Delete a user that a user has already configured and no longer wants to use", Visibility = Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums.OpenApiVisibilityType.Important)]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.OK, Summary = "The result of the delete operation", Description = "")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(ServiceDTO), Required = true)]
