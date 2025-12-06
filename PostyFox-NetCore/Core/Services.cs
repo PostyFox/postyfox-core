@@ -2,8 +2,6 @@ using System.Net;
 using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
@@ -11,7 +9,9 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer;
 using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
-using PostyFox_Secrets;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
+using Neillans.Adapters.Secrets.Core;
 
 namespace PostyFox_NetCore
 {
@@ -19,18 +19,18 @@ namespace PostyFox_NetCore
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
-        private readonly ISecureStore? _secureStore;
+        private readonly ISecretsProvider? _secretsProvider;
 
         public class ServiceRequest
         {
             public string ID { get; set; }
         }
 
-        public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, ISecureStore? secureStore)
+        public Services(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, ISecretsProvider? secretsProvider)
         {
             _logger = loggerFactory.CreateLogger<Services>();
             _configTable = clientFactory.CreateClient("ConfigTable");
-            _secureStore = secureStore;
+            _secretsProvider = secretsProvider;
         }
 
         [Function("Services_Ping")]
@@ -223,7 +223,7 @@ namespace PostyFox_NetCore
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(ServiceDTO), Required = true)]
         [Function("Services_SetUserService")]
-        public HttpResponseData SetUserService([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+        public async Task<HttpResponseData> SetUserService([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
         {
             if (AuthHelper.ValidateAuth(req, _logger))
             {
@@ -254,10 +254,10 @@ namespace PostyFox_NetCore
                     if (data.SecureConfiguration != null)
                     {
                         // We have secure configuration data to unwrap and save to Key Vault
-                        if (_secureStore != null)
+                        if (_secretsProvider != null)
                         {
                             // Key Vault Secrets have a max of 127 chars in length.  This should be around 73 / 74 chars.
-                            _secureStore.SetSecretAsync(data.ID + "-" + userId, data.SecureConfiguration).GetAwaiter().GetResult();
+                            await _secretsProvider.SetSecretAsync(data.ID + "-" + userId, data.SecureConfiguration);
                         }
                     }
                 }

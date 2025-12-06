@@ -35,7 +35,6 @@
     <ProjectReference Include="..\PostyFox-DataLayer\PostyFox-DataLayer.csproj" />
     <ProjectReference Include="..\Vendor\Twitch.Net.Api\Twitch.Net.Api.csproj" />
     <ProjectReference Include="..\Vendor\Twitch.Net.EventSub\Twitch.Net.EventSub.csproj" />
-    <ProjectReference Include="..\PostyFox-Secrets\PostyFox-Secrets.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

@@ -8,7 +8,9 @@ using Twitch.Net.Api;
 using Twitch.Net.EventSub;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using PostyFox_Secrets;
+using Neillans.Adapters.Secrets.Core;
+using Neillans.Adapters.Secrets.AzureKeyVault;
+using Neillans.Adapters.Secrets.Infisical;
 
 // Load the configuration from the environment variables
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable");
@@ -29,19 +31,6 @@ var defaultCredentialOptions = new DefaultAzureCredentialOptions
     ExcludeVisualStudioCredential = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PostyFoxDevMode")),
     ExcludeManagedIdentityCredential = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PostyFoxDevMode"))
 };
-
-// If startup secrets not present in environment, try to fetch them from the configured secret store through the abstraction
-if (string.IsNullOrEmpty(twitchClientSecret) && !string.IsNullOrEmpty(secretStoreUri))
-{
-    var kv = new KeyVaultStore(secretStoreUri, defaultCredentialOptions);
-    twitchClientSecret = kv.GetSecretAsync("TwitchClientSecret").GetAwaiter().GetResult();
-}
-
-if (string.IsNullOrEmpty(twitchSignatureSecret) && !string.IsNullOrEmpty(secretStoreUri))
-{
-    var kv = new KeyVaultStore(secretStoreUri, defaultCredentialOptions);
-    twitchSignatureSecret = kv.GetSecretAsync("TwitchSignatureSecret").GetAwaiter().GetResult();
-}
 
 // Create the host
 var host = new HostBuilder()
@@ -74,16 +63,19 @@ var host = new HostBuilder()
         });
 
         // Register adapters-secrets providers via package extensions
+        services.AddSecretsProviderFactory();
         if (!string.IsNullOrEmpty(secretStoreUri))
         {
-            Neillans.Adapters.Secrets.AzureKeyVault.InstallerExtensions.AddAzureKeyVaultSecretsProvider(services, options =>
+            // Use extension method from AzureKeyVault adapter package
+            services.AddAzureKeyVaultSecretsProvider(options =>
             {
                 options.VaultUri = secretStoreUri!;
             });
         }
         else if (!string.IsNullOrEmpty(infisicalBaseUrl))
         {
-            Neillans.Adapters.Secrets.Infisical.InfisicalServiceCollectionExtensions.AddInfisicalSecretsProvider(services, options =>
+            // Use extension method from Infisical adapter package
+            services.AddInfisicalSecretsProvider(options =>
             {
                 options.SiteUrl = infisicalBaseUrl!;
                 options.ClientId = Environment.GetEnvironmentVariable("INFISICAL_CLIENT_ID") ?? string.Empty;
@@ -122,6 +114,23 @@ var host = new HostBuilder()
     })
     .Build();
 
+// Resolve secure store from DI and fetch secrets if missing
+using (var scope = host.Services.CreateScope())
+{
+    var provider = scope.ServiceProvider.GetService<ISecretsProvider>();
+    if (provider != null)
+    {
+        if (string.IsNullOrEmpty(twitchClientSecret))
+        {
+            twitchClientSecret = provider.GetSecretAsync("TwitchClientSecret").GetAwaiter().GetResult();
+        }
+        if (string.IsNullOrEmpty(twitchSignatureSecret))
+        {
+            twitchSignatureSecret = provider.GetSecretAsync("TwitchSignatureSecret").GetAwaiter().GetResult();
+        }
+    }
+}
+
 ILogger logger = host.Services.GetService<ILogger<Program>>();
 
 logger.LogInformation("Starting PostyFox-NetCore");
@@ -156,4 +165,4 @@ else
     logger.LogInformation("Using Key Vault secret store: {secretStore}", secretStoreUri);
 }
 
-host.Run();
+await host.RunAsync();
