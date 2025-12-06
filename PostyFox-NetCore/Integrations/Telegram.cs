@@ -14,6 +14,7 @@ using TL;
 using PostyFox_DataLayer;
 using static PostyFox_NetCore.Services;
 using System;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 
 namespace PostyFox_NetCore.Integrations
 {
