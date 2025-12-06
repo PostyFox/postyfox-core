@@ -12,7 +12,6 @@ using System.Text.Json;
 using TL;
 using Twitch.Net.Api.Client;
 using Twitch.Net.EventSub;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 
 namespace PostyFox_NetCore.Integrations
 {
