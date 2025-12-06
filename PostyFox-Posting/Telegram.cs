@@ -10,7 +10,6 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer.TableEntities;
 using TL;
 using PostyFox_DataLayer;
-using PostyFox_Secrets;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 
