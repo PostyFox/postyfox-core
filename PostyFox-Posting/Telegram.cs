@@ -12,6 +12,7 @@ using TL;
 using PostyFox_DataLayer;
 using PostyFox_Secrets;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 
 namespace PostyFox_Posting
 {
