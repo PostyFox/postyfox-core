@@ -10,6 +10,7 @@ using PostyFox_DataLayer;
 using PostyFox_DataLayer.TableEntities;
 using PostyFox_NetCore.Helpers;
 using Neillans.Adapters.Secrets.Core;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 
 namespace PostyFox_NetCore
 {
