@@ -221,7 +221,7 @@ namespace PostyFox_NetCore.Integrations
 
         [OpenApiOperation(tags: ["telegram"], Summary = "Get Channels and Chats (Not user 2 user)", Description = "", Visibility = OpenApiVisibilityType.Important)]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(Dictionary<long, string>), Summary = "Returns the users accessible chats and channels", Description = "Returns with a JSON object detailing the users accessible chats and channels which the platform can post into")]
-        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
+        [Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes.OpenApiResponseWithoutBodyAttribute(statusCode: HttpStatusCode.NotFound, Summary = "No configuration found", Description = "No configuration stored for the user for the Telegram service")]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.MethodNotAllowed, contentType: "application/json", bodyType: typeof(KeyValuePair), Summary = "Service not authenticated", Description = "")]
         [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Not logged in", Description = "Reauthenticate and ensure auth headers are provided")]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(RequestParameters), Required = true)]
