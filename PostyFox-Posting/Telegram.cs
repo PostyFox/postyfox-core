@@ -1,10 +1,8 @@
 using System.Net;
 using Azure.Data.Tables;
-using Azure.Security.KeyVault.Secrets;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
@@ -12,7 +10,9 @@ using Newtonsoft.Json;
 using PostyFox_DataLayer.TableEntities;
 using TL;
 using PostyFox_DataLayer;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
+using Neillans.Adapters.Secrets.Core;
 
 namespace PostyFox_Posting
 {
@@ -20,26 +20,39 @@ namespace PostyFox_Posting
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
-        private readonly SecretClient? _secretStore;
+        private readonly ISecretsProvider? _secretsProvider;
         private readonly BlobServiceClient _blobStorageAccount;
         private int apiId = 0;
         private string apiHash = string.Empty;
 
-        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
+        public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, ISecretsProvider? secretsProvider, IAzureClientFactory<BlobServiceClient> blobClientFactory)
         {
             _logger = loggerFactory.CreateLogger<Telegram>();
             _configTable = clientFactory.CreateClient("ConfigTable");
             _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
-            _secretStore = secretClientFactory.CreateClient("SecretStore");
+            _secretsProvider = secretsProvider;
 
-            // Load the configuration for Telegram from KeyVault
-            apiId = int.Parse(_secretStore.GetSecret("TelegramApiID").Value.Value);
-            apiHash = _secretStore.GetSecret("TelegramApiHash").Value.Value;
+            if (_secretsProvider is not null)
+            {
+                var id = _secretsProvider.GetSecretAsync("TelegramApiID").GetAwaiter().GetResult();
+                var hash = _secretsProvider.GetSecretAsync("TelegramApiHash").GetAwaiter().GetResult();
+                if (!string.IsNullOrEmpty(id)) apiId = int.Parse(id);
+                apiHash = hash ?? string.Empty;
+            }
+            else
+            {
+#pragma warning disable CS8604 // Possible null reference argument.
+                apiId = int.Parse(Environment.GetEnvironmentVariable("TelegramApiID"));
+#pragma warning restore CS8604 // Possible null reference argument.
+#pragma warning disable CS8601 // Possible null reference assignment.
+                apiHash = Environment.GetEnvironmentVariable("TelegramApiHash");
+#pragma warning restore CS8601 // Possible null reference assignment.
+            }
         }
 
         public Telegram(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory)
         {
-            // This constructor will be used when there is no secretStore provided by dependency injection - i.e. we are running locally.
+            // This constructor will be used when there is no secrets provider provided by dependency injection - i.e. we are running locally.
 
             _logger = loggerFactory.CreateLogger<Telegram>();
             _configTable = clientFactory.CreateClient("ConfigTable");

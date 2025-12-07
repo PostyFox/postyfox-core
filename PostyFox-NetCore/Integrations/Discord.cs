@@ -1,11 +1,12 @@
-﻿using Azure.Data.Tables;
-using Azure.Security.KeyVault.Secrets;
+﻿using System.Net;
+using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using Neillans.Adapters.Secrets.Core;
 
 namespace PostyFox_NetCore.Integrations
 {
@@ -13,15 +14,15 @@ namespace PostyFox_NetCore.Integrations
     {
         private readonly ILogger _logger;
         private readonly TableServiceClient _configTable;
-        private readonly SecretClient? _secretStore;
+        private readonly ISecretsProvider? _secretsProvider;
         private readonly BlobServiceClient _blobStorageAccount;
 
-        public Discord(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, IAzureClientFactory<SecretClient> secretClientFactory, IAzureClientFactory<BlobServiceClient> blobClientFactory)
+        public Discord(ILoggerFactory loggerFactory, IAzureClientFactory<TableServiceClient> clientFactory, ISecretsProvider? secretsProvider, IAzureClientFactory<BlobServiceClient> blobClientFactory)
         {
             _logger = loggerFactory.CreateLogger<Discord>();
             _configTable = clientFactory.CreateClient("ConfigTable");
             _blobStorageAccount = blobClientFactory.CreateClient("StorageAccount");
-            _secretStore = secretClientFactory.CreateClient("SecretStore");
+            _secretsProvider = secretsProvider;
         }
 
         [Function("Discord_Ping")]
