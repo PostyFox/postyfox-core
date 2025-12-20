@@ -25,6 +25,9 @@ module "posting_function_app" {
   cors_support_credentials = true
   cors_allowed_origins     = var.cors
 
+  runtime         = "dotnet-isolated"
+  runtime_version = "10.0"
+
   app_settings = [
     {
       name  = "PostingQueue__queueServiceUri",
