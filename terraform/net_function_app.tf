@@ -20,7 +20,7 @@ module "dotnet_function_app" {
   auth_login_token_store_enabled = true
   auth_login_token_refresh_hours = 72
   auth_login_validate_nonce      = true
-  auth_login_logout_endpoint     = "/.auth/logout"
+  auth_login_logout_endpoint     = var.logout_endpoint
 
   runtime         = "dotnet-isolated"
   runtime_version = "10.0"

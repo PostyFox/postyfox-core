@@ -20,6 +20,10 @@ variable "openid_configuration_endpoint" {
   description = "(Required) The OIDC well-known configuration endpoint URL"
 }
 
+variable "logout_endpoint" {
+  type = string
+}
+
 variable "kv_logs" {
   type = list(string)
 }
