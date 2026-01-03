@@ -139,10 +139,6 @@ jobs:
       run: |
         dotnet nuget list source  
 
-    - name: Add private package feeds
-      run: |
-        dotnet nuget add source --name github "https://nuget.pkg.github.com/aneillans/index.json" --username postyfox --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text  
-
     - name: Install dotnet Core dependencies
       run: dotnet restore
       working-directory: /home/runner/work/postyfox-core/postyfox-core/PostyFox-NetCore
