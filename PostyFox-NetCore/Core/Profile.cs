@@ -1,7 +1,6 @@
 using System;
 using System.Net;
 using Azure.Data.Tables;
-using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Azure;
