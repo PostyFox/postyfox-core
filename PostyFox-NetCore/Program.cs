@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Neillans.Adapters.Secrets.Core;
 using Neillans.Adapters.Secrets.AzureKeyVault;
 using Neillans.Adapters.Secrets.Infisical;
+using Neillans.Adapters.Secrets.BitWarden;
 
 // Load the configuration from the environment variables
 var tableAccount = Environment.GetEnvironmentVariable("ConfigTable");
@@ -23,7 +24,8 @@ var twitchClientSecret = Environment.GetEnvironmentVariable("TwitchClientSecret"
 var twitchSignatureSecret = Environment.GetEnvironmentVariable("TwitchSignatureSecret");
 
 var infisicalBaseUrl = Environment.GetEnvironmentVariable("Infisical_Url");
-var infisicalApiKey = Environment.GetEnvironmentVariable("Infisical_ApiKey");
+var bitWardenServerUrl = Environment.GetEnvironmentVariable("BitWarden_ServerUrl");
+var bitWardenApiKey = Environment.GetEnvironmentVariable("BitWarden_ApiKey");
 var secretStoreUri = Environment.GetEnvironmentVariable("SecretStore");
 
 var defaultCredentialOptions = new DefaultAzureCredentialOptions
@@ -70,6 +72,15 @@ var host = new HostBuilder()
             services.AddAzureKeyVaultSecretsProvider(options =>
             {
                 options.VaultUri = secretStoreUri!;
+            });
+        }
+        else if (!string.IsNullOrEmpty(bitWardenServerUrl) && !string.IsNullOrEmpty(bitWardenApiKey))
+        {
+            // Use extension method from BitWarden adapter package
+            services.AddBitWardenSecretsProvider(options =>
+            {
+                options.ServerUrl = bitWardenServerUrl!;
+                options.ApiKey = bitWardenApiKey!;
             });
         }
         else if (!string.IsNullOrEmpty(infisicalBaseUrl))
@@ -151,7 +162,11 @@ if (string.IsNullOrEmpty(twitchSignatureSecret))
 }
 if (string.IsNullOrEmpty(secretStoreUri))
 {
-    if (!string.IsNullOrEmpty(infisicalBaseUrl))
+    if (!string.IsNullOrEmpty(bitWardenServerUrl) && !string.IsNullOrEmpty(bitWardenApiKey))
+    {
+        logger.LogInformation("Using BitWarden secret store: {bitWardenServerUrl}", bitWardenServerUrl);
+    }
+    else if (!string.IsNullOrEmpty(infisicalBaseUrl))
     {
         logger.LogInformation("Using Infisical secret store: {infisical}", infisicalBaseUrl);
     }
