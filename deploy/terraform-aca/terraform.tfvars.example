@@ -1,0 +1,17 @@
+resource_group_name = "postyfox-rg"
+location            = "uksouth"
+image_registry      = "ghcr.io"
+image_repository    = "your-org/postyfox"
+image_tag           = "v1.0.0"
+
+object_store_service_url = "https://<account>.blob.core.windows.net"
+rabbitmq_host            = "my-rabbit.example.com"
+otel_endpoint            = "http://otel-collector:4317"
+
+# Secrets — supply via TF_VAR_* env vars in CI, not this file.
+postgres_connection     = "Host=...;Port=5432;Database=postyfox;Username=...;Password=..."
+encryption_key          = "<base64-32-bytes>"
+internal_token          = "<random>"
+object_store_access_key = "..."
+object_store_secret_key = "..."
+rabbitmq_password       = "..."

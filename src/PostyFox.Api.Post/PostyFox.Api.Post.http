@@ -1,0 +1,6 @@
+@PostyFox.Api.Post_HostAddress = http://localhost:5278
+
+GET {{PostyFox.Api.Post_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

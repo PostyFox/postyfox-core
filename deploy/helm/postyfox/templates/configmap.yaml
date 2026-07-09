@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "postyfox.fullname" . }}-config
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+data:
+  ObjectStore__ServiceUrl: {{ .Values.config.objectStoreServiceUrl | quote }}
+  ObjectStore__Bucket: {{ .Values.config.objectStoreBucket | quote }}
+  RabbitMq__Host: {{ .Values.config.rabbitMqHost | quote }}
+  RabbitMq__User: {{ .Values.config.rabbitMqUser | quote }}
+  Auth__DevMode: {{ .Values.config.authDevMode | quote }}
+  Auth__UserHeader: {{ .Values.config.authUserHeader | quote }}
+  NodeConnectors__BaseUrl: "http://{{ include "postyfox.fullname" . }}-connectors-node:8090"
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.config.otelEndpoint | quote }}
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  ASPNETCORE_URLS: "http://+:8080"
+  PORT: "8090"

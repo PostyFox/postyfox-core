@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "postyfox.fullname" . }}-worker
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.worker.replicas }}
+  selector:
+    matchLabels: { app.kubernetes.io/name: postyfox-worker }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: postyfox-worker }
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: worker
+          image: {{ include "postyfox.image" (list . "worker") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef: { name: {{ include "postyfox.fullname" . }}-config }
+            - secretRef: { name: {{ include "postyfox.secretName" . }} }
+          resources: {{- toYaml .Values.resources | nindent 12 }}

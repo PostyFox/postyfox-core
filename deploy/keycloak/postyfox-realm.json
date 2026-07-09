@@ -1,0 +1,25 @@
+{
+  "realm": "PostyFox",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "oauth2-proxy",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "oauth2-proxy-secret",
+      "standardFlowEnabled": true,
+      "redirectUris": ["http://localhost:4180/oauth2/callback"],
+      "webOrigins": ["http://localhost:4180"]
+    }
+  ],
+  "users": [
+    {
+      "username": "postyfox",
+      "enabled": true,
+      "email": "postyfox@example.com",
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "postyfox", "temporary": false }]
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+# PostyFox local stack. Quick start:  docker compose up --build
+# Adds the OIDC edge (Keycloak + oauth2-proxy):  docker compose --profile auth up --build
+#
+# By default the APIs run with Auth__DevMode=true (no login needed) for fast local iteration.
+# The 'auth' profile brings the production-representative oauth2-proxy -> Keycloak path.
+name: postyfox
+
+x-dotnet-env: &dotnet-env
+  ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox;Username=postyfox;Password=postyfox"
+  ObjectStore__ServiceUrl: "http://rustfs:9000"
+  ObjectStore__AccessKey: "rustfsadmin"
+  ObjectStore__SecretKey: "rustfsadmin"
+  ObjectStore__Bucket: "postyfox"
+  RabbitMq__Host: "rabbitmq"
+  RabbitMq__User: "guest"
+  RabbitMq__Password: "guest"
+  Secrets__EncryptionKey: "cG9zdHlmb3gtZGV2LXNlY3JldC1rZXktMzJieXRlcyE="
+  Auth__DevMode: "true"
+  Auth__UserHeader: "X-Auth-Request-User"
+  NodeConnectors__BaseUrl: "http://connectors-node:8090"
+  NodeConnectors__InternalToken: "postyfox-internal-dev-token"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  ASPNETCORE_URLS: "http://+:8080"
+
+services:
+  postgres:
+    image: pgautoupgrade/pgautoupgrade:latest
+    environment:
+      POSTGRES_USER: postyfox
+      POSTGRES_PASSWORD: postyfox
+      POSTGRES_DB: postyfox
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postyfox"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    environment:
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["rustfsdata:/data"]
+    healthcheck:
+      # Any HTTP response from the S3 endpoint (200/403) means it's up.
+      test: ["CMD-SHELL", "curl -s -o /dev/null http://localhost:9000/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    build: ./rabbitmq
+    ports: ["5672:5672", "15672:15672"]
+    # Run directly as the rabbitmq user (uid 999). Under rootless podman the default root→rabbitmq
+    # privilege drop left the freshly-written .erlang.cookie unreadable (eacces); starting as 999
+    # avoids the cross-uid transition.
+    user: "999:999"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes: ["./otel/config.yaml:/etc/otel/config.yaml:ro"]
+    ports: ["4317:4317", "4318:4318"]
+
+  connectors-node:
+    build:
+      context: ../src/connectors-node
+    environment:
+      PORT: "8090"
+      INTERNAL_TOKEN: "postyfox-internal-dev-token"
+      OBJECT_STORE_SERVICE_URL: "http://rustfs:9000"
+      OBJECT_STORE_ACCESS_KEY: "rustfsadmin"
+      OBJECT_STORE_SECRET_KEY: "rustfsadmin"
+      OBJECT_STORE_BUCKET: "postyfox"
+      OBJECT_STORE_FORCE_PATH_STYLE: "true"
+    ports: ["8090:8090"]
+    depends_on:
+      rustfs: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  core-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        PROJECT: src/PostyFox.Api.Core/PostyFox.Api.Core.csproj
+        ASSEMBLY: PostyFox.Api.Core.dll
+    environment:
+      <<: *dotnet-env
+      ApplyMigrations: "true"
+      SeedServiceDefinitions: "true"
+    ports: ["8080:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      rustfs: { condition: service_healthy }
+      connectors-node: { condition: service_healthy }
+
+  post-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        PROJECT: src/PostyFox.Api.Post/PostyFox.Api.Post.csproj
+        ASSEMBLY: PostyFox.Api.Post.dll
+    environment:
+      <<: *dotnet-env
+    ports: ["8081:8080"]
+    depends_on:
+      core-api: { condition: service_started }
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      rustfs: { condition: service_healthy }
+
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        PROJECT: src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj
+        ASSEMBLY: PostyFox.Worker.Posting.dll
+    environment:
+      <<: *dotnet-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      rustfs: { condition: service_healthy }
+      connectors-node: { condition: service_healthy }
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes: ["./keycloak:/opt/keycloak/data/import:ro"]
+    ports: ["8082:8080"]
+    profiles: ["auth"]
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:latest
+    command: ["--config=/etc/oauth2-proxy.cfg"]
+    volumes: ["./oauth2-proxy/oauth2-proxy.cfg:/etc/oauth2-proxy.cfg:ro"]
+    ports: ["4180:4180"]
+    depends_on: [keycloak, core-api]
+    profiles: ["auth"]
+
+volumes:
+  pgdata:
+  rustfsdata:

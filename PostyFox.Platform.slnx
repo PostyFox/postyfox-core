@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PostyFox.Api.Core/PostyFox.Api.Core.csproj" />
+    <Project Path="src/PostyFox.Api.Post/PostyFox.Api.Post.csproj" />
+    <Project Path="src/PostyFox.Application/PostyFox.Application.csproj" />
+    <Project Path="src/PostyFox.Domain/PostyFox.Domain.csproj" />
+    <Project Path="src/PostyFox.Infrastructure/PostyFox.Infrastructure.csproj" />
+    <Project Path="src/PostyFox.Web/PostyFox.Web.csproj" />
+    <Project Path="src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PostyFox.Api.Core.Tests/PostyFox.Api.Core.Tests.csproj" />
+    <Project Path="tests/PostyFox.Api.Post.Tests/PostyFox.Api.Post.Tests.csproj" />
+    <Project Path="tests/PostyFox.Application.Tests/PostyFox.Application.Tests.csproj" />
+    <Project Path="tests/PostyFox.Infrastructure.Tests/PostyFox.Infrastructure.Tests.csproj" />
+    <Project Path="tests/PostyFox.Worker.Posting.Tests/PostyFox.Worker.Posting.Tests.csproj" />
+  </Folder>
+</Solution>
