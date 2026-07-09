@@ -13,8 +13,9 @@ public sealed class FakeTelegramGateway : ITelegramGateway
     public Task<bool> IsAuthenticatedAsync(string userId, string phoneNumber, CancellationToken ct = default) => Task.FromResult(Authenticated);
     public Task<IReadOnlyList<ConnectorTarget>> ListChatsAsync(string userId, string phoneNumber, CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>(Chats);
-    public Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, CancellationToken ct = default)
-    { LastSend = (userId, phoneNumber, chatId, body); return Task.FromResult(SendResult); }
+    public int LastMediaCount { get; private set; }
+    public Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, IReadOnlyList<MediaRef> media, CancellationToken ct = default)
+    { LastSend = (userId, phoneNumber, chatId, body); LastMediaCount = media.Count; return Task.FromResult(SendResult); }
     public Task<TelegramLoginStep> LoginAsync(string userId, string phoneNumber, string? value, CancellationToken ct = default)
         => Task.FromResult(LoginSteps.Count > 0 ? LoginSteps.Dequeue() : new TelegramLoginStep(TelegramLoginStep.Complete));
 }

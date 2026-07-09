@@ -79,7 +79,7 @@ public sealed class WTelegramGateway(
         return result;
     }
 
-    public async Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, CancellationToken ct = default)
+    public async Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, IReadOnlyList<MediaRef> media, CancellationToken ct = default)
     {
         try
         {
@@ -92,10 +92,38 @@ public sealed class WTelegramGateway(
             if (!chats.chats.TryGetValue(id, out var chat))
                 return DeliveryResult.Fail($"Chat {chatId} not accessible");
 
+            var peer = chat.ToInputPeer();
             var text = body;
             var entities = client.HtmlToEntities(ref text);
-            var message = await client.SendMessageAsync(chat.ToInputPeer(), text, entities: entities);
-            return DeliveryResult.Ok(message.id.ToString());
+
+            if (media.Count == 0)
+            {
+                var message = await client.SendMessageAsync(peer, text, entities: entities);
+                return DeliveryResult.Ok(message.id.ToString());
+            }
+
+            var content = await MediaFetcher.FetchAsync(objectStore, media, ct);
+
+            if (content.Count == 1)
+            {
+                using var ms = new MemoryStream(content[0].Data);
+                var file = await client.UploadFileAsync(ms, content[0].FileName);
+                var msg = await client.SendMediaAsync(peer, text, file, content[0].ContentType, entities: entities);
+                return DeliveryResult.Ok(msg.id.ToString());
+            }
+
+            // Multiple media → a single grouped album; caption/formatting on the album.
+            var album = new List<InputMedia>(content.Count);
+            foreach (var m in content)
+            {
+                using var ms = new MemoryStream(m.Data);
+                var file = await client.UploadFileAsync(ms, m.FileName);
+                album.Add(m.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                    ? new InputMediaUploadedPhoto { file = file }
+                    : new InputMediaUploadedDocument { file = file, mime_type = m.ContentType });
+            }
+            var messages = await client.SendAlbumAsync(peer, album, text, entities: entities);
+            return DeliveryResult.Ok(messages.FirstOrDefault()?.id.ToString());
         }
         catch (Exception ex)
         {

@@ -69,6 +69,7 @@ flowchart TB
     worker --> pg & s3 & sec
     worker -->|Discord, Telegram MTProto| ext
     worker -->|deliver Bluesky/Tumblr| node --> ext
+    node -->|fetch media| s3
 
     core & post & worker & node -.OTLP.-> otel
 ```
@@ -118,7 +119,7 @@ flowchart LR
 | `PostyFox.Web` | Shared auth handlers (header + API key) and OpenTelemetry wiring. |
 | `PostyFox.Api.Core` / `PostyFox.Api.Post` | Minimal-API hosts + endpoint groups. |
 | `PostyFox.Worker.Posting` | Hosts the queue consumers. |
-| `tests/*` | 5 xUnit projects (91 tests). `connectors-node` has its own 15 tests. |
+| `tests/*` | 5 xUnit projects (98 tests). `connectors-node` has its own 18 tests. |
 
 The `Application` layer deliberately depends on EF Core Core (`IAppDbContext` exposes `DbSet<>`),
 trading a little purity for far less repository boilerplate.
@@ -264,8 +265,10 @@ the connector-ops endpoints never hard-code a platform.
 
 The C# **`HttpConnector`** adapter fulfils `IConnector` for Bluesky/Tumblr by forwarding to
 connectors-node over HTTP (`POST /connectors/{platform}/{is-authenticated|list-targets|deliver}`),
-passing the resolved config + secret in the request body so the Node service stays **stateless**. All
-internal calls carry a shared `X-Internal-Token`.
+passing the resolved config + secret in the request body. All internal calls carry a shared
+`X-Internal-Token`. **Media is passed by reference** (`{container, key, contentType, alt}`) — the
+Node service fetches the bytes from the shared object store itself (its own S3 client), so no media
+bytes cross the internal hop. The Node service holds no session state.
 
 ```mermaid
 sequenceDiagram
@@ -402,9 +405,9 @@ posts get the same rendering, delivery, retry and status behaviour.
 
 See [FOLLOWUPS.md](./FOLLOWUPS.md) for the full list. Headlines:
 
-- **🔴 Media delivery is deferred** — the pipeline carries a media manifest end-to-end but no
-  connector uploads media yet (text-only delivery). This is a **key product requirement** and the
-  next work item.
+- Media delivery is **implemented** (upload → object store; connectors fetch by reference and upload:
+  Discord multipart, Telegram single/**album**, Bluesky/Tumblr with **alt text**). Residuals:
+  video/documents, per-platform limits, pre-signed uploads — see [FOLLOWUPS.md](./FOLLOWUPS.md).
 - Telegram MTProto is stateful (single-writer routing) and not integration-tested (needs live creds).
 - No admin endpoint yet for platform-level secrets (Telegram api id/hash, trigger signing secrets).
 - Scheduling relies on the RabbitMQ delayed-message plugin; a durable scheduler is a follow-up.

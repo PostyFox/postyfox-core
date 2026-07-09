@@ -23,6 +23,21 @@ the credentials/config it needs.
 | ---------------- | ------- | --------------------------------------------------------------------------- |
 | `PORT`           | `8090`  | TCP port the server binds to (`0.0.0.0`).                                    |
 | `INTERNAL_TOKEN` | _unset_ | Shared secret. When set, all routes except `/health` require a match. When unset, auth is disabled (dev mode). |
+| `OBJECT_STORE_SERVICE_URL` | _unset_ | S3-compatible endpoint used to fetch media bytes, e.g. `http://minio:9000`. Leave unset for real AWS S3. |
+| `OBJECT_STORE_ACCESS_KEY`  | _unset_ | Object-store access key id. |
+| `OBJECT_STORE_SECRET_KEY`  | _unset_ | Object-store secret access key. |
+| `OBJECT_STORE_BUCKET`      | `postyfox` | Single bucket that holds every media container. |
+| `OBJECT_STORE_FORCE_PATH_STYLE` | `true` | Path-style addressing (required by MinIO and most self-hosted stores). Set `false` for virtual-host style. |
+| `OBJECT_STORE_REGION`      | `us-east-1` | S3 region. |
+
+### Media object store
+
+`deliver` no longer receives inline base64 bytes. Each `post.media` item is a
+**reference** into an S3-compatible object store. The service fetches the bytes
+itself from the single bucket named by `OBJECT_STORE_BUCKET`, using the object
+key `` `${container}/${key}` `` (e.g. container `media`, key `u1/abc/pic.png` →
+S3 key `media/u1/abc/pic.png`). A fetch failure is caught and returned as
+`{ "success": false, "error": "..." }` — it never crashes the request.
 
 ## Authentication
 
@@ -82,7 +97,7 @@ Body:
     "title": "string | null",
     "body": "string",
     "tags": ["string"],
-    "media": [ { "container": "string", "key": "string", "contentType": "string" } ]
+    "media": [ { "container": "string", "key": "string", "contentType": "string", "alt": "string | null" } ]
   }
 }
 ```
@@ -94,8 +109,11 @@ Body:
 `deliver` never throws on platform errors — it returns
 `{ "success": false, "error": "..." }`.
 
-> **Media:** the `post.media` array is accepted but currently ignored
-> (text-only delivery). See the `// TODO: media` markers in the connectors.
+> **Media:** each `post.media` item is an object-store reference. The service
+> fetches the bytes from `OBJECT_STORE_BUCKET` at key `` `${container}/${key}` ``,
+> uploads them to the platform, and applies `alt` as the image's alt text.
+> Bluesky attaches up to 4 images as an `app.bsky.embed.images` embed; Tumblr
+> creates an NPF photo post. Text-only posts are unaffected.
 
 ## Connector credential shapes
 

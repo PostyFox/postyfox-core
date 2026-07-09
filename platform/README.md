@@ -18,7 +18,8 @@ reference) · [`../docs/REIMPLEMENTATION_PLAN.md`](../docs/REIMPLEMENTATION_PLAN
 | **4 — External triggers** | Generic source-agnostic trigger framework: signed webhooks → dedupe → frequency-throttled fan-out into the pipeline (generic HMAC source). | ✅ done |
 | **5 — Hardening & deploy** | Dependency audit suppressions, rate limiting + security headers, CI, Helm chart + Terraform/ACA deploy, OTLP→OpenSearch observability. | ✅ done |
 
-> **Media delivery is deferred** (a key requirement) — see [docs/FOLLOWUPS.md](./docs/FOLLOWUPS.md).
+> **Media/image delivery is implemented** across all connectors (upload → object store → per-platform
+> upload). Residuals (alt text, video, limits) are in [docs/FOLLOWUPS.md](./docs/FOLLOWUPS.md).
 
 ## Architecture
 
@@ -43,7 +44,7 @@ src/
   PostyFox.Api.Post         post intake + status, external-trigger webhook callback
   PostyFox.Worker.Posting   consumes generate/deliver queues; runs the pipeline
 connectors-node/            Node/TS service: Bluesky (@atproto/api) + Tumblr (tumblr.js)
-tests/                      one project per layer (xUnit) — 91 C# tests (+15 in connectors-node)
+tests/                      one project per layer (xUnit) — 98 C# tests (+18 in connectors-node)
 ```
 
 ### The connector contract
@@ -104,8 +105,8 @@ trust. External/machine callers authenticate with `X-API-Key: <key>` (create one
 ```bash
 cd platform
 dotnet build                 # whole solution
-dotnet test                  # all 91 unit/integration tests
-# Node connectors:  cd connectors-node && npm ci && npm test   # 15 tests
+dotnet test                  # all 98 unit/integration tests
+# Node connectors:  cd connectors-node && npm ci && npm test   # 18 tests
 
 # EF migrations
 dotnet dotnet-ef migrations add <Name> --project src/PostyFox.Infrastructure
@@ -140,8 +141,10 @@ requires `TelegramApiID` / `TelegramApiHash` in the secret store (real MTProto c
 
 ## Known follow-ups
 
-- Transitive advisory warnings: `Microsoft.OpenApi` 2.0.0 (via AspNetCore.OpenApi) and the
-  SQLite test dependency — pin patched versions in Phase 5 hardening.
+- Security advisories are resolved by explicit version pins (no audit suppressions):
+  `Microsoft.OpenApi` → **2.7.5** in the API projects (the framework's `AspNetCore.OpenApi` 10.0.9
+  otherwise pulls the vulnerable 2.0.0 transitively), and `SQLitePCLRaw.bundle_e_sqlite3` → **3.0.3**
+  in the test projects (EF Core Sqlite otherwise pulls the flagged 2.1.11 native lib).
 - Scheduling uses the RabbitMQ delayed-message plugin; a durable scheduler / due-scan is a Phase 5
   hardening item for very long-horizon schedules.
 - **Telegram MTProto is stateful**: route a user's Telegram ops to a single instance (consistent

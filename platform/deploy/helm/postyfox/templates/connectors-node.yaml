@@ -21,8 +21,17 @@ spec:
           ports: [{ containerPort: 8090 }]
           env:
             - { name: PORT, value: "8090" }
+            - { name: OBJECT_STORE_FORCE_PATH_STYLE, value: "true" }
             - name: INTERNAL_TOKEN
               valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: INTERNAL_TOKEN } }
+            - name: OBJECT_STORE_SERVICE_URL
+              valueFrom: { configMapKeyRef: { name: {{ include "postyfox.fullname" . }}-config, key: ObjectStore__ServiceUrl } }
+            - name: OBJECT_STORE_BUCKET
+              valueFrom: { configMapKeyRef: { name: {{ include "postyfox.fullname" . }}-config, key: ObjectStore__Bucket } }
+            - name: OBJECT_STORE_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: ObjectStore__AccessKey } }
+            - name: OBJECT_STORE_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: ObjectStore__SecretKey } }
           livenessProbe: { httpGet: { path: /health, port: 8090 }, initialDelaySeconds: 5, periodSeconds: 15 }
           resources: {{- toYaml .Values.resources | nindent 12 }}
 ---

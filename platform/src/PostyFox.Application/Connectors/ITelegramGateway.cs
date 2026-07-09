@@ -16,7 +16,7 @@ public interface ITelegramGateway
 {
     Task<bool> IsAuthenticatedAsync(string userId, string phoneNumber, CancellationToken ct = default);
     Task<IReadOnlyList<ConnectorTarget>> ListChatsAsync(string userId, string phoneNumber, CancellationToken ct = default);
-    Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, CancellationToken ct = default);
+    Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, IReadOnlyList<MediaRef> media, CancellationToken ct = default);
 
     /// <summary>Advances the login flow; pass the requested <paramref name="value"/> (code/password) on subsequent calls.</summary>
     Task<TelegramLoginStep> LoginAsync(string userId, string phoneNumber, string? value, CancellationToken ct = default);

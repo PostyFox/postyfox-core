@@ -22,8 +22,15 @@ public sealed record RenderedPost(
     IReadOnlyList<string> Tags,
     IReadOnlyList<MediaRef> Media);
 
-/// <summary>Reference to a stored media object.</summary>
-public sealed record MediaRef(string Container, string Key, string ContentType);
+/// <summary>
+/// Reference to a stored media object (carried on the post / in the manifest and passed to
+/// connectors). Connectors fetch the bytes from the object store themselves; media is never
+/// shipped inline. <see cref="Alt"/> is optional accessibility text used where platforms support it.
+/// </summary>
+public sealed record MediaRef(string Container, string Key, string ContentType, string? Alt = null);
+
+/// <summary>Media bytes resolved from the object store by a connector at delivery time.</summary>
+public sealed record MediaContent(string FileName, string ContentType, byte[] Data, string? Alt = null);
 
 /// <summary>Outcome of a delivery attempt.</summary>
 public sealed record DeliveryResult(bool Success, string? ExternalId, string? ExternalUrl, string? Error)

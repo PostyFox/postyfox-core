@@ -1,4 +1,9 @@
 import * as tumblr from "tumblr.js";
+import { createReadStream } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
+import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import type {
   Connector,
   ConnectorContext,
@@ -13,18 +18,33 @@ interface TumblrBlog {
   title?: string;
 }
 
+/** A decoded image to attach to a photo post. */
+export interface TumblrMedia {
+  fileName: string;
+  contentType: string;
+  /** Alternative text for the image. */
+  alt: string;
+  bytes: Buffer;
+}
+
+type TumblrPostResult = {
+  id?: string | number;
+  id_string?: string;
+  post_url?: string;
+  [key: string]: unknown;
+};
+
 /** Minimal surface of the tumblr.js client that this connector relies on. */
 export interface TumblrClientLike {
   userInfo(): Promise<{ user?: { blogs?: TumblrBlog[] } }>;
   createTextPost(
     blogIdentifier: string,
     params: { title?: string; body: string; tags?: string[] },
-  ): Promise<{
-    id?: string | number;
-    id_string?: string;
-    post_url?: string;
-    [key: string]: unknown;
-  }>;
+  ): Promise<TumblrPostResult>;
+  createPhotoPost(
+    blogIdentifier: string,
+    params: { title?: string; body: string; tags?: string[]; media: TumblrMedia[] },
+  ): Promise<TumblrPostResult>;
 }
 
 /** OAuth1 credentials that tumblr.js expects. */
@@ -57,6 +77,7 @@ const defaultClientFactory: TumblrClientFactory = (creds) => {
   }) as unknown as {
     userInfo(): Promise<{ user?: { blogs?: TumblrBlog[] } }>;
     createLegacyPost(blog: string, params: Record<string, unknown>): Promise<Record<string, unknown>>;
+    createPost(blog: string, params: Record<string, unknown>): Promise<Record<string, unknown>>;
   };
 
   return {
@@ -67,12 +88,46 @@ const defaultClientFactory: TumblrClientFactory = (creds) => {
         title: params.title,
         body: params.body,
         tags: params.tags?.join(","),
-      }) as Promise<{ id?: string | number; id_string?: string; post_url?: string }>,
+      }) as Promise<TumblrPostResult>,
+    createPhotoPost: async (blogIdentifier, params) => {
+      // tumblr.js NPF media upload requires fs.ReadStream sources, so decoded
+      // bytes are staged to a short-lived temp directory that is always cleaned
+      // up afterwards.
+      const dir = await mkdtemp(join(tmpdir(), "tumblr-media-"));
+      try {
+        const content: Record<string, unknown>[] = [];
+        if (params.title) {
+          content.push({ type: "text", text: params.title, subtype: "heading1" });
+        }
+        if (params.body) {
+          content.push({ type: "text", text: params.body });
+        }
+        for (let i = 0; i < params.media.length; i++) {
+          const item = params.media[i];
+          const filePath = join(dir, item.fileName || `image-${i}`);
+          await writeFile(filePath, item.bytes);
+          content.push({
+            type: "image",
+            media: createReadStream(filePath),
+            alt_text: item.alt,
+          });
+        }
+        return (await client.createPost(blogIdentifier, {
+          content,
+          tags: params.tags,
+        })) as TumblrPostResult;
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    },
   };
 };
 
 export class TumblrConnector implements Connector {
-  constructor(private readonly clientFactory: TumblrClientFactory = defaultClientFactory) {}
+  constructor(
+    private readonly clientFactory: TumblrClientFactory = defaultClientFactory,
+    private readonly mediaStore: MediaStore = mediaStoreFromEnv(),
+  ) {}
 
   private parseCredentials(ctx: ConnectorContext): {
     username: string;
@@ -135,12 +190,32 @@ export class TumblrConnector implements Connector {
       const { username, creds } = this.parseCredentials(ctx);
       const client = this.clientFactory(creds);
 
-      // TODO: media — photo/video posts are not yet delivered (text-only).
-      const result = await client.createTextPost(username, {
-        title: post.title ?? undefined,
-        body: post.body,
-        tags: post.tags,
-      });
+      const media = post.media ?? [];
+      let result;
+      if (media.length > 0) {
+        const resolved: TumblrMedia[] = [];
+        for (const item of media) {
+          const bytes = await this.mediaStore.fetch(item.container, item.key);
+          resolved.push({
+            fileName: basename(item.key) || item.key,
+            contentType: item.contentType,
+            alt: item.alt ?? "",
+            bytes,
+          });
+        }
+        result = await client.createPhotoPost(username, {
+          title: post.title ?? undefined,
+          body: post.body,
+          tags: post.tags,
+          media: resolved,
+        });
+      } else {
+        result = await client.createTextPost(username, {
+          title: post.title ?? undefined,
+          body: post.body,
+          tags: post.tags,
+        });
+      }
 
       const rawId = result.id_string ?? result.id;
       const externalId = rawId !== undefined ? String(rawId) : undefined;

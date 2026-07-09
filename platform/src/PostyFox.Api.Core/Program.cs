@@ -49,6 +49,7 @@ app.MapProfileEndpoints();
 app.MapServiceEndpoints();
 app.MapTemplateEndpoints();
 app.MapTriggerEndpoints();
+app.MapMediaEndpoints();
 
 app.Run();
 

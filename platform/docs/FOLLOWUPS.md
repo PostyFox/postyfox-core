@@ -2,26 +2,25 @@
 
 Tracked gaps after Phases 0–5. Ordered by importance.
 
-## 🔴 KEY REQUIREMENT — Media delivery (deferred)
+## Media delivery — implemented ✅
 
-**Media attachments are a core product requirement and are NOT yet implemented end-to-end.**
-Today the pipeline carries a **media manifest** (references to objects in the object store) all the
-way through — `Post.MediaManifestJson` → `RenderedPost.Media` (`MediaRef[]`) → the connector
-`deliver` payload — but **no connector uploads media**; all connectors deliver **text only**.
+Image/media delivery is implemented end-to-end:
+- **Upload**: `POST /api/media` stores a file in the object store and returns a `MediaRef`
+  (with optional **alt text**); the client attaches `MediaRef`s to a post's `media` array.
+- **Transport**: connectors receive `MediaRef`s and **fetch bytes from the object store**
+  themselves — C# connectors via `IObjectStore`, the Node service via its own S3 client. No media
+  bytes cross the internal HTTP hop.
+- **Alt text**: carried on `MediaRef` and applied where supported (Bluesky embed images, Tumblr).
+- **Connectors**: Discord (multipart file upload), Telegram (MTProto — single `SendMediaAsync`,
+  **`SendAlbumAsync` for multiple**), Bluesky (`uploadBlob` → `app.bsky.embed.images`, ≤4 images),
+  Tumblr (NPF photo blocks).
 
-To complete it:
-- **Intake/upload**: an endpoint (or pre-signed upload flow) to put media into the object store and
-  return `MediaRef`s the client includes on the post. (`POST /api/posts` already accepts a `media`
-  array of `MediaRef`.)
-- **connectors-node** (Bluesky, Tumblr): fetch each `MediaRef` from the object store (needs
-  object-store credentials wired into the Node service) and upload via `@atproto/api` blob upload /
-  `tumblr.js` photo posts. The `deliver` contract already receives `media`; the handlers currently
-  mark it `// TODO: media`.
-- **Discord**: attach files (multipart) or embed image URLs on the webhook.
-- **Telegram**: send media via `SendMediaAsync` / album (`WTelegramClient`) instead of `SendMessageAsync`.
-- **Validation/limits**: per-platform media type/size/count limits in each connector descriptor.
-
-This is the single largest remaining feature and should be the next work item.
+Residual media follow-ups (smaller):
+- **Video / documents** — only images are exercised end-to-end; verify/tune non-image media per
+  platform (content-type handling, Telegram document vs photo).
+- **Per-platform limits** — enforce type/size/count limits from each connector's descriptor.
+- **Pre-signed upload** — direct-to-object-store uploads (pre-signed URLs) instead of proxying
+  bytes through `POST /api/media`, for large files.
 
 ## Other follow-ups
 

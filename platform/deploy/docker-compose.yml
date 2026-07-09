@@ -73,7 +73,14 @@ services:
     environment:
       PORT: "8090"
       INTERNAL_TOKEN: "postyfox-internal-dev-token"
+      OBJECT_STORE_SERVICE_URL: "http://minio:9000"
+      OBJECT_STORE_ACCESS_KEY: "minioadmin"
+      OBJECT_STORE_SECRET_KEY: "minioadmin"
+      OBJECT_STORE_BUCKET: "postyfox"
+      OBJECT_STORE_FORCE_PATH_STYLE: "true"
     ports: ["8090:8090"]
+    depends_on:
+      minio: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 5s

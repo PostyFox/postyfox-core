@@ -40,9 +40,11 @@ public sealed class ProgrammableConnector(string platform, bool succeed) : IConn
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
+    public int LastMediaCount { get; private set; }
     public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
     {
         Calls++;
+        LastMediaCount = post.Media.Count;
         return Task.FromResult(succeed ? DeliveryResult.Ok($"ext-{Calls}", "http://x") : DeliveryResult.Fail("boom"));
     }
 }

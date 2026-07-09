@@ -64,6 +64,14 @@ resource "azurerm_container_app" "connectors_node" {
     name  = "internal-token"
     value = var.internal_token
   }
+  secret {
+    name  = "objectstore-access-key"
+    value = var.object_store_access_key
+  }
+  secret {
+    name  = "objectstore-secret-key"
+    value = var.object_store_secret_key
+  }
 
   dynamic "registry" {
     for_each = local.use_registry_creds ? [1] : []
@@ -96,6 +104,26 @@ resource "azurerm_container_app" "connectors_node" {
       env {
         name        = "INTERNAL_TOKEN"
         secret_name = "internal-token"
+      }
+      env {
+        name  = "OBJECT_STORE_SERVICE_URL"
+        value = var.object_store_service_url
+      }
+      env {
+        name  = "OBJECT_STORE_BUCKET"
+        value = var.object_store_bucket
+      }
+      env {
+        name  = "OBJECT_STORE_FORCE_PATH_STYLE"
+        value = "true"
+      }
+      env {
+        name        = "OBJECT_STORE_ACCESS_KEY"
+        secret_name = "objectstore-access-key"
+      }
+      env {
+        name        = "OBJECT_STORE_SECRET_KEY"
+        secret_name = "objectstore-secret-key"
       }
     }
   }

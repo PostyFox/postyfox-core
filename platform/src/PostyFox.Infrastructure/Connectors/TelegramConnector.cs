@@ -37,6 +37,6 @@ public sealed class TelegramConnector(ITelegramGateway gateway) : IConnector
         if (string.IsNullOrWhiteSpace(chatId)) return DeliveryResult.Fail("No target chat configured");
 
         var body = string.IsNullOrEmpty(post.Title) ? post.Body : $"<b>{post.Title}</b>\n{post.Body}";
-        return await gateway.SendAsync(context.UserId, phone!, chatId!, body, ct);
+        return await gateway.SendAsync(context.UserId, phone!, chatId!, body, post.Media, ct);
     }
 }

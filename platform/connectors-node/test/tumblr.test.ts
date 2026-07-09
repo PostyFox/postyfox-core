@@ -1,7 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { TumblrConnector, type TumblrClientLike } from "../src/connectors/tumblr.js";
+import type { MediaStore } from "../src/media-store.js";
 import type { ConnectorContext, Post } from "../src/types.js";
+
+/** Fake media store returning known bytes, recording the ref it was asked for. */
+function fakeMediaStore(
+  bytes: Buffer,
+): MediaStore & { calls: { container: string; key: string }[] } {
+  const calls: { container: string; key: string }[] = [];
+  return {
+    calls,
+    async fetch(container, key) {
+      calls.push({ container, key });
+      return bytes;
+    },
+  };
+}
 
 const ctx: ConnectorContext = {
   connectorId: "c",
@@ -33,6 +48,9 @@ function fakeClient(over: Partial<TumblrClientLike> = {}): TumblrClientLike {
     async createTextPost() {
       return { id_string: "789", post_url: "https://myblog.tumblr.com/post/789" };
     },
+    async createPhotoPost() {
+      return { id_string: "790", post_url: "https://myblog.tumblr.com/post/790" };
+    },
     ...over,
   };
 }
@@ -58,6 +76,62 @@ test("tumblr deliver success returns id + url", async () => {
   assert.equal(result.success, true);
   assert.equal(result.externalId, "789");
   assert.equal(result.externalUrl, "https://myblog.tumblr.com/post/789");
+});
+
+test("tumblr deliver with media fetches bytes and creates a photo post with alt", async () => {
+  const rawBytes = Buffer.from("fake-image-bytes");
+  let receivedBlog: string | undefined;
+  let receivedParams:
+    | {
+        title?: string;
+        body: string;
+        tags?: string[];
+        media: { bytes: Buffer; alt: string }[];
+      }
+    | undefined;
+
+  const store = fakeMediaStore(rawBytes);
+  const connector = new TumblrConnector(
+    () =>
+      fakeClient({
+        async createPhotoPost(blog, params) {
+          receivedBlog = blog;
+          receivedParams = params;
+          return { id_string: "790", post_url: "https://myblog.tumblr.com/post/790" };
+        },
+        async createTextPost() {
+          throw new Error("should not create a text post when media is present");
+        },
+      }),
+    store,
+  );
+
+  const mediaPost: Post = {
+    title: "Title",
+    body: "hello",
+    tags: ["a", "b"],
+    media: [
+      {
+        container: "media",
+        key: "u1/abc/pic.jpg",
+        contentType: "image/jpeg",
+        alt: "a cat",
+      },
+    ],
+  };
+
+  const result = await connector.deliver(ctx, mediaPost);
+  assert.equal(result.success, true);
+  assert.equal(result.externalId, "790");
+  assert.equal(result.externalUrl, "https://myblog.tumblr.com/post/790");
+
+  // Media store fetched with the ref's container + key.
+  assert.deepEqual(store.calls, [{ container: "media", key: "u1/abc/pic.jpg" }]);
+
+  assert.equal(receivedBlog, "myblog");
+  assert.equal(receivedParams?.media.length, 1);
+  assert.deepEqual(receivedParams?.media[0].bytes, rawBytes);
+  assert.equal(receivedParams?.media[0].alt, "a cat");
 });
 
 test("tumblr deliver fails with missing credentials", async () => {

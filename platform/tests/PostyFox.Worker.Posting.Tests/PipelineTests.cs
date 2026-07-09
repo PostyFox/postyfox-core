@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Posting;
 using PostyFox.Domain.Enums;
@@ -88,4 +89,23 @@ public class PipelineTests
         var post = await h.InScopeAsync(db => db.Posts.FirstAsync());
         Assert.Equal(PostRootStatus.PartiallyFailed, post.RootStatus);
     }
+
+    [Fact]
+    public async Task Media_is_fetched_from_object_store_and_passed_to_connector()
+    {
+        var connector = new ProgrammableConnector("DiscordWH", succeed: true);
+        using var h = new PipelineHarness(connector);
+        var cid = await h.SeedConnectorAsync("u1", "DiscordWH");
+
+        using (var scope = h.Services.CreateScope())
+        {
+            var intake = scope.ServiceProvider.GetRequiredService<PostIntakeService>();
+            await intake.CreateAsync("u1", new CreatePostRequest(
+                [cid], "T", "body", null, null,
+                [new MediaRef("post", "k1", "image/png")], null, null, null));
+        }
+
+        Assert.Equal(1, connector.LastMediaCount);
+    }
 }
+

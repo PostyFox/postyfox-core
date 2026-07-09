@@ -12,9 +12,14 @@ export interface ConnectorContext {
 }
 
 export interface PostMedia {
+  /** Object-store container (logical bucket/prefix) the item lives in. */
   container: string;
+  /** Object key within the container. */
   key: string;
+  /** MIME type of the media item (e.g. "image/png"). */
   contentType: string;
+  /** Alternative text describing the media, or null when not provided. */
+  alt: string | null;
 }
 
 export interface Post {
