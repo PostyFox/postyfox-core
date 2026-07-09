@@ -1,0 +1,117 @@
+# PostyFox single-host deployment stack.
+# Intended for CI/CD deployment with published app images.
+#
+# - App services use prebuilt images from GHCR.
+# - Postgres and RabbitMQ run per stack on the server.
+# - RustFS and auth are provided externally.
+# - Only the API front ends should publish host ports via env-specific overrides.
+
+x-dotnet-env: &dotnet-env
+  ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox;Username=postyfox;Password=${DB_PASSWORD}"
+  ObjectStore__ServiceUrl: "http://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
+  ObjectStore__AccessKey: "${RUSTFS_ACCESS_KEY}"
+  ObjectStore__SecretKey: "${RUSTFS_SECRET_KEY}"
+  ObjectStore__Bucket: "postyfox"
+  RabbitMq__Host: "rabbitmq"
+  RabbitMq__User: "${RABBITMQ_USER}"
+  RabbitMq__Password: "${RABBITMQ_PASSWORD}"
+  Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
+  Auth__DevMode: "false"
+  Auth__UserHeader: "${AUTH_USER_HEADER:-X-Auth-Request-User}"
+  NodeConnectors__BaseUrl: "http://connectors-node:8090"
+  NodeConnectors__InternalToken: "${INTERNAL_TOKEN}"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_ENDPOINT:-http://otel-collector:4317}"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  ASPNETCORE_URLS: "http://+:8080"
+
+services:
+  postgres:
+    image: pgautoupgrade/pgautoupgrade:latest
+    environment:
+      POSTGRES_USER: postyfox
+      POSTGRES_PASSWORD: "${DB_PASSWORD}"
+      POSTGRES_DB: postyfox
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postyfox"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  rabbitmq:
+    build: ./rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD}"
+    user: "999:999"
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./otel/config.yaml:/etc/otel/config.yaml:ro
+    restart: unless-stopped
+
+  connectors-node:
+    image: "${IMAGE_REPOSITORY}-connectors-node:${IMAGE_TAG}"
+    environment:
+      PORT: "8090"
+      INTERNAL_TOKEN: "${INTERNAL_TOKEN}"
+      OBJECT_STORE_SERVICE_URL: "http://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
+      OBJECT_STORE_ACCESS_KEY: "${RUSTFS_ACCESS_KEY}"
+      OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
+      OBJECT_STORE_BUCKET: "postyfox"
+      OBJECT_STORE_FORCE_PATH_STYLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  core-api:
+    image: "${IMAGE_REPOSITORY}-core-api:${IMAGE_TAG}"
+    environment:
+      <<: *dotnet-env
+      ApplyMigrations: "true"
+      SeedServiceDefinitions: "true"
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      connectors-node: { condition: service_healthy }
+    restart: unless-stopped
+
+  post-api:
+    image: "${IMAGE_REPOSITORY}-post-api:${IMAGE_TAG}"
+    environment:
+      <<: *dotnet-env
+    depends_on:
+      core-api: { condition: service_started }
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    image: "${IMAGE_REPOSITORY}-worker:${IMAGE_TAG}"
+    environment:
+      <<: *dotnet-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      connectors-node: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  rabbitmqdata:
+
