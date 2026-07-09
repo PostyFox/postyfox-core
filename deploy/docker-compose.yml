@@ -151,13 +151,26 @@ services:
     volumes: ["./keycloak:/opt/keycloak/data/import:ro"]
     ports: ["8082:8080"]
     profiles: ["auth"]
+    # The image has no curl/wget but does have bash; a /dev/tcp probe confirms the HTTP port is
+    # accepting connections (Keycloak binds 8080 only at the end of boot, after realm import).
+    healthcheck:
+      test: ["CMD-SHELL", "</dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
 
   oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:latest
     command: ["--config=/etc/oauth2-proxy.cfg"]
     volumes: ["./oauth2-proxy/oauth2-proxy.cfg:/etc/oauth2-proxy.cfg:ro"]
     ports: ["4180:4180"]
-    depends_on: [keycloak, core-api]
+    # oauth2-proxy performs OIDC discovery at startup and exits if the issuer isn't reachable, so
+    # wait for Keycloak to be healthy; restart is a safety net for the brief realm-readiness window.
+    depends_on:
+      keycloak: { condition: service_healthy }
+      core-api: { condition: service_started }
+    restart: unless-stopped
     profiles: ["auth"]
 
 volumes:

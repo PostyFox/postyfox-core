@@ -1,0 +1,140 @@
+# Docker Compose override for DEV environment
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Dev stack:
+# - Uses external Keycloak and RustFS (shared infrastructure)
+# - Isolated Postgres and RabbitMQ per stack
+# - Lighter resource constraints
+# - Auto-refresh on image updates
+
+x-dotnet-env: &dotnet-env
+  # External shared services
+  ObjectStore__ServiceUrl: "http://${RUSTFS_HOST:-rustfs}:${RUSTFS_PORT:-9000}"
+  ObjectStore__AccessKey: "${RUSTFS_ACCESS_KEY}"
+  ObjectStore__SecretKey: "${RUSTFS_SECRET_KEY}"
+  ObjectStore__Bucket: "postyfox-dev"
+  Auth__UserHeader: "X-Auth-Request-User"
+  NodeConnectors__InternalToken: "${INTERNAL_TOKEN:-postyfox-internal-dev-token}"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_ENDPOINT}"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  ASPNETCORE_URLS: "http://+:8080"
+
+services:
+  # Override base postgres with lighter config for dev
+  postgres:
+    container_name: postyfox-dev-postgres
+    restart: unless-stopped
+    # Dev: lighter resource constraints
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  rabbitmq:
+    container_name: postyfox-dev-rabbitmq
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  connectors-node:
+    container_name: postyfox-dev-connectors-node
+    image: "${IMAGE_REPOSITORY}-connectors-node:${IMAGE_TAG}"
+    environment:
+      OBJECT_STORE_SERVICE_URL: "http://${RUSTFS_HOST:-rustfs}:${RUSTFS_PORT:-9000}"
+      OBJECT_STORE_ACCESS_KEY: "${RUSTFS_ACCESS_KEY}"
+      OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
+      OBJECT_STORE_BUCKET: "postyfox-dev"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  core-api:
+    container_name: postyfox-dev-core-api
+    image: "${IMAGE_REPOSITORY}-core-api:${IMAGE_TAG}"
+    environment:
+      <<: *dotnet-env
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox_dev;Username=postyfox;Password=${DB_PASSWORD}"
+      RabbitMq__Host: "rabbitmq"
+      RabbitMq__User: "guest"
+      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
+      Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
+      ApplyMigrations: "true"
+      SeedServiceDefinitions: "true"
+      Auth__DevMode: "false"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  post-api:
+    container_name: postyfox-dev-post-api
+    image: "${IMAGE_REPOSITORY}-post-api:${IMAGE_TAG}"
+    environment:
+      <<: *dotnet-env
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox_dev;Username=postyfox;Password=${DB_PASSWORD}"
+      RabbitMq__Host: "rabbitmq"
+      RabbitMq__User: "guest"
+      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
+      Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
+      Auth__DevMode: "false"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  worker:
+    container_name: postyfox-dev-worker
+    image: "${IMAGE_REPOSITORY}-worker:${IMAGE_TAG}"
+    environment:
+      <<: *dotnet-env
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox_dev;Username=postyfox;Password=${DB_PASSWORD}"
+      RabbitMq__Host: "rabbitmq"
+      RabbitMq__User: "guest"
+      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
+      Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  # Remove otel-collector from dev (optional - uncomment if desired for monitoring)
+  # otel-collector:
+  #   profiles: ["observability"]
+
+volumes:
+  pgdata:
+    name: postyfox-dev-pgdata
+  rustfsdata:
+    name: postyfox-dev-rabbitmq-data
+
