@@ -68,7 +68,7 @@ services:
       ApplyMigrations: "true"
       SeedServiceDefinitions: "true"
     ports:
-      - "${CORE_API_PORT:-8080}:8080"
+      - "${CORE_API_PORT_START:-8080}:8080"
     deploy:
       resources:
         limits:
@@ -82,7 +82,7 @@ services:
     environment:
       <<: *dotnet-env
     ports:
-      - "${POST_API_PORT:-8081}:8080"
+      - "${POST_API_PORT_START:-8081}:8080"
     deploy:
       resources:
         limits:
