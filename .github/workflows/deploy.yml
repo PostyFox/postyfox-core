@@ -22,18 +22,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check required secrets
-        if: |
-          !secrets.DEPLOY_HOST || 
-          !secrets.DEPLOY_USER || 
-          !secrets.DEPLOY_SSH_KEY
         run: |
-          echo "❌ Missing required secrets:"
-          if [ -z "${{ secrets.DEPLOY_HOST }}" ]; then echo "  - DEPLOY_HOST"; fi
-          if [ -z "${{ secrets.DEPLOY_USER }}" ]; then echo "  - DEPLOY_USER"; fi
-          if [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ]; then echo "  - DEPLOY_SSH_KEY"; fi
-          echo ""
-          echo "Configure them in: Settings → Secrets and variables → Actions"
-          exit 1
+          missing=0
+
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "❌ Missing required secret: DEPLOY_HOST"
+            missing=1
+          fi
+
+          if [ -z "$DEPLOY_USER" ]; then
+            echo "❌ Missing required secret: DEPLOY_USER"
+            missing=1
+          fi
+
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "❌ Missing required secret: DEPLOY_SSH_KEY"
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            echo
+            echo "Configure them in: Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+
+          echo "✅ Required deployment secrets are configured"
 
   deploy-dev:
     # Always deploy dev when images are successfully built
@@ -48,6 +61,11 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Resolve image repository
+        id: image
+        run: |
+          echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - name: Prepare SSH
         run: |
           mkdir -p ~/.ssh
@@ -57,15 +75,14 @@ jobs:
 
       - name: Copy deployment files
         env:
-          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
         run: |
           echo "📦 Copying deployment files to dev stack..."
           scp -P ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
-            -r deploy/docker-compose.yml \
+            -r deploy/docker-compose.server.yml \
             deploy/docker-compose.dev.yml \
-            deploy/keycloak \
             deploy/rabbitmq \
             deploy/otel \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/dev/ || {
@@ -75,7 +92,7 @@ jobs:
 
       - name: Deploy dev stack
         env:
-          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
         run: |
           echo "🚀 Deploying to dev stack..."
@@ -91,11 +108,11 @@ jobs:
             export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
             export COMPOSE_PROJECT_NAME=postyfox-dev && \
             echo '🔄 Pulling latest images...' && \
-            docker compose -f docker-compose.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services...' && \
-            docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
             echo '✅ Dev stack deployed successfully' && \
-            docker compose -f docker-compose.yml -f docker-compose.dev.yml ps" || {
+            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps" || {
             echo "❌ Dev deployment failed"
             exit 1
           }
@@ -108,7 +125,7 @@ jobs:
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
             "cd /opt/postyfox/dev && \
-            docker compose -f docker-compose.yml -f docker-compose.dev.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
+            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
             echo '⚠️ Warning: Some services may not be healthy yet'; }; \
             true"
 
@@ -126,7 +143,7 @@ jobs:
           - Environment: Development (auto-deploy on every push)
           - Project: postyfox-dev
           - Location: /opt/postyfox/dev
-          - Images: ghcr.io/${{ github.repository_owner }}/postyfox-core-*:${{ github.event.workflow_run.head_sha }}
+          - Images: ${{ steps.image.outputs.repository }}-*:${{ github.event.workflow_run.head_sha }}
           
           🔗 Access points:
           - Core API: http://${{ env.DEPLOY_HOST }}:8080
@@ -150,6 +167,11 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Resolve image repository
+        id: image
+        run: |
+          echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - name: Prepare SSH
         run: |
           mkdir -p ~/.ssh
@@ -159,15 +181,14 @@ jobs:
 
       - name: Copy deployment files
         env:
-          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
         run: |
           echo "📦 Copying deployment files to prod stack..."
           scp -P ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
-            -r deploy/docker-compose.yml \
+            -r deploy/docker-compose.server.yml \
             deploy/docker-compose.prod.yml \
-            deploy/keycloak \
             deploy/rabbitmq \
             deploy/otel \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
@@ -177,7 +198,7 @@ jobs:
 
       - name: Deploy prod stack
         env:
-          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
         run: |
           echo "🚀 Deploying to prod stack (⚠️ PRODUCTION)..."
@@ -193,11 +214,11 @@ jobs:
             export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
             export COMPOSE_PROJECT_NAME=postyfox-prod && \
             echo '🔄 Pulling latest images...' && \
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services (backup your data first!)...' && \
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
             echo '✅ Prod stack deployed successfully' && \
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps" || {
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps" || {
             echo "❌ Prod deployment failed"
             exit 1
           }
@@ -210,7 +231,7 @@ jobs:
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
             "cd /opt/postyfox/prod && \
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps | grep -E '(core-api|post-api|worker)' | grep -E '(Up|healthy)' || { \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps | grep -E '(core-api|post-api|worker)' | grep -E '(Up|healthy)' || { \
             echo '⚠️ Warning: Some services may not be healthy yet'; }; \
             true"
 
@@ -228,7 +249,7 @@ jobs:
           - Environment: Production (approval-gated)
           - Project: postyfox-prod
           - Location: /opt/postyfox/prod
-          - Images: ghcr.io/${{ github.repository_owner }}/postyfox-core-*:${{ github.event.workflow_run.head_sha }}
+          - Images: ${{ steps.image.outputs.repository }}-*:${{ github.event.workflow_run.head_sha }}
           
           🔗 Access points:
           - Core API: http://${{ env.DEPLOY_HOST }}:9080
@@ -243,6 +264,7 @@ jobs:
           - Check external service connectivity (Keycloak, RustFS)
           - Verify backups are in place
           EOF
+
 
 
 

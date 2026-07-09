@@ -76,6 +76,11 @@ jobs:
             echo "project=postyfox-dev" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Resolve image repository
+        id: image
+        run: |
+          echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - name: Prepare SSH
         run: |
           mkdir -p ~/.ssh
@@ -85,16 +90,15 @@ jobs:
 
       - name: Copy deployment files
         env:
-          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
         run: |
           echo "📦 Copying deployment files to ${{ github.event.inputs.environment }} stack..."
           scp -P ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
-            -r deploy/docker-compose.yml \
+            -r deploy/docker-compose.server.yml \
             deploy/docker-compose.${{ steps.stack.outputs.suffix }}.yml \
-            deploy/keycloak \
             deploy/rabbitmq \
             deploy/otel \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.STACK_DIR }}/ || {
@@ -104,7 +108,7 @@ jobs:
 
       - name: Deploy ${{ github.event.inputs.environment }} stack
         env:
-          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           STACK_NAME: ${{ steps.stack.outputs.project }}
           STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
@@ -125,11 +129,11 @@ jobs:
             export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
             export COMPOSE_PROJECT_NAME=${{ env.STACK_NAME }} && \
             echo '🔄 Pulling latest images...' && \
-            docker compose -f docker-compose.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services...' && \
-            docker compose -f docker-compose.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
             echo '✅ Deployment completed' && \
-            docker compose -f docker-compose.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps" || {
+            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps" || {
             echo "❌ Deployment failed"
             exit 1
           }
@@ -145,7 +149,7 @@ jobs:
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
             "cd ${{ env.STACK_DIR }} && \
-            docker compose -f docker-compose.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
+            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
             echo '⚠️ Warning: Services may still be starting'; }; \
             true"
 

@@ -1,18 +1,23 @@
 # Docker Compose override for PROD environment
-# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+# Usage: docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up
 #
 # Prod stack:
 # - Uses external Keycloak and RustFS (shared infrastructure)
-# - Isolated Postgres and RabbitMQ per stack
+# - Isolated Postgres and RabbitMQ per stack/network
+# - Only the public API front ends publish host ports
 # - Production resource constraints + restart policies
 # - Health checks and monitoring enabled
 
 x-dotnet-env: &dotnet-env
-  # External shared services
-  ObjectStore__ServiceUrl: "http://${RUSTFS_HOST:-rustfs}:${RUSTFS_PORT:-9000}"
+  ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-postyfox_prod};Username=postyfox;Password=${DB_PASSWORD}"
+  ObjectStore__ServiceUrl: "http://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
   ObjectStore__AccessKey: "${RUSTFS_ACCESS_KEY}"
   ObjectStore__SecretKey: "${RUSTFS_SECRET_KEY}"
   ObjectStore__Bucket: "postyfox-prod"
+  RabbitMq__Host: "rabbitmq"
+  RabbitMq__User: "${RABBITMQ_USER}"
+  RabbitMq__Password: "${RABBITMQ_PASSWORD}"
+  Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
   Auth__UserHeader: "X-Auth-Request-User"
   NodeConnectors__InternalToken: "${INTERNAL_TOKEN:-postyfox-internal-prod-token}"
   OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_ENDPOINT}"
@@ -22,10 +27,10 @@ x-dotnet-env: &dotnet-env
   Auth__DevMode: "false"
 
 services:
-  # Prod database with stricter config
   postgres:
-    container_name: postyfox-prod-postgres
-    restart: on-failure
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-postyfox_prod}"
+      POSTGRES_INITDB_ARGS: "-c max_connections=200 -c shared_buffers=256MB -c effective_cache_size=1GB"
     deploy:
       resources:
         limits:
@@ -34,16 +39,7 @@ services:
         reservations:
           cpus: '1'
           memory: 1G
-    environment:
-      POSTGRES_USER: postyfox
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: postyfox_prod
-      # Prod optimizations
-      POSTGRES_INITDB_ARGS: "-c max_connections=200 -c shared_buffers=256MB -c effective_cache_size=1GB"
-
   rabbitmq:
-    container_name: postyfox-prod-rabbitmq
-    restart: on-failure
     deploy:
       resources:
         limits:
@@ -56,15 +52,12 @@ services:
       RABBITMQ_VM_MEMORY_HIGH_WATERMARK: "0.6"
 
   connectors-node:
-    container_name: postyfox-prod-connectors-node
-    image: "${IMAGE_REPOSITORY}-connectors-node:${IMAGE_TAG}"
     environment:
-      OBJECT_STORE_SERVICE_URL: "http://${RUSTFS_HOST:-rustfs}:${RUSTFS_PORT:-9000}"
+      OBJECT_STORE_SERVICE_URL: "http://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
       OBJECT_STORE_ACCESS_KEY: "${RUSTFS_ACCESS_KEY}"
       OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
       OBJECT_STORE_BUCKET: "postyfox-prod"
       NODE_ENV: "production"
-    restart: on-failure
     deploy:
       resources:
         limits:
@@ -75,21 +68,14 @@ services:
           memory: 512M
 
   core-api:
-    container_name: postyfox-prod-core-api
-    image: "${IMAGE_REPOSITORY}-core-api:${IMAGE_TAG}"
     environment:
       <<: *dotnet-env
-      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox_prod;Username=postyfox;Password=${DB_PASSWORD}"
-      RabbitMq__Host: "rabbitmq"
-      RabbitMq__User: "${RABBITMQ_USER}"
-      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
-      Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
       ApplyMigrations: "true"
       SeedServiceDefinitions: "false"
-      # Rate limiting for prod
       RateLimit__Enabled: "true"
       RateLimit__RequestsPerMinute: "300"
-    restart: on-failure
+    ports:
+      - "${CORE_API_PORT:-9080}:8080"
     deploy:
       resources:
         limits:
@@ -106,19 +92,12 @@ services:
       start_period: 40s
 
   post-api:
-    container_name: postyfox-prod-post-api
-    image: "${IMAGE_REPOSITORY}-post-api:${IMAGE_TAG}"
     environment:
       <<: *dotnet-env
-      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox_prod;Username=postyfox;Password=${DB_PASSWORD}"
-      RabbitMq__Host: "rabbitmq"
-      RabbitMq__User: "${RABBITMQ_USER}"
-      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
-      Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
-      # Rate limiting for prod
       RateLimit__Enabled: "true"
       RateLimit__RequestsPerMinute: "300"
-    restart: on-failure
+    ports:
+      - "${POST_API_PORT:-9081}:8080"
     deploy:
       replicas: 2
       resources:
@@ -136,19 +115,10 @@ services:
       start_period: 40s
 
   worker:
-    container_name: postyfox-prod-worker
-    image: "${IMAGE_REPOSITORY}-worker:${IMAGE_TAG}"
     environment:
       <<: *dotnet-env
-      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox_prod;Username=postyfox;Password=${DB_PASSWORD}"
-      RabbitMq__Host: "rabbitmq"
-      RabbitMq__User: "${RABBITMQ_USER}"
-      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
-      Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
-      # Worker-specific settings
       Pipeline__MaxDeliveryAttempts: "5"
       Pipeline__RetryBaseSeconds: "60"
-    restart: on-failure
     deploy:
       replicas: 2
       resources:
@@ -165,10 +135,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # Enable OTel for observability in prod
   otel-collector:
-    container_name: postyfox-prod-otel-collector
-    restart: on-failure
     deploy:
       resources:
         limits:
