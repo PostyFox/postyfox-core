@@ -1,0 +1,6 @@
+apiVersion: v2
+name: postyfox
+description: PostyFox platform — core-api, post-api, posting-worker, connectors-node.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

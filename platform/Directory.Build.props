@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    Scoped to the platform/ solution only (the legacy Azure Functions projects at the repo root
+    are unaffected). Targeted NuGet audit suppressions for advisories with no actionable fix:
+  -->
+  <ItemGroup>
+    <!--
+      Microsoft.OpenApi 2.0.0 is pulled transitively by Microsoft.AspNetCore.OpenApi 10.0.9
+      (the framework OpenAPI package). No patched 2.x release exists yet; there is no 1.x we can
+      pin without breaking the framework dependency. Revisit when AspNetCore.OpenApi ships a build
+      referencing a fixed Microsoft.OpenApi. Advisory: GHSA-v5pm-xwqc-g5wc
+    -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-v5pm-xwqc-g5wc" />
+    <!--
+      SQLitePCLRaw.lib.e_sqlite3 2.1.11 is a TEST-ONLY transitive dependency of
+      Microsoft.EntityFrameworkCore.Sqlite (used for in-memory test databases; never shipped in a
+      runtime image). Advisory: GHSA-2m69-gcr7-jv3q
+    -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
+  </ItemGroup>
+</Project>

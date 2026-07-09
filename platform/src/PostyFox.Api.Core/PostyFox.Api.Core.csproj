@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PostyFox.Application\PostyFox.Application.csproj" />
+    <ProjectReference Include="..\PostyFox.Domain\PostyFox.Domain.csproj" />
+    <ProjectReference Include="..\PostyFox.Infrastructure\PostyFox.Infrastructure.csproj" />
+    <ProjectReference Include="..\PostyFox.Web\PostyFox.Web.csproj" />
+  </ItemGroup>
+
+</Project>

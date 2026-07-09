@@ -1,0 +1,54 @@
+# Published container images (built + pushed by CI). One repo per service, shared tag.
+image:
+  registry: ghcr.io
+  repository: your-org/postyfox     # images: {registry}/{repository}-{service}:{tag}
+  tag: latest
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Backing services (PostgreSQL, RabbitMQ, S3/object store) are expected to be provided externally
+# (managed services or separate charts). Only their connection details are configured here.
+config:
+  objectStoreServiceUrl: "http://minio:9000"
+  objectStoreBucket: "postyfox"
+  rabbitMqHost: "rabbitmq"
+  rabbitMqUser: "guest"
+  authDevMode: "false"
+  authUserHeader: "X-Auth-Request-User"
+  otelEndpoint: "http://otel-collector:4317"
+
+# Secret values. In production, source these from a secret manager (External Secrets / Sealed
+# Secrets / CSI) rather than committing them. Leaving 'create: false' lets you supply your own
+# Secret named "<release>-postyfox-secrets".
+secrets:
+  create: true
+  postgresConnection: "Host=postgres;Port=5432;Database=postyfox;Username=postyfox;Password=postyfox"
+  encryptionKey: ""                 # base64 32-byte AES key (REQUIRED)
+  internalToken: "change-me"        # shared token core/worker ↔ connectors-node
+  objectStoreAccessKey: "minioadmin"
+  objectStoreSecretKey: "minioadmin"
+  rabbitMqPassword: "guest"
+
+services:
+  coreApi:
+    replicas: 2
+    applyMigrations: "true"         # one service should own migrations/seed
+    seedServiceDefinitions: "true"
+  postApi:
+    replicas: 2
+  worker:
+    replicas: 1
+  connectorsNode:
+    replicas: 1
+
+resources:
+  requests: { cpu: "100m", memory: "128Mi" }
+  limits: { cpu: "1", memory: "512Mi" }
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  coreApiHost: api.postyfox.example
+  postApiHost: post.postyfox.example
+  tls: []

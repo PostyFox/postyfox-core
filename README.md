@@ -1,5 +1,10 @@
 # postyfox-core
 
+> **Containerised reimplementation in progress** under [`platform/`](./platform/) (cloud-agnostic,
+> .NET 10 + Node). Start at [platform/docs/ARCHITECTURE.md](./platform/docs/ARCHITECTURE.md) and
+> [platform/README.md](./platform/README.md). The projects at the repo root are the legacy Azure
+> Functions implementation.
+
 ## Repository Purpose
 
 This repository contains the Azure Function Apps that provide core services, and the IaC Terraform code for deployment activities.
