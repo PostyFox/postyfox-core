@@ -1,20 +1,5 @@
 # Follow-ups & deferred work
 
-Tracked gaps after Phases 0–5. Ordered by importance.
-
-## Media delivery — implemented ✅
-
-Image/media delivery is implemented end-to-end:
-- **Upload**: `POST /api/media` stores a file in the object store and returns a `MediaRef`
-  (with optional **alt text**); the client attaches `MediaRef`s to a post's `media` array.
-- **Transport**: connectors receive `MediaRef`s and **fetch bytes from the object store**
-  themselves — C# connectors via `IObjectStore`, the Node service via its own S3 client. No media
-  bytes cross the internal HTTP hop.
-- **Alt text**: carried on `MediaRef` and applied where supported (Bluesky embed images, Tumblr).
-- **Connectors**: Discord (multipart file upload), Telegram (MTProto — single `SendMediaAsync`,
-  **`SendAlbumAsync` for multiple**), Bluesky (`uploadBlob` → `app.bsky.embed.images`, ≤4 images),
-  Tumblr (NPF photo blocks).
-
 Residual media follow-ups (smaller):
 - **Video / documents** — only images are exercised end-to-end; verify/tune non-image media per
   platform (content-type handling, Telegram document vs photo).
@@ -37,7 +22,7 @@ Residual media follow-ups (smaller):
   Vault / cloud KMS implementation for production; Helm/ACA reference secrets but don't provision a
   manager.
 - **Internal transport hardening** — worker/core ↔ connectors-node uses a shared `X-Internal-Token`;
-  consider mTLS / network policy.
+  consider network policy.
 - **Auth option B** — currently the APIs trust the oauth2-proxy identity header; optionally add
   in-app JWT (JWKS) validation as defence-in-depth.
 - **Autoscaling** — wire KEDA (K8s) / ACA scale rules on RabbitMQ queue depth for the worker.

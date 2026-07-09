@@ -1,11 +1,10 @@
 # PostyFox Platform (container reimplementation)
 
-Cloud-agnostic, containerised reimplementation of PostyFox. This folder is self-contained (its own
-solution) and independent of the legacy Azure Functions projects at the repo root.
+Cloud-agnostic, containerised reimplementation of PostyFox.
 
 **Documentation:** [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) (as-built architecture + diagrams) ·
 [docs/DECISIONS.md](./docs/DECISIONS.md) (ADRs) · [docs/README.md](./docs/README.md) (index + endpoint
-reference) · [`../docs/REIMPLEMENTATION_PLAN.md`](../docs/REIMPLEMENTATION_PLAN.md) (original plan).
+reference) · [docs/FOLLOWUPS.md](./docs/FOLLOWUPS.md) (deferred work).
 
 ## Status
 
@@ -43,8 +42,8 @@ src/
   PostyFox.Api.Core         profile/keys, services catalogue, connector CRUD, template CRUD
   PostyFox.Api.Post         post intake + status, external-trigger webhook callback
   PostyFox.Worker.Posting   consumes generate/deliver queues; runs the pipeline
-connectors-node/            Node/TS service: Bluesky (@atproto/api) + Tumblr (tumblr.js)
-tests/                      one project per layer (xUnit) — 98 C# tests (+18 in connectors-node)
+  connectors-node/          Node/TS service: Bluesky (@atproto/api) + Tumblr (tumblr.js)
+tests/                      one project per layer (xUnit) — 99 C# tests (+18 in connectors-node)
 ```
 
 ### The connector contract
@@ -82,7 +81,7 @@ Transient delivery failures retry with exponential backoff (delayed re-publish) 
 ## Run locally
 
 ```bash
-cd platform/deploy
+cd deploy
 docker compose up --build            # infra + APIs + worker (APIs in DevMode, no login)
 # Core API:  http://localhost:8080    Post API: http://localhost:8081
 # Swagger UI: http://localhost:8080/swagger  and  http://localhost:8081/swagger
@@ -103,10 +102,10 @@ trust. External/machine callers authenticate with `X-API-Key: <key>` (create one
 ## Build & test
 
 ```bash
-cd platform
-dotnet build                 # whole solution
-dotnet test                  # all 98 unit/integration tests
-# Node connectors:  cd connectors-node && npm ci && npm test   # 18 tests
+# from the repo root
+dotnet build                 # whole solution (PostyFox.Platform.slnx)
+dotnet test                  # all 99 unit/integration tests
+# Node connectors:  cd src/connectors-node && npm ci && npm test   # 18 tests
 
 # EF migrations
 dotnet dotnet-ef migrations add <Name> --project src/PostyFox.Infrastructure
@@ -117,7 +116,7 @@ Tests use in-memory SQLite / EF-InMemory and fakes for I/O — no Docker require
 ## Deploy
 
 All modes consume the same published images (`{registry}/{repository}-{service}:{tag}`, built by
-CI in `.github/workflows/platform-ci.yml`):
+CI in [`.github/workflows/platform-ci.yml`](./.github/workflows/platform-ci.yml)):
 
 - **docker-compose** — `deploy/docker-compose.yml` (local / single-host).
 - **Helm** — `deploy/helm/postyfox` for any Kubernetes (`helm install postyfox deploy/helm/postyfox`);

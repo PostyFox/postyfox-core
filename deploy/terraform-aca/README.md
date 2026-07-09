@@ -1,6 +1,6 @@
 # Terraform → Azure Container Apps
 
-Deploys the four PostyFox services as Azure Container Apps, **consuming pre-published images**
+Deploys the four PostyFox core services as Azure Container Apps, **consuming pre-published images**
 (built + pushed by CI as `{registry}/{repository}-{service}:{tag}`). Backing services (PostgreSQL,
 RabbitMQ, object storage) are expected to be managed/external and supplied via variables.
 

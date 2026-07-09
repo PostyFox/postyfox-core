@@ -1,4 +1,28 @@
-**/bin
-**/obj
+# Root build context is used by the shared .NET Dockerfile (`COPY . .` then restore/publish a
+# single app project under src/). Keep it lean: exclude VCS/IDE, build output, the Node service
+# (it has its own Dockerfile + context), and anything not needed to build a .NET app image.
+
+# VCS / IDE
+.git
+.gitignore
+.github
+.idea
+.vscode
 **/.vs
 **/*.user
+
+# .NET build output
+**/bin
+**/obj
+
+# Node connectors service — built from its own context (src/connectors-node), not the .NET image
+src/connectors-node
+**/node_modules
+**/dist
+
+# Not needed to build the .NET app images
+tests
+deploy
+docs
+*.md
+dotnet-tools.json

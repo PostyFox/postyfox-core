@@ -1,0 +1,100 @@
+name: platform-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "tests/**", "deploy/**", "Dockerfile", "PostyFox.Platform.slnx", ".github/workflows/platform-ci.yml"]
+  pull_request:
+    paths: ["src/**", "tests/**", "deploy/**", "Dockerfile", "PostyFox.Platform.slnx", ".github/workflows/platform-ci.yml"]
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Restore
+        run: dotnet restore PostyFox.Platform.slnx
+      - name: Build
+        run: dotnet build PostyFox.Platform.slnx -c Release --no-restore
+      - name: Test
+        run: dotnet test PostyFox.Platform.slnx -c Release --no-build
+
+  node:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/connectors-node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  iac:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform validate (ACA)
+        working-directory: deploy/terraform-aca
+        run: |
+          terraform fmt -check
+          terraform init -backend=false
+          terraform validate
+      - uses: azure/setup-helm@v4
+      - name: Helm lint
+        run: helm lint deploy/helm/postyfox
+
+  images:
+    # Build + push container images only on main / tags.
+    needs: [dotnet, node]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - service: core-api
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Api.Core/PostyFox.Api.Core.csproj
+            assembly: PostyFox.Api.Core.dll
+          - service: post-api
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Api.Post/PostyFox.Api.Post.csproj
+            assembly: PostyFox.Api.Post.dll
+          - service: worker
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj
+            assembly: PostyFox.Worker.Posting.dll
+          - service: connectors-node
+            context: src/connectors-node
+            dockerfile: src/connectors-node/Dockerfile
+            project: ""
+            assembly: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ghcr.io/${{ github.repository }}-${{ matrix.service }}:${{ github.sha }}
+          build-args: |
+            PROJECT=${{ matrix.project }}
+            ASSEMBLY=${{ matrix.assembly }}

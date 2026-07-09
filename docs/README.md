@@ -1,16 +1,15 @@
 # PostyFox Platform — Documentation
 
-Documentation for the containerised reimplementation under `platform/`.
+Documentation for the containerised PostyFox platform (repo root: `src/`, `tests/`, `deploy/`).
 
 | Doc | What it covers |
 |-----|----------------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | As-built architecture: containers, code layers, data model, auth, connector + trigger frameworks, pipeline, messaging, deployment. Includes diagrams. |
 | [DECISIONS.md](./DECISIONS.md) | Architecture Decision Records — the significant choices and their trade-offs. |
-| [FOLLOWUPS.md](./FOLLOWUPS.md) | Deferred work — **media delivery (key requirement)** and other follow-ups. |
+| [FOLLOWUPS.md](./FOLLOWUPS.md) | Residual follow-up work. |
 | [../deploy/observability/README.md](../deploy/observability/README.md) | Observability wiring — OTLP → central OpenSearch. |
 | [../README.md](../README.md) | Operational guide: run locally, build & test, configuration, phase status. |
-| [../connectors-node/README.md](../connectors-node/README.md) | The Node connectors service and its HTTP contract. |
-| [../../docs/REIMPLEMENTATION_PLAN.md](../../docs/REIMPLEMENTATION_PLAN.md) | Original requirements + phased plan (pre-implementation). |
+| [../src/connectors-node/README.md](../src/connectors-node/README.md) | The Node connectors service and its HTTP contract. |
 
 The **interactive API contract** is served by each API at `/swagger` (UI) and `/openapi/v1.json`
 (document) — the source of truth for request/response schemas and status codes.

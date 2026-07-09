@@ -2,7 +2,8 @@
 
 All four services emit **OpenTelemetry** traces + metrics over **OTLP** to the endpoint in
 `OTEL_EXPORTER_OTLP_ENDPOINT`. In the compose stack an `otel-collector` receives OTLP; in real
-environments the collector forwards telemetry to the **central OpenSearch** cluster.
+environments the collector forwards telemetry a the **central OpenSearch** cluster, or if you are
+deploying into Azure, you can pipe the information to **Azure Monitor** / **Application Insights**.
 
 ## Pipeline
 
@@ -41,3 +42,9 @@ here.
 
 `GET /healthz` (liveness) and `GET /readyz` (DB connectivity) on both APIs; `GET /health` on
 connectors-node.
+
+## Azure specifics
+
+If you are wanting to pipe the information into, for example, Application Insights, you can use the 
+`azuremonitor` exporter in the collector. You will need to set the `OTEL_EXPORTER_AZUREMONITOR_CONNECTION_STRING` 
+environment variable with your Application Insights connection string.

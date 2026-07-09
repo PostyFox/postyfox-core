@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Short records of the significant choices behind the `platform/` reimplementation. Each notes the
+Short records of the significant choices behind the PostyFox platform reimplementation. Each notes the
 context, the decision, and the trade-off. See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how they
 fit together.
 
@@ -14,7 +14,7 @@ self-hosted).
 
 **Decision.** Long-running containerised services (ASP.NET Core + a worker) with every cloud concern
 behind an abstraction: `IAppDbContext`, `IObjectStore`, `IMessageBus`, `ISecretStore`, an auth edge,
-and OpenTelemetry. Default implementations are portable (PostgreSQL, S3/MinIO, RabbitMQ, encrypted-
+and OpenTelemetry. Default implementations are portable (PostgreSQL, S3/MinIO/RustFS, RabbitMQ, encrypted-
 in-DB secrets, oauth2-proxy, OTLP).
 
 **Trade-off.** We manage more moving parts than a serverless model, but gain portability and local
@@ -45,7 +45,7 @@ per-queue dead-letter queues.
 
 **Trade-off.** Kafka's partitioned log excels at high-throughput streaming/replay but makes
 per-message retry/DLQ/delay awkward. RabbitMQ fits the workload directly. The delayed-message plugin
-is an in-memory scheduler; a durable due-scan is a Phase 5 item for very long horizons.
+is an in-memory scheduler; a durable due-scan is a future item for very long horizons.
 
 ---
 
@@ -77,7 +77,8 @@ passes resolved config + secret in each request.
 
 **Trade-off.** A second runtime and an internal hop for two platforms, in exchange for using the best
 library per platform and keeping a single extension seam. Internal calls are secured with a shared
-token; a follow-up could move to mTLS.
+token; a follow-up could move to mTLS - however mTLS brings its own operational complexity and is not strictly 
+necessary for a private internal service.
 
 ---
 
@@ -110,12 +111,3 @@ contract.
 
 **Trade-off.** No real third-party source is wired yet, but the engine is complete and tested, and
 adding one (e.g. a future streaming platform) is a single implementation.
-
----
-
-## ADR-008 — Descope Twitch
-
-**Context.** Twitch (connector + EventSub triggers) was in the original plan.
-
-**Decision.** Removed entirely at the maintainer's request. Its removal is why the trigger framework
-(ADR-007) is generic rather than Twitch-specific.

@@ -1,10 +1,8 @@
 # PostyFox Platform — Architecture (as built)
 
-This describes the **containerised reimplementation** under `platform/` as it actually exists in
-code (Phases 0–4). For the original requirements/plan see
-[`../../docs/REIMPLEMENTATION_PLAN.md`](../../docs/REIMPLEMENTATION_PLAN.md); for the key decisions
-and their rationale see [`DECISIONS.md`](./DECISIONS.md); for operational how-to see
-[`../README.md`](../README.md).
+This describes the **containerised PostyFox platform**.
+For the key decisions and their rationale see [`DECISIONS.md`](./DECISIONS.md);
+for operational how-to see [`../README.md`](../README.md).
 
 > Diagrams are Mermaid (render on GitHub).
 
@@ -111,17 +109,17 @@ flowchart LR
     Web --> ApiPost
 ```
 
-| Project | Contents |
-|---------|----------|
-| `PostyFox.Domain` | Entities + enums. No dependencies. |
+| Project | Contents                                                                                                                                                                                                                           |
+|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `PostyFox.Domain` | Entities + enums. No dependencies.                                                                                                                                                                                                 |
 | `PostyFox.Application` | Abstractions (`IAppDbContext`, `IObjectStore`, `IMessageBus`, `ISecretStore`, `IConnector`, `ITelegramGateway`, `ITriggerSource`, …), services/use-cases, template engine, pipeline handlers, connector + trigger contracts, DTOs. |
-| `PostyFox.Infrastructure` | EF Core `AppDbContext` + migrations, S3 object store, RabbitMQ bus + topology, encrypted secret store, connectors (Discord, Telegram/WTelegram, `HttpConnector`), catalogue seeder. |
-| `PostyFox.Web` | Shared auth handlers (header + API key) and OpenTelemetry wiring. |
-| `PostyFox.Api.Core` / `PostyFox.Api.Post` | Minimal-API hosts + endpoint groups. |
-| `PostyFox.Worker.Posting` | Hosts the queue consumers. |
-| `tests/*` | 5 xUnit projects (98 tests). `connectors-node` has its own 18 tests. |
+| `PostyFox.Infrastructure` | EF Core `AppDbContext` + migrations, S3 object store, RabbitMQ bus + topology, encrypted secret store, connectors (Discord, Telegram/WTelegram, `HttpConnector`), catalogue seeder.                                                |
+| `PostyFox.Web` | Shared auth handlers (header + API key) and OpenTelemetry wiring.                                                                                                                                                                  |
+| `PostyFox.Api.Core` / `PostyFox.Api.Post` | Minimal-API hosts + endpoint groups.                                                                                                                                                                                               |
+| `PostyFox.Worker.Posting` | Hosts the queue consumers.                                                                                                                                                                                                         |
+| `tests/*` | xUnit projects for C#. `connectors-node` has its own tests.                                                                                                                                                                        |
 
-The `Application` layer deliberately depends on EF Core Core (`IAppDbContext` exposes `DbSet<>`),
+The `Application` layer deliberately depends on EF Core (`IAppDbContext` exposes `DbSet<>`),
 trading a little purity for far less repository boilerplate.
 
 ---
@@ -246,7 +244,7 @@ flowchart LR
   external/machine callers — the retained requirement. Keys are prefix-indexed; the secret is never
   stored.
 - Webhook callbacks are anonymous at the auth layer and instead authenticated per-source by
-  **signature verification** (see §8).
+  **signature verification** (see point 8).
 
 ---
 
@@ -289,9 +287,9 @@ sequenceDiagram
 
 **Telegram statefulness**: MTProto login is interactive and session-based. Sessions persist to the
 object store; in-progress login clients are held per-instance. Route a user's Telegram operations to
-a single instance (consistent hashing / dedicated telegram-worker) — see
-[`../../docs/REIMPLEMENTATION_PLAN.md`](../../docs/REIMPLEMENTATION_PLAN.md) §4.5. The MTProto work
-sits behind `ITelegramGateway` so the connector and login flow are unit-tested with a fake.
+a single instance (consistent hashing / dedicated telegram-worker) so concurrent replicas don't
+corrupt an in-progress session. The MTProto work sits behind `ITelegramGateway` so the connector and
+login flow are unit-tested with a fake.
 
 ---
 
@@ -382,11 +380,11 @@ posts get the same rendering, delivery, retry and status behaviour.
   user/IP, HTTP 429) and conservative **security response headers** on both APIs.
 - **Deployment** — three modes, all consuming the same published images
   (`{registry}/{repository}-{service}:{tag}`):
-  1. **docker-compose** (`platform/deploy/docker-compose.yml`) — full local stack; `auth` profile
+  1. **docker-compose** (`deploy/docker-compose.yml`) — full local stack; `auth` profile
      adds Keycloak + oauth2-proxy.
-  2. **Helm chart** (`platform/deploy/helm/postyfox`) — the 4 services + config/secret/ingress for
+  2. **Helm chart** (`deploy/helm/postyfox`) — the 4 services + config/secret/ingress for
      any Kubernetes; backing services provided externally.
-  3. **Terraform → Azure Container Apps** (`platform/deploy/terraform-aca`) — deploys the published
+  3. **Terraform → Azure Container Apps** (`deploy/terraform-aca`) — deploys the published
      images to ACA (external ingress for the APIs, internal for connectors-node, no ingress for the
      worker).
 
@@ -405,10 +403,10 @@ posts get the same rendering, delivery, retry and status behaviour.
 
 See [FOLLOWUPS.md](./FOLLOWUPS.md) for the full list. Headlines:
 
-- Media delivery is **implemented** (upload → object store; connectors fetch by reference and upload:
-  Discord multipart, Telegram single/**album**, Bluesky/Tumblr with **alt text**). Residuals:
-  video/documents, per-platform limits, pre-signed uploads — see [FOLLOWUPS.md](./FOLLOWUPS.md).
+- Media delivery is broadly implemented, but omissions are around video/documents, per-platform limits, 
+  pre-signed uploads — see [FOLLOWUPS.md](./FOLLOWUPS.md).
 - Telegram MTProto is stateful (single-writer routing) and not integration-tested (needs live creds).
 - No admin endpoint yet for platform-level secrets (Telegram api id/hash, trigger signing secrets).
 - Scheduling relies on the RabbitMQ delayed-message plugin; a durable scheduler is a follow-up.
-- Twitch was **descoped** and is intentionally absent.
+- Twitch was **descoped** and is intentionally absent; it is expected that if people want Twitch support, they will
+  use companion Twitch Tools project, which will support integration to PostyFox via the external-trigger framework.
