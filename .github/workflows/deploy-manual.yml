@@ -1,0 +1,147 @@
+name: deploy-manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+      image_tag:
+        description: 'Image tag to deploy (defaults to latest main commit)'
+        required: false
+        type: string
+      confirm:
+        description: 'Type "DEPLOY" to confirm'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+  DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+  DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+  DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+
+jobs:
+  validate-confirmation:
+    name: Validate confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        if: github.event.inputs.confirm != 'DEPLOY'
+        run: |
+          echo "❌ Deployment cancelled: confirmation not provided"
+          echo "Please re-run and type 'DEPLOY' in the confirmation field"
+          exit 1
+      - run: echo "✅ Deployment confirmed"
+
+  deploy-manual:
+    needs: validate-confirmation
+    name: Deploy ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.image_tag || github.ref }}
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ -z "${{ github.event.inputs.image_tag }}" ]; then
+            TAG=$(git rev-parse HEAD)
+          else
+            TAG="${{ github.event.inputs.image_tag }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Image tag: $TAG"
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copy deployment files
+        env:
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          STACK_DIR: /opt/postyfox/${{ github.event.inputs.environment }}
+        run: |
+          echo "📦 Copying deployment files to ${{ github.event.inputs.environment }} stack..."
+          scp -P ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            -r deploy/docker-compose.yml \
+            deploy/docker-compose.${{ github.event.inputs.environment }}.yml \
+            deploy/keycloak \
+            deploy/rabbitmq \
+            deploy/otel \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.STACK_DIR }}/ || {
+            echo "❌ Failed to copy deployment files"
+            exit 1
+          }
+
+      - name: Deploy ${{ github.event.inputs.environment }} stack
+        env:
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          STACK_NAME: postyfox-${{ github.event.inputs.environment }}
+          STACK_DIR: /opt/postyfox/${{ github.event.inputs.environment }}
+        run: |
+          echo "🚀 Manually deploying ${{ github.event.inputs.environment }} stack..."
+          echo "Image: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "set -e; \
+            cd ${{ env.STACK_DIR }} && \
+            echo '📋 Checking .env file exists...' && \
+            [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }; \
+            source .env 2>/dev/null || true; \
+            export IMAGE_REPOSITORY=${{ env.IMAGE_REPOSITORY }} && \
+            export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
+            export COMPOSE_PROJECT_NAME=${{ env.STACK_NAME }} && \
+            echo '🔄 Pulling latest images...' && \
+            docker compose -f docker-compose.yml -f docker-compose.${{ github.event.inputs.environment }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            echo '⬆️ Updating services...' && \
+            docker compose -f docker-compose.yml -f docker-compose.${{ github.event.inputs.environment }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            echo '✅ Deployment completed' && \
+            docker compose -f docker-compose.yml -f docker-compose.${{ github.event.inputs.environment }}.yml ps" || {
+            echo "❌ Deployment failed"
+            exit 1
+          }
+
+      - name: Health check
+        run: |
+          echo "🏥 Running health checks..."
+          sleep 15
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "cd /opt/postyfox/${{ github.event.inputs.environment }} && \
+            docker compose -f docker-compose.yml -f docker-compose.${{ github.event.inputs.environment }}.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
+            echo '⚠️ Warning: Services may still be starting'; }; \
+            true"
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - name: Summary
+        run: |
+          cat << 'EOF'
+          ✅ Manual deployment completed!
+          
+          📊 Deployment Details:
+          - Environment: ${{ github.event.inputs.environment }}
+          - Image Tag: ${{ steps.tag.outputs.tag }}
+          - Triggered by: ${{ github.actor }}
+          - Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+

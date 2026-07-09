@@ -1,0 +1,255 @@
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [platform-ci]
+    types: [completed]
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+  DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+  DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+  DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+
+jobs:
+  check-prerequisites:
+    # Verify all required secrets are configured
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets
+        if: |
+          !secrets.DEPLOY_HOST || 
+          !secrets.DEPLOY_USER || 
+          !secrets.DEPLOY_SSH_KEY
+        run: |
+          echo "❌ Missing required secrets:"
+          if [ -z "${{ secrets.DEPLOY_HOST }}" ]; then echo "  - DEPLOY_HOST"; fi
+          if [ -z "${{ secrets.DEPLOY_USER }}" ]; then echo "  - DEPLOY_USER"; fi
+          if [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ]; then echo "  - DEPLOY_SSH_KEY"; fi
+          echo ""
+          echo "Configure them in: Settings → Secrets and variables → Actions"
+          exit 1
+
+  deploy-dev:
+    # Always deploy dev when images are successfully built
+    needs: check-prerequisites
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copy deployment files
+        env:
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          echo "📦 Copying deployment files to dev stack..."
+          scp -P ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            -r deploy/docker-compose.yml \
+            deploy/docker-compose.dev.yml \
+            deploy/keycloak \
+            deploy/rabbitmq \
+            deploy/otel \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/dev/ || {
+            echo "❌ Failed to copy deployment files"
+            exit 1
+          }
+
+      - name: Deploy dev stack
+        env:
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          echo "🚀 Deploying to dev stack..."
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "set -e; \
+            cd /opt/postyfox/dev && \
+            echo '📋 Checking .env file exists...' && \
+            [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }; \
+            source .env 2>/dev/null || true; \
+            export IMAGE_REPOSITORY=${{ env.IMAGE_REPOSITORY }} && \
+            export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
+            export COMPOSE_PROJECT_NAME=postyfox-dev && \
+            echo '🔄 Pulling latest images...' && \
+            docker compose -f docker-compose.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            echo '⬆️ Updating services...' && \
+            docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            echo '✅ Dev stack deployed successfully' && \
+            docker compose -f docker-compose.yml -f docker-compose.dev.yml ps" || {
+            echo "❌ Dev deployment failed"
+            exit 1
+          }
+
+      - name: Health check
+        run: |
+          echo "🏥 Running health checks..."
+          sleep 10
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "cd /opt/postyfox/dev && \
+            docker compose -f docker-compose.yml -f docker-compose.dev.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
+            echo '⚠️ Warning: Some services may not be healthy yet'; }; \
+            true"
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          cat << 'EOF'
+          ✅ Dev deployment completed successfully!
+          
+          📊 Stack Information:
+          - Environment: Development (auto-deploy on every push)
+          - Project: postyfox-dev
+          - Location: /opt/postyfox/dev
+          - Images: ghcr.io/${{ github.repository_owner }}/postyfox-core-*:${{ github.event.workflow_run.head_sha }}
+          
+          🔗 Access points:
+          - Core API: http://${{ env.DEPLOY_HOST }}:8080
+          - Post API: http://${{ env.DEPLOY_HOST }}:8081
+          - RabbitMQ Admin: http://${{ env.DEPLOY_HOST }}:15672
+          
+          📝 Check logs:
+          - ssh ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd /opt/postyfox/dev && docker compose logs -f core-api"
+          EOF
+
+  deploy-prod-approval:
+    # Gate for manual approval before deploying to prod
+    needs: [check-prerequisites, deploy-dev]
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment: 
+      name: production
+      auto-trigger: false
+    steps:
+      - name: Await approval
+        run: echo "⏳ Waiting for production deployment approval..."
+
+  deploy-prod:
+    # Deploy to prod only after approval
+    needs: deploy-prod-approval
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copy deployment files
+        env:
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          echo "📦 Copying deployment files to prod stack..."
+          scp -P ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            -r deploy/docker-compose.yml \
+            deploy/docker-compose.prod.yml \
+            deploy/keycloak \
+            deploy/rabbitmq \
+            deploy/otel \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
+            echo "❌ Failed to copy deployment files"
+            exit 1
+          }
+
+      - name: Deploy prod stack
+        env:
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          echo "🚀 Deploying to prod stack (⚠️ PRODUCTION)..."
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "set -e; \
+            cd /opt/postyfox/prod && \
+            echo '📋 Checking .env file exists...' && \
+            [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }; \
+            source .env 2>/dev/null || true; \
+            export IMAGE_REPOSITORY=${{ env.IMAGE_REPOSITORY }} && \
+            export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
+            export COMPOSE_PROJECT_NAME=postyfox-prod && \
+            echo '🔄 Pulling latest images...' && \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            echo '⬆️ Updating services (backup your data first!)...' && \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            echo '✅ Prod stack deployed successfully' && \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps" || {
+            echo "❌ Prod deployment failed"
+            exit 1
+          }
+
+      - name: Health check
+        run: |
+          echo "🏥 Running health checks..."
+          sleep 15
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "cd /opt/postyfox/prod && \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps | grep -E '(core-api|post-api|worker)' | grep -E '(Up|healthy)' || { \
+            echo '⚠️ Warning: Some services may not be healthy yet'; }; \
+            true"
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          cat << 'EOF'
+          ✅ Production deployment completed successfully!
+          
+          📊 Stack Information:
+          - Environment: Production (approval-gated)
+          - Project: postyfox-prod
+          - Location: /opt/postyfox/prod
+          - Images: ghcr.io/${{ github.repository_owner }}/postyfox-core-*:${{ github.event.workflow_run.head_sha }}
+          
+          🔗 Access points:
+          - Core API: http://${{ env.DEPLOY_HOST }}:9080
+          - Post API: http://${{ env.DEPLOY_HOST }}:9081
+          - RabbitMQ Admin: http://${{ env.DEPLOY_HOST }}:15673
+          
+          📝 Check logs:
+          - ssh ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd /opt/postyfox/prod && docker compose logs -f core-api"
+          
+          ⚠️ Remember to:
+          - Monitor resource usage: docker stats
+          - Check external service connectivity (Keycloak, RustFS)
+          - Verify backups are in place
+          EOF
+
+

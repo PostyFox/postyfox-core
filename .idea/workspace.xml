@@ -6,41 +6,13 @@
   <component name="BackgroundAgentGlobalSettings">
     <option name="selectedModelId" value="auto" />
   </component>
-  <component name="CMakeProjectFlavorService">
-    <option name="flavorId" value="CMakePlainProjectFlavor" />
-  </component>
   <component name="CMakeSettings">
     <configurations />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f4681a76-598f-4da2-ac8e-93d2cd0a3c62" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.dockerignore" beforeDir="false" afterPath="$PROJECT_DIR$/.dockerignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/.dockerignore" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/.dockerignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/Dockerfile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/src/connectors/bluesky.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/src/connectors/bluesky.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/src/connectors/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/src/connectors/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/src/connectors/tumblr.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/src/connectors/tumblr.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/src/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/src/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/src/media-store.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/src/media-store.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/src/server.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/src/server.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/src/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/src/types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/test/bluesky.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/test/bluesky.test.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/test/server.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/test/server.test.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/test/tumblr.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/test/tumblr.test.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/connectors-node/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/connectors-node/tsconfig.json" afterDir="false" />
+    <list default="true" id="119a4010-36fc-47b8-9ba5-65b05105b128" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/deploy/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/deploy/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deploy/observability/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/deploy/observability/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deploy/rabbitmq/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/deploy/rabbitmq/Dockerfile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deploy/terraform-aca/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/deploy/terraform-aca/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/ARCHITECTURE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/ARCHITECTURE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DECISIONS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DECISIONS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/FOLLOWUPS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/FOLLOWUPS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/README.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,47 +21,25 @@
   </component>
   <component name="CopilotPersistence">
     <persistenceIdMap>
-      <entry key="_/home/andy/git/postyfox/postyfox-core" value="3GG1QpnaBlEamQnv05Qichx24iZ" />
+      <entry key="_/home/andy/git/postyfox/postyfox-core" value="3GGFXVp4lYih6HKoP9aPSSoMOi6" />
     </persistenceIdMap>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_BRANCH_BY_REPOSITORY">
-      <map>
-        <entry key="$PROJECT_DIR$" value="main" />
-      </map>
-    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "aneillans"
-  }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/PostyFox/postyfox-core.git",
-    "accountId": "32678604-9782-47f6-b138-04eb0baf9af1"
-  }
-}]]></component>
-  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
-  <component name="KubernetesApiProvider"><![CDATA[{
-  "isMigrated": true
-}]]></component>
-  <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="true" />
+  <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="false" />
   <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 3,
-  "fromUser": false
+  "associatedIndex": 4
 }]]></component>
-  <component name="ProjectId" id="3GG1QpnaBlEamQnv05Qichx24iZ" />
+  <component name="ProjectId" id="3GGFXVp4lYih6HKoP9aPSSoMOi6" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
@@ -97,9 +47,9 @@
     "cidr.known.project.marker": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "copilot.chat.legacySessionMetadata.migrated": "true",
-    "git-widget-placeholder": "total__rework",
+    "git-widget-placeholder": "feat/add__deployments",
+    "last_opened_file_path": "/home/andy/git/postyfox/postyfox-core",
     "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
@@ -108,59 +58,18 @@
 }]]></component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="f4681a76-598f-4da2-ac8e-93d2cd0a3c62" name="Changes" comment="" />
-      <created>1783583081838</created>
+      <changelist id="119a4010-36fc-47b8-9ba5-65b05105b128" name="Changes" comment="" />
+      <created>1783590042725</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1783583081838</updated>
-      <workItem from="1783583082343" duration="2725000" />
+      <updated>1783590042725</updated>
+      <workItem from="1783590044407" duration="5304000" />
     </task>
-    <task id="LOCAL-00001" summary="Strip and cleanup the old build work">
-      <option name="closed" value="true" />
-      <created>1783583100773</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1783583100773</updated>
-    </task>
-    <task id="LOCAL-00002" summary="Moving the rebuild into place">
-      <option name="closed" value="true" />
-      <created>1783583279547</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1783583279547</updated>
-    </task>
-    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
-  <component name="UnityCheckinConfiguration" checkUnsavedScenes="true" />
+  <component name="UnityCheckinConfiguration" checkUnsavedScenes="false" />
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
-  <component name="VcsManagerConfiguration">
-    <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
-    <MESSAGE value="Strip and cleanup the old build work" />
-    <MESSAGE value="Moving the rebuild into place" />
-    <option name="LAST_COMMIT_MESSAGE" value="Moving the rebuild into place" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <breakpoint enabled="true" type="DotNet_Exception_Breakpoints">
-          <properties exception="System.OperationCanceledException" breakIfHandledByOtherCode="false" displayValue="System.OperationCanceledException" />
-          <option name="timeStamp" value="1" />
-        </breakpoint>
-        <breakpoint enabled="true" type="DotNet_Exception_Breakpoints">
-          <properties exception="System.Threading.Tasks.TaskCanceledException" breakIfHandledByOtherCode="false" displayValue="System.Threading.Tasks.TaskCanceledException" />
-          <option name="timeStamp" value="2" />
-        </breakpoint>
-        <breakpoint enabled="true" type="DotNet_Exception_Breakpoints">
-          <properties exception="System.Threading.ThreadAbortException" breakIfHandledByOtherCode="false" displayValue="System.Threading.ThreadAbortException" />
-          <option name="timeStamp" value="3" />
-        </breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
-  </component>
 </project>
