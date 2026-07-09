@@ -83,12 +83,6 @@ services:
         reservations:
           cpus: '2'
           memory: 1G
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   post-api:
     environment:
@@ -107,12 +101,6 @@ services:
         reservations:
           cpus: '2'
           memory: 1G
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/readyz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   worker:
     environment:
@@ -128,12 +116,6 @@ services:
         reservations:
           cpus: '2'
           memory: 1G
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   otel-collector:
     deploy:

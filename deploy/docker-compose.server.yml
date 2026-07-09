@@ -89,6 +89,12 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
+    healthcheck:
+      # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20      
     restart: unless-stopped
 
   post-api:
@@ -96,9 +102,15 @@ services:
     environment:
       <<: *dotnet-env
     depends_on:
-      core-api: { condition: service_started }
+      core-api: { condition: service_healthy }
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+    healthcheck:
+      # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20      
     restart: unless-stopped
 
   worker:
@@ -109,6 +121,12 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
+    healthcheck:
+      # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     restart: unless-stopped
 
 volumes:
