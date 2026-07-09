@@ -73,7 +73,8 @@ services:
       RateLimit__Enabled: "true"
       RateLimit__RequestsPerMinute: "300"
     ports:
-      - "${CORE_API_PORT:-9080}:8080"
+      # Reserve one host port per replica (e.g. 9080, 9081 for 2 replicas)
+      - "${CORE_API_PORT_START:-9080}-${CORE_API_PORT_END:-9081}:8080"
     deploy:
       resources:
         limits:
@@ -95,7 +96,8 @@ services:
       RateLimit__Enabled: "true"
       RateLimit__RequestsPerMinute: "300"
     ports:
-      - "${POST_API_PORT:-9081}:8080"
+      # Reserve one host port per replica (e.g. 9082, 9083 for 2 replicas)
+      - "${POST_API_PORT_START:-9082}-${POST_API_PORT_END:-9083}:8080"
     deploy:
       replicas: 2
       resources:
