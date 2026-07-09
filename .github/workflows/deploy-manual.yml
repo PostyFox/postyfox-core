@@ -19,6 +19,9 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 env:
   REGISTRY: ghcr.io
   DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
