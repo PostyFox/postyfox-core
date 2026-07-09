@@ -137,23 +137,12 @@ jobs:
           - ssh ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd /opt/postyfox/dev && docker compose logs -f core-api"
           EOF
 
-  deploy-prod-approval:
-    # Gate for manual approval before deploying to prod
+  deploy-prod:
+    # Deploy to prod after dev succeeds; GitHub environment protection handles approval.
     needs: [check-prerequisites, deploy-dev]
     if: |
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push'
-    runs-on: ubuntu-latest
-    environment: 
-      name: production
-      auto-trigger: false
-    steps:
-      - name: Await approval
-        run: echo "⏳ Waiting for production deployment approval..."
-
-  deploy-prod:
-    # Deploy to prod only after approval
-    needs: deploy-prod-approval
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -254,5 +243,6 @@ jobs:
           - Check external service connectivity (Keycloak, RustFS)
           - Verify backups are in place
           EOF
+
 
 

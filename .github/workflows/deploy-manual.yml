@@ -63,6 +63,19 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Image tag: $TAG"
 
+      - name: Resolve stack settings
+        id: stack
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "suffix=prod" >> "$GITHUB_OUTPUT"
+            echo "directory=prod" >> "$GITHUB_OUTPUT"
+            echo "project=postyfox-prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "suffix=dev" >> "$GITHUB_OUTPUT"
+            echo "directory=dev" >> "$GITHUB_OUTPUT"
+            echo "project=postyfox-dev" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Prepare SSH
         run: |
           mkdir -p ~/.ssh
@@ -74,13 +87,13 @@ jobs:
         env:
           IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-          STACK_DIR: /opt/postyfox/${{ github.event.inputs.environment }}
+          STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
         run: |
           echo "📦 Copying deployment files to ${{ github.event.inputs.environment }} stack..."
           scp -P ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
             -r deploy/docker-compose.yml \
-            deploy/docker-compose.${{ github.event.inputs.environment }}.yml \
+            deploy/docker-compose.${{ steps.stack.outputs.suffix }}.yml \
             deploy/keycloak \
             deploy/rabbitmq \
             deploy/otel \
@@ -93,8 +106,9 @@ jobs:
         env:
           IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/postyfox-core
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-          STACK_NAME: postyfox-${{ github.event.inputs.environment }}
-          STACK_DIR: /opt/postyfox/${{ github.event.inputs.environment }}
+          STACK_NAME: ${{ steps.stack.outputs.project }}
+          STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
+          COMPOSE_SUFFIX: ${{ steps.stack.outputs.suffix }}
         run: |
           echo "🚀 Manually deploying ${{ github.event.inputs.environment }} stack..."
           echo "Image: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}"
@@ -111,24 +125,27 @@ jobs:
             export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
             export COMPOSE_PROJECT_NAME=${{ env.STACK_NAME }} && \
             echo '🔄 Pulling latest images...' && \
-            docker compose -f docker-compose.yml -f docker-compose.${{ github.event.inputs.environment }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            docker compose -f docker-compose.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services...' && \
-            docker compose -f docker-compose.yml -f docker-compose.${{ github.event.inputs.environment }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            docker compose -f docker-compose.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
             echo '✅ Deployment completed' && \
-            docker compose -f docker-compose.yml -f docker-compose.${{ github.event.inputs.environment }}.yml ps" || {
+            docker compose -f docker-compose.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps" || {
             echo "❌ Deployment failed"
             exit 1
           }
 
       - name: Health check
+        env:
+          STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
+          COMPOSE_SUFFIX: ${{ steps.stack.outputs.suffix }}
         run: |
           echo "🏥 Running health checks..."
           sleep 15
           ssh -p ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "cd /opt/postyfox/${{ github.event.inputs.environment }} && \
-            docker compose -f docker-compose.yml -f docker-compose.${{ github.event.inputs.environment }}.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
+            "cd ${{ env.STACK_DIR }} && \
+            docker compose -f docker-compose.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
             echo '⚠️ Warning: Services may still be starting'; }; \
             true"
 
@@ -147,4 +164,5 @@ jobs:
           - Triggered by: ${{ github.actor }}
           - Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EOF
+
 
