@@ -19,6 +19,9 @@
       "enabled": true,
       "email": "postyfox@example.com",
       "emailVerified": true,
+      "firstName": "Posty",
+      "lastName": "Fox",
+      "requiredActions": [],
       "credentials": [{ "type": "password", "value": "postyfox", "temporary": false }]
     }
   ]

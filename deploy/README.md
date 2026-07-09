@@ -44,7 +44,7 @@ platform-ci.yml: test, build, push images
 | File | Purpose |
 |------|---------|
 | `.github/workflows/deploy.yml` | Deployment workflow (GitHub Actions) |
-| `deploy/docker-compose.yml` | Base composition |
+| `deploy/docker-compose.server.yml` | Deployment base composition |
 | `deploy/docker-compose.dev.yml` | Dev overrides (isolation, lighter resources) |
 | `deploy/docker-compose.prod.yml` | Prod overrides (replication, HA, monitoring) |
 | `deploy/.env.dev.example` | Dev configuration template |
@@ -72,41 +72,42 @@ platform-ci.yml: test, build, push images
 
 ### Check Status
 ```bash
-ssh deploy@server "cd /opt/postyfox/dev && docker compose ps"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps"
 ```
 
 ### View Logs
 ```bash
-ssh deploy@server "cd /opt/postyfox/dev && docker compose logs -f core-api"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml logs -f core-api"
 ```
 
 ### Stop/Start
 ```bash
-ssh deploy@server "cd /opt/postyfox/dev && docker compose stop"
-ssh deploy@server "cd /opt/postyfox/dev && docker compose start"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml stop"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml start"
 ```
 
 ### Manual Redeploy
 ```bash
 ssh deploy@server "cd /opt/postyfox/dev && \
   source .env && \
-  docker compose pull && \
-  docker compose up -d"
+  docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull && \
+  docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d"
 ```
 
 ## Ports
 
+The public API ports are configured in each stack's `.env` file:
+
+- `CORE_API_PORT`
+- `POST_API_PORT`
+
 ### Dev Stack
-- Core API: 8080
-- Post API: 8081
-- RabbitMQ Admin: 15672
-- OpenTelemetry: 4317/4318
+- Core API: `CORE_API_PORT` (default `8080`)
+- Post API: `POST_API_PORT` (default `8081`)
 
 ### Prod Stack
-- Core API: 9080 (or configured)
-- Post API: 9081 (or configured)
-- RabbitMQ Admin: 15673 (or configured)
-- OpenTelemetry: 4317/4318
+- Core API: `CORE_API_PORT` (default `9080`)
+- Post API: `POST_API_PORT` (default `9081`)
 
 ## External Dependencies
 
@@ -124,7 +125,7 @@ Ensure these are:
 
 ### Deployment fails
 1. Check GitHub Actions logs: https://github.com/yourorg/postyfox-core/actions
-2. Check server logs: `ssh deploy@server "cd /opt/postyfox/dev && docker compose logs"`
+2. Check server logs: `ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml logs"`
 3. Verify SSH access: `ssh -i deploy_key deploy@server "docker ps"`
 
 ### Services won't start
@@ -133,10 +134,10 @@ Ensure these are:
 ssh deploy@server "docker stats"
 
 # Check postgres health
-ssh deploy@server "docker exec postyfox-dev-postgres pg_isready -U postyfox"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml exec postgres pg_isready -U postyfox"
 
 # Check network connectivity to external services
-ssh deploy@server "docker exec postyfox-dev-core-api nslookup rustfs"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml exec core-api getent hosts rustfs.example.com"
 ```
 
 ### Rollback to previous version
@@ -146,8 +147,8 @@ git log --oneline -5
 
 # Redeploy with specific image
 ssh deploy@server "cd /opt/postyfox/prod && \
-  IMAGE_TAG=<previous-sha> docker compose pull && \
-  docker compose up -d"
+  IMAGE_TAG=<previous-sha> docker compose -f docker-compose.server.yml -f docker-compose.prod.yml pull && \
+  docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d"
 ```
 
 ## See Also

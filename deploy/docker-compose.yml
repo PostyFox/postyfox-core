@@ -148,6 +148,10 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Pin the issuer/frontend URL to the browser-facing address so token `iss` is stable
+      # regardless of whether Keycloak is reached via the browser (localhost:8082) or the
+      # in-cluster back channel (keycloak:8080). See oauth2-proxy split front/back-channel config.
+      KC_HOSTNAME: "http://localhost:8082"
     volumes: ["./keycloak:/opt/keycloak/data/import:ro"]
     ports: ["8082:8080"]
     profiles: ["auth"]

@@ -97,6 +97,12 @@ performs the OIDC exchange against Keycloak and injects the `X-Auth-Request-User
 trust. External/machine callers authenticate with `X-API-Key: <key>` (create one via
 `POST /api/profile/keys`).
 
+**Browser login (auth profile):** open <http://localhost:4180> and sign in as `postyfox` /
+`postyfox` (Keycloak admin console at <http://localhost:8082>, `admin` / `admin`). Keycloak's issuer
+is pinned to `localhost:8082` (`KC_HOSTNAME`) so the browser and the in-cluster back channel stay
+consistent; oauth2-proxy uses split front/back-channel URLs — see
+[`deploy/oauth2-proxy/oauth2-proxy.cfg`](./deploy/oauth2-proxy/oauth2-proxy.cfg).
+
 > The RabbitMQ image build downloads the delayed-message-exchange plugin (needs network at build).
 
 ## Build & test

@@ -48,8 +48,6 @@ services:
         reservations:
           cpus: '1'
           memory: 512M
-    environment:
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: "0.6"
 
   connectors-node:
     environment:
