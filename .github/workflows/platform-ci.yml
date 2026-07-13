@@ -11,7 +11,7 @@ jobs:
   dotnet:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
@@ -28,7 +28,7 @@ jobs:
       run:
         working-directory: src/connectors-node
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -39,7 +39,7 @@ jobs:
   iac:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v3
       - name: Terraform validate (ACA)
         working-directory: deploy/terraform-aca
@@ -83,7 +83,7 @@ jobs:
             project: ""
             assembly: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Normalize image repository name
         run: echo "IMAGE_REPOSITORY=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - uses: docker/login-action@v3
