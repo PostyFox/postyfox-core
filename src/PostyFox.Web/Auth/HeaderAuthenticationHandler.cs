@@ -7,8 +7,12 @@ using Microsoft.Extensions.Options;
 namespace PostyFox.Web.Auth;
 
 /// <summary>
-/// Trusts the identity header injected by the oauth2-proxy ingress (which performs the OIDC
-/// exchange against Keycloak). In DevMode, authenticates as a fixed dev user.
+/// DevMode-only local authentication: authenticates every request as a fixed dev user.
+///
+/// IMPORTANT: this does NOT trust <c>X-Auth-Request-User</c> outside DevMode. A raw identity header
+/// is spoofable by anything that can reach the API directly, so production auth uses the validated
+/// OIDC bearer token (<see cref="AuthConstants.Jwt"/>) or an API key instead. The OIDC edge must be
+/// the only public route and must forward the bearer token to the upstream APIs.
 /// </summary>
 public sealed class HeaderAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -21,19 +25,11 @@ public sealed class HeaderAuthenticationHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        string? userId;
-        if (_auth.DevMode)
-        {
-            userId = _auth.DevUserId;
-        }
-        else
-        {
-            userId = Request.Headers.TryGetValue(_auth.UserHeader, out var v) ? v.ToString() : null;
-            if (string.IsNullOrWhiteSpace(userId))
-                return Task.FromResult(AuthenticateResult.NoResult());
-        }
+        if (!_auth.DevMode)
+            return Task.FromResult(AuthenticateResult.NoResult());
 
-        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId!) };
+        var userId = _auth.DevUserId;
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId) };
         if (_auth.EmailHeader is { } eh && Request.Headers.TryGetValue(eh, out var email) && !string.IsNullOrEmpty(email))
             claims.Add(new Claim(ClaimTypes.Email, email!));
 

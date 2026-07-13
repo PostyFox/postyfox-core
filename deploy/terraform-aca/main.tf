@@ -19,8 +19,11 @@ locals {
     { name = "ObjectStore__Bucket", value = var.object_store_bucket },
     { name = "RabbitMq__Host", value = var.rabbitmq_host },
     { name = "RabbitMq__User", value = var.rabbitmq_user },
-    { name = "Auth__DevMode", value = "false" },
     { name = "Auth__UserHeader", value = "X-Auth-Request-User" },
+    { name = "Auth__Oidc__Enabled", value = "true" },
+    { name = "Auth__Oidc__Issuer", value = var.auth_oidc_issuer },
+    { name = "Auth__Oidc__JwksUrl", value = var.auth_oidc_jwks_url },
+    { name = "Auth__Oidc__Audience", value = var.auth_oidc_audience },
     { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.otel_endpoint },
     { name = "OTEL_EXPORTER_OTLP_PROTOCOL", value = "grpc" },
     { name = "ASPNETCORE_URLS", value = "http://+:8080" },
@@ -138,7 +141,7 @@ resource "azurerm_container_app" "connectors_node" {
   }
 }
 
-# --- core-api (external ingress, owns migrations) ---
+# --- core-api (internal ingress, owns migrations) ---
 resource "azurerm_container_app" "core_api" {
   name                         = "postyfox-core-api"
   container_app_environment_id = azurerm_container_app_environment.this.id
@@ -191,8 +194,10 @@ resource "azurerm_container_app" "core_api" {
     }
   }
 
+  # Internal only. Public access goes through the OIDC edge; the APIs are never externally exposed
+  # (they re-validate the forwarded JWT in-app). Provisioning the edge is a follow-up — see README.
   ingress {
-    external_enabled = true
+    external_enabled = false
     target_port      = 8080
     traffic_weight {
       latest_revision = true
@@ -201,7 +206,7 @@ resource "azurerm_container_app" "core_api" {
   }
 }
 
-# --- post-api (external ingress) ---
+# --- post-api (internal ingress) ---
 resource "azurerm_container_app" "post_api" {
   name                         = "postyfox-post-api"
   container_app_environment_id = azurerm_container_app_environment.this.id
@@ -250,8 +255,9 @@ resource "azurerm_container_app" "post_api" {
     }
   }
 
+  # Internal only — see core-api. The OIDC edge is the sole external Container App.
   ingress {
-    external_enabled = true
+    external_enabled = false
     target_port      = 8080
     traffic_weight {
       latest_revision = true

@@ -9,12 +9,17 @@ imagePullSecrets: []
 # Backing services (PostgreSQL, RabbitMQ, S3/object store) are expected to be provided externally
 # (managed services or separate charts). Only their connection details are configured here.
 config:
-  objectStoreServiceUrl: "http://minio:9000"
+  objectStoreServiceUrl: "http://rustfs:9000"   # any S3-compatible endpoint (RustFS/MinIO/managed S3)
   objectStoreBucket: "postyfox"
   rabbitMqHost: "rabbitmq"
   rabbitMqUser: "guest"
-  authDevMode: "false"
   authUserHeader: "X-Auth-Request-User"
+  # In-app OIDC bearer validation. The APIs trust NO injected header — only the validated JWT the
+  # edge forwards (or an API key). This MUST stay enabled. Point issuer/JWKS at your Keycloak.
+  authOidcEnabled: "true"
+  authOidcIssuer: "https://keycloak.example/realms/PostyFox"
+  authOidcJwksUrl: "https://keycloak.example/realms/PostyFox/protocol/openid-connect/certs"
+  authOidcAudience: "oauth2-proxy"
   otelEndpoint: "http://otel-collector:4317"
 
 # Secret values. In production, source these from a secret manager (External Secrets / Sealed
@@ -45,10 +50,17 @@ resources:
   requests: { cpu: "100m", memory: "128Mi" }
   limits: { cpu: "1", memory: "512Mi" }
 
+# SECURITY — exposure model: only the OIDC edge (oauth2-proxy) may be publicly reachable. The
+# core-api/post-api/connectors-node Services are ClusterIP (internal) and must NEVER be given a
+# public Ingress or LoadBalancer. This Ingress fronts the edge only.
+#
+# NB: this chart does not yet package the OIDC edge itself (oauth2-proxy + Keycloak) — deploy it
+# separately (or as a follow-up, add it here) and point `edgeServiceName` at its in-cluster Service.
 ingress:
   enabled: false
   className: ""
   annotations: {}
-  coreApiHost: api.postyfox.example
-  postApiHost: post.postyfox.example
+  host: postyfox.example        # single public host → the OIDC edge
+  edgeServiceName: oauth2-proxy # in-cluster Service name of the OIDC edge (NOT an API service)
+  edgePort: 4180
   tls: []

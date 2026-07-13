@@ -3,8 +3,9 @@
 #
 # - App services use prebuilt images from GHCR.
 # - Postgres and RabbitMQ run per stack on the server.
-# - RustFS and auth are provided externally.
-# - Only the API front ends should publish host ports via env-specific overrides.
+# - RustFS and Keycloak are provided externally.
+# - The OIDC edge (oauth2-proxy) is the ONLY service that publishes a public host port (via the
+#   env-specific overrides); the APIs, gateway, and connectors-node stay on the internal network.
 
 x-dotnet-env: &dotnet-env
   ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox;Username=postyfox;Password=${DB_PASSWORD}"
@@ -16,8 +17,15 @@ x-dotnet-env: &dotnet-env
   RabbitMq__User: "${RABBITMQ_USER}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
   Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
-  Auth__DevMode: "false"
   Auth__UserHeader: "${AUTH_USER_HEADER:-X-Auth-Request-User}"
+  # In-app OIDC bearer validation: the edge forwards the validated token, the APIs re-validate it.
+  # This MUST be enabled — the APIs trust NO injected identity header, only the OIDC bearer / API key.
+  # Issuer = the browser-facing Keycloak URL (token `iss`); JWKS is fetched over the in-cluster back
+  # channel — mirrors the oauth2-proxy split below.
+  Auth__Oidc__Enabled: "true"
+  Auth__Oidc__Issuer: "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-PostyFox}"
+  Auth__Oidc__JwksUrl: "http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT:-8080}/realms/${KEYCLOAK_REALM:-PostyFox}/protocol/openid-connect/certs"
+  Auth__Oidc__Audience: "${OIDC_CLIENT_ID:-oauth2-proxy}"
   NodeConnectors__BaseUrl: "http://connectors-node:8090"
   NodeConnectors__InternalToken: "${INTERNAL_TOKEN}"
   OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_ENDPOINT:-http://otel-collector:4317}"
@@ -94,7 +102,10 @@ services:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
       interval: 5s
       timeout: 3s
-      retries: 20      
+      retries: 20
+      # core-api applies DB migrations + seeding before Kestrel starts listening, so allow a
+      # grace window before failing probes count against the retry budget.
+      start_period: 30s
     restart: unless-stopped
 
   post-api:
@@ -127,6 +138,59 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    restart: unless-stopped
+
+  # Internal path router behind the edge. Fans /api/posts + /api/webhooks to post-api and everything
+  # else to core-api, preserving the full request path. Never publishes a host port.
+  gateway:
+    image: nginx:alpine
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      core-api: { condition: service_healthy }
+      post-api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # The OIDC edge — the ONLY service that should publish a public port (done in the env overrides).
+  # Configured entirely via OAUTH2_PROXY_* env vars (no config file). Split front/back-channel:
+  #   - browser redirects use KEYCLOAK_PUBLIC_URL (the token `iss`)
+  #   - server-side token/JWKS use the in-cluster KEYCLOAK_HOST back channel
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:latest
+    environment:
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      OAUTH2_PROXY_PROVIDER: "oidc"
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
+      OAUTH2_PROXY_OIDC_ISSUER_URL: "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-PostyFox}"
+      OAUTH2_PROXY_LOGIN_URL: "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-PostyFox}/protocol/openid-connect/auth"
+      OAUTH2_PROXY_REDEEM_URL: "http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT:-8080}/realms/${KEYCLOAK_REALM:-PostyFox}/protocol/openid-connect/token"
+      OAUTH2_PROXY_OIDC_JWKS_URL: "http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT:-8080}/realms/${KEYCLOAK_REALM:-PostyFox}/protocol/openid-connect/certs"
+      OAUTH2_PROXY_CLIENT_ID: "${OIDC_CLIENT_ID:-oauth2-proxy}"
+      OAUTH2_PROXY_CLIENT_SECRET: "${OIDC_CLIENT_SECRET}"
+      OAUTH2_PROXY_COOKIE_SECRET: "${OAUTH2_PROXY_COOKIE_SECRET}"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_REDIRECT_URL: "${PUBLIC_BASE_URL}/oauth2/callback"
+      # Single root upstream → the internal nginx gateway (which does the path routing).
+      OAUTH2_PROXY_UPSTREAMS: "http://gateway:80/"
+      # Anonymous, HMAC-signed inbound webhook — external senders can't do an OIDC login.
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: "POST=^/api/webhooks/"
+      # Forward the validated ID token to upstreams as `Authorization: Bearer` (APIs re-validate it).
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
+      OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      # Sits behind a TLS-terminating reverse proxy on the host; trust X-Forwarded-* and set secure
+      # cookies (set EDGE_COOKIE_SECURE=false only if you expose the edge over plain HTTP).
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_COOKIE_SECURE: "${EDGE_COOKIE_SECURE:-true}"
+    depends_on:
+      gateway: { condition: service_healthy }
+      core-api: { condition: service_healthy }
+      post-api: { condition: service_healthy }
     restart: unless-stopped
 
 volumes:
