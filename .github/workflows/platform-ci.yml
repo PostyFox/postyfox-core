@@ -47,7 +47,7 @@ jobs:
           terraform fmt -check
           terraform init -backend=false
           terraform validate
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
       - name: Helm lint
         run: helm lint deploy/helm/postyfox
 
