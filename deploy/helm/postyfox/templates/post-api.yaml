@@ -32,5 +32,7 @@ metadata:
   name: {{ include "postyfox.fullname" . }}-post-api
   labels: {{- include "postyfox.labels" . | nindent 4 }}
 spec:
+  # Internal only — reached via the OIDC edge, never exposed publicly. Do not change to LoadBalancer.
+  type: ClusterIP
   selector: { app.kubernetes.io/name: postyfox-post-api }
   ports: [{ port: 8080, targetPort: 8080 }]

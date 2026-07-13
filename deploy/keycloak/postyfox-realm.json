@@ -9,6 +9,7 @@
       "publicClient": false,
       "secret": "oauth2-proxy-secret",
       "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
       "redirectUris": ["http://localhost:4180/oauth2/callback"],
       "webOrigins": ["http://localhost:4180"]
     }

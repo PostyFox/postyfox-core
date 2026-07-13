@@ -1,8 +1,10 @@
 {{- if .Values.ingress.enabled }}
+# Fronts the OIDC edge ONLY. core-api/post-api are ClusterIP and intentionally have no rule here —
+# exposing them directly would bypass authentication at the network layer. See values.yaml.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "postyfox.fullname" . }}
+  name: {{ include "postyfox.fullname" . }}-edge
   labels: {{- include "postyfox.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations: {{- toYaml . | nindent 4 }}
@@ -15,16 +17,10 @@ spec:
   tls: {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
-    - host: {{ .Values.ingress.coreApiHost }}
+    - host: {{ .Values.ingress.host }}
       http:
         paths:
           - path: /
             pathType: Prefix
-            backend: { service: { name: {{ include "postyfox.fullname" . }}-core-api, port: { number: 8080 } } }
-    - host: {{ .Values.ingress.postApiHost }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend: { service: { name: {{ include "postyfox.fullname" . }}-post-api, port: { number: 8080 } } }
+            backend: { service: { name: {{ .Values.ingress.edgeServiceName }}, port: { number: {{ .Values.ingress.edgePort }} } } }
 {{- end }}

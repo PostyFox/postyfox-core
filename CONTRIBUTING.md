@@ -20,14 +20,16 @@ Note the comment at the top of the file;
 
 ```
 # PostyFox local stack. Quick start:  docker compose up --build
-# Adds the OIDC edge (Keycloak + oauth2-proxy):  docker compose --profile auth up --build
 #
-# By default the APIs run with Auth__DevMode=true (no login needed) for fast local iteration.
-# The 'auth' profile brings the production-representative oauth2-proxy -> Keycloak path.
+# Auth is the production-representative OIDC path: the stack always runs Keycloak + oauth2-proxy +
+# an nginx gateway, and the APIs validate the OIDC bearer token in-app (no DevMode bypass). Reach the
+# APIs through the edge at  http://localhost:4180  (logs you in via Keycloak on http://localhost:8082).
 ```
 
-You will want to do a docker compose up --build to get the stack running. 
-If you want to test the auth path, you will need to run docker compose --profile auth up --build.
+You will want to do a docker compose up --build to get the stack running.
+Log in and exercise the APIs through the edge at http://localhost:4180 — hitting the APIs directly
+(:8080 / :8081) requires a valid `Authorization: Bearer` token. Note that both of these address are NOT normally exposed
+on "real" deployments.
 
 The auth path includes a full, complete, Keycloak and all parts needed to validate locally without having any
 external dependencies. Credentials which are imported and available for use can be found in the deploy/keycloak 

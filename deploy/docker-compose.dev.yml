@@ -4,7 +4,7 @@
 # Dev stack:
 # - Uses external Keycloak and RustFS (shared infrastructure)
 # - Isolated Postgres and RabbitMQ per stack/network
-# - Only the public API front ends publish host ports
+# - Only the OIDC edge (oauth2-proxy) publishes a host port; the APIs stay internal
 # - Lighter resource constraints
 
 x-dotnet-env: &dotnet-env
@@ -22,7 +22,6 @@ x-dotnet-env: &dotnet-env
   OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_ENDPOINT}"
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   ASPNETCORE_URLS: "http://+:8080"
-  Auth__DevMode: "false"
 
 services:
   postgres:
@@ -62,13 +61,24 @@ services:
           cpus: '0.5'
           memory: 256M
 
+  # Only the edge publishes a host port; front it with your TLS terminator.
+  oauth2-proxy:
+    ports:
+      - "${EDGE_PORT:-4180}:4180"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
   core-api:
     environment:
       <<: *dotnet-env
       ApplyMigrations: "true"
       SeedServiceDefinitions: "true"
-    ports:
-      - "${CORE_API_PORT_START:-8080}:8080"
     deploy:
       resources:
         limits:
@@ -81,8 +91,6 @@ services:
   post-api:
     environment:
       <<: *dotnet-env
-    ports:
-      - "${POST_API_PORT_START:-8081}:8080"
     deploy:
       resources:
         limits:
