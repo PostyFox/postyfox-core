@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -42,8 +43,75 @@ jobs:
           exit 1
       - run: echo "✅ Deployment confirmed"
 
-  deploy-manual:
+  build-images:
+    # Build + push container images to ghcr tagged with the commit SHA
+    # (mirrors the `images` job in platform-ci.yml).
     needs: validate-confirmation
+    name: Build & push images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - service: core-api
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Api.Core/PostyFox.Api.Core.csproj
+            assembly: PostyFox.Api.Core.dll
+          - service: post-api
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Api.Post/PostyFox.Api.Post.csproj
+            assembly: PostyFox.Api.Post.dll
+          - service: worker
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj
+            assembly: PostyFox.Worker.Posting.dll
+          - service: connectors-node
+            context: src/connectors-node
+            dockerfile: src/connectors-node/Dockerfile
+            project: ""
+            assembly: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.image_tag || github.ref }}
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ -z "${{ github.event.inputs.image_tag }}" ]; then
+            TAG=$(git rev-parse HEAD)
+          else
+            TAG="${{ github.event.inputs.image_tag }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $TAG"
+
+      - name: Normalize image repository name
+        run: echo "IMAGE_REPOSITORY=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ghcr.io/${{ env.IMAGE_REPOSITORY }}-${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+          build-args: |
+            PROJECT=${{ matrix.project }}
+            ASSEMBLY=${{ matrix.assembly }}
+
+  deploy-manual:
+    needs: [validate-confirmation, build-images]
     name: Deploy ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}

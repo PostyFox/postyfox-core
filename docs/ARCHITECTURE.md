@@ -34,7 +34,7 @@ event arrives. This repo is the backend + infrastructure only (the control-panel
 ```mermaid
 flowchart TB
     client["Client / control panel"]
-    edge["Ingress: oauth2-proxy<br/>(OIDC → Keycloak)<br/>[auth profile]"]
+    edge["Edge: oauth2-proxy<br/>(OIDC → Keycloak)<br/>+ nginx gateway fan-out"]
 
     subgraph apps["PostyFox services (containers)"]
         core["core-api (C#)<br/>profile/keys, services,<br/>connectors, templates, triggers"]
@@ -231,15 +231,19 @@ Notes:
 flowchart LR
     req["Incoming request"] --> policy{"X-API-Key present?"}
     policy -- yes --> apik["ApiKey scheme<br/>validate hash → userId"]
-    policy -- no --> hdr["Header scheme<br/>X-Auth-Request-User → userId<br/>(DevMode → dev-user)"]
-    apik & hdr --> claims["ClaimsPrincipal<br/>(NameIdentifier = userId)"]
+    policy -- "no, Bearer + OIDC on" --> jwt["JWT scheme<br/>validate OIDC token (JWKS)<br/>sub → userId"]
+    policy -- otherwise --> hdr["Header scheme<br/>(DevMode → dev-user; else reject)"]
+    apik & jwt & hdr --> claims["ClaimsPrincipal<br/>(NameIdentifier = userId)"]
 ```
 
-- A **policy scheme** (`PostyFox`) forwards to one of two handlers based on the presence of the
-  `X-API-Key` header.
-- **Header scheme** trusts the identity header injected by the oauth2-proxy edge (which performs the
-  OIDC exchange against Keycloak). `Auth:DevMode=true` authenticates every request as `Auth:DevUserId`
-  for local iteration.
+- A **policy scheme** (`PostyFox`) forwards by credential: `X-API-Key` → ApiKey; else an
+  `Authorization: Bearer` token (when OIDC is enabled) → JWT; otherwise the Header scheme.
+- **JWT scheme** validates the OIDC bearer token the oauth2-proxy edge forwards, in-app, against the
+  realm's JWKS (issuer + lifetime + optional audience). This is the production path — the APIs trust
+  **no** injected identity header.
+- **Header scheme** authenticates as `Auth:DevUserId` only when `Auth:DevMode=true` (a test-only
+  in-process switch; no shipped configuration enables it). Otherwise it rejects — a raw
+  `X-Auth-Request-User` header is never trusted.
 - **API-key scheme** validates the presented key against a PBKDF2 hash (constant-time), for
   external/machine callers — the retained requirement. Keys are prefix-indexed; the secret is never
   stored.

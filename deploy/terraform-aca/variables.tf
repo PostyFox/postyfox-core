@@ -48,6 +48,21 @@ variable "otel_endpoint" {
   default = ""
 }
 
+# In-app OIDC bearer validation. DevMode does not exist in ACA, so the APIs trust the validated JWT
+# the OIDC edge forwards (not any header). Point these at your Keycloak realm.
+variable "auth_oidc_issuer" {
+  type        = string
+  description = "OIDC issuer (token `iss`), e.g. https://keycloak.example/realms/PostyFox"
+}
+variable "auth_oidc_jwks_url" {
+  type        = string
+  description = "JWKS URL for signing-key validation."
+}
+variable "auth_oidc_audience" {
+  type    = string
+  default = "oauth2-proxy"
+}
+
 # Secrets
 variable "postgres_connection" {
   type      = string

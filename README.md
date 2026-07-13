@@ -82,22 +82,22 @@ Transient delivery failures retry with exponential backoff (delayed re-publish) 
 
 ```bash
 cd deploy
-docker compose up --build            # infra + APIs + worker (APIs in DevMode, no login)
-# Core API:  http://localhost:8080    Post API: http://localhost:8081
+docker compose up --build            # full stack incl. the OIDC edge (Keycloak + oauth2-proxy + gateway)
+# Edge (log in here):  http://localhost:4180   → fans out to core-api / post-api after OIDC login
+# Keycloak:            http://localhost:8082
 # Swagger UI: http://localhost:8080/swagger  and  http://localhost:8081/swagger
 # OpenAPI:    http://localhost:8080/openapi/v1.json  (and :8081)
 # RabbitMQ:  http://localhost:15672   MinIO console: http://localhost:9001
 # connectors-node (Bluesky/Tumblr): http://localhost:8090/health
-
-docker compose --profile auth up --build   # adds Keycloak + oauth2-proxy edge
 ```
 
-In DevMode every request is authenticated as `dev-user`. With the `auth` profile, oauth2-proxy
-performs the OIDC exchange against Keycloak and injects the `X-Auth-Request-User` header the APIs
-trust. External/machine callers authenticate with `X-API-Key: <key>` (create one via
-`POST /api/profile/keys`).
+Auth is always the production-representative OIDC path — there is **no DevMode bypass**. oauth2-proxy
+performs the OIDC exchange against Keycloak and the APIs validate the forwarded `Authorization: Bearer`
+token in-app, so reach them through the edge at <http://localhost:4180>. Hitting the APIs directly
+(`:8080`/`:8081`) requires a valid bearer token. External/machine callers authenticate with
+`X-API-Key: <key>` (create one via `POST /api/profile/keys`).
 
-**Browser login (auth profile):** open <http://localhost:4180> and sign in as `postyfox` /
+**Browser login:** open <http://localhost:4180> and sign in as `postyfox` /
 `postyfox` (Keycloak admin console at <http://localhost:8082>, `admin` / `admin`). Keycloak's issuer
 is pinned to `localhost:8082` (`KC_HOSTNAME`) so the browser and the in-cluster back channel stay
 consistent; oauth2-proxy uses split front/back-channel URLs — see
@@ -136,7 +136,8 @@ Telemetry (OTLP) is exported to a collector and forwarded to central **OpenSearc
 ## Configuration (env vars)
 
 Nested keys use `__`. Key settings: `ConnectionStrings__Postgres`, `ObjectStore__*`, `RabbitMq__*`,
-`Secrets__EncryptionKey` (base64 32-byte AES key), `Auth__DevMode`, `Auth__UserHeader`,
+`Secrets__EncryptionKey` (base64 32-byte AES key), `Auth__Oidc__Enabled` / `Auth__Oidc__Issuer` /
+`Auth__Oidc__JwksUrl` / `Auth__Oidc__Audience`, `Auth__UserHeader`,
 `NodeConnectors__BaseUrl` + `NodeConnectors__InternalToken` (→ connectors-node; also set as
 `INTERNAL_TOKEN` on that service), `ApplyMigrations`, `SeedServiceDefinitions`,
 `OTEL_EXPORTER_OTLP_ENDPOINT`.

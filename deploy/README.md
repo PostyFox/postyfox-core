@@ -96,18 +96,14 @@ ssh deploy@server "cd /opt/postyfox/dev && \
 
 ## Ports
 
-The public API ports are configured in each stack's `.env` file:
+Only the OIDC edge (oauth2-proxy) publishes a host port — the APIs, gateway, and connectors-node stay
+on the internal network and are reached through the edge. The edge port is configured per stack in
+`.env`:
 
-- `CORE_API_PORT`
-- `POST_API_PORT`
+- `EDGE_PORT` (default `4180`) — put your TLS terminator / load balancer in front of it.
 
-### Dev Stack
-- Core API: `CORE_API_PORT` (default `8080`)
-- Post API: `POST_API_PORT` (default `8081`)
-
-### Prod Stack
-- Core API: `CORE_API_PORT` (default `9080`)
-- Post API: `POST_API_PORT` (default `9081`)
+All public traffic goes to `http://<host>:${EDGE_PORT}`, which authenticates via Keycloak and
+path-routes `/api/posts` + `/api/webhooks` to post-api and everything else to core-api.
 
 ## External Dependencies
 

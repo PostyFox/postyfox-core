@@ -4,7 +4,7 @@
 # Prod stack:
 # - Uses external Keycloak and RustFS (shared infrastructure)
 # - Isolated Postgres and RabbitMQ per stack/network
-# - Only the public API front ends publish host ports
+# - Only the OIDC edge (oauth2-proxy) publishes a host port; the APIs stay internal
 # - Production resource constraints + restart policies
 # - Health checks and monitoring enabled
 
@@ -23,8 +23,6 @@ x-dotnet-env: &dotnet-env
   OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_ENDPOINT}"
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   ASPNETCORE_URLS: "http://+:8080"
-  # Enable security hardening for prod
-  Auth__DevMode: "false"
 
 services:
   postgres:
@@ -65,6 +63,20 @@ services:
           cpus: '1'
           memory: 512M
 
+  # Only the edge publishes a host port; front it with your TLS terminator / load balancer. The APIs
+  # are reached internally (compose DNS round-robins across replicas), so no per-replica port ranges.
+  oauth2-proxy:
+    ports:
+      - "${EDGE_PORT:-4180}:4180"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
   core-api:
     environment:
       <<: *dotnet-env
@@ -72,9 +84,6 @@ services:
       SeedServiceDefinitions: "false"
       RateLimit__Enabled: "true"
       RateLimit__RequestsPerMinute: "300"
-    ports:
-      # Reserve one host port per replica (e.g. 9080, 9081 for 2 replicas)
-      - "${CORE_API_PORT_START:-9080}-${CORE_API_PORT_END:-9081}:8080"
     deploy:
       resources:
         limits:
@@ -89,9 +98,6 @@ services:
       <<: *dotnet-env
       RateLimit__Enabled: "true"
       RateLimit__RequestsPerMinute: "300"
-    ports:
-      # Reserve one host port per replica (e.g. 9082, 9083 for 2 replicas)
-      - "${POST_API_PORT_START:-9082}-${POST_API_PORT_END:-9083}:8080"
     deploy:
       replicas: 2
       resources:

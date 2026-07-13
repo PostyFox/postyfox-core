@@ -54,14 +54,17 @@ is an in-memory scheduler; a durable due-scan is a future item for very long hor
 **Context.** The legacy trusted platform-injected identity headers (EasyAuth). We need equivalent
 OIDC auth that is portable, plus machine-to-machine access.
 
-**Decision.** An oauth2-proxy ingress performs the OIDC exchange (Keycloak) and injects a trusted
-identity header the APIs consume — preserving the header-trust model while moving the trust boundary
-to a component we deploy everywhere. **API keys are retained** for external connectivity, stored as
-PBKDF2 hashes (never in clear) and verified in constant time.
+**Decision.** An oauth2-proxy edge performs the OIDC exchange (Keycloak) and forwards the validated
+token to the APIs as `Authorization: Bearer`; the APIs **re-validate it in-app** against the realm's
+JWKS rather than trusting an injected identity header. An internal nginx gateway path-routes the edge
+to core-api/post-api. **API keys are retained** for external connectivity, stored as PBKDF2 hashes
+(never in clear) and verified in constant time. There is no DevMode bypass in any deployment — local
+dev runs the same Keycloak edge.
 
-**Trade-off.** APIs trust an upstream header, so the edge must be correctly fronting them (or use the
-`auth` profile locally / DevMode for dev). In-app JWT validation is a viable alternative hardening
-step. Fixing the legacy's non-comparing API-key check was a requirement.
+**Trade-off.** The APIs depend on OIDC config (issuer/JWKS) being correct, and local dev now requires
+Keycloak to be up (no header/DevMode shortcut) — but the trust boundary no longer relies on a
+spoofable header, and local mirrors production. Fixing the legacy's non-comparing API-key check was a
+requirement.
 
 ---
 
