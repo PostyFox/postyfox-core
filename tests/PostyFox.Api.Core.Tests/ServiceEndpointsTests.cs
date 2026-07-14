@@ -18,6 +18,18 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
     }
 
     [Fact]
+    public async Task Catalog_exposes_connector_capabilities()
+    {
+        var defs = await _client.GetFromJsonAsync<List<ServiceDefinitionDto>>("/api/services");
+        var discord = Assert.Single(defs!, d => d.Id == "DiscordWH");
+        // Capabilities are surfaced from DiscordWebhookConnector.Describe().
+        Assert.True(discord.SupportsTitle);
+        Assert.True(discord.SupportsMedia);
+        Assert.False(discord.SupportsThreads);
+        Assert.Equal(2000, discord.MaxContentLength);
+    }
+
+    [Fact]
     public async Task Connector_upsert_get_delete_roundtrip()
     {
         var upsert = await _client.PutAsJsonAsync("/api/connectors", new UserConnectorUpsertRequest(
