@@ -201,7 +201,7 @@ jobs:
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
-            echo '🔄 Reloading gateway (nginx.conf is bind-mounted; up -d alone won'"'"'t pick up content changes)...' && \
+            echo '🔄 Reloading gateway (nginx.conf is bind-mounted; up -d alone does not pick up content changes)...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
             echo '✅ Deployment completed' && \
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps" || {
