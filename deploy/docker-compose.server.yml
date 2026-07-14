@@ -80,6 +80,9 @@ services:
       OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
       OBJECT_STORE_BUCKET: "postyfox"
       OBJECT_STORE_FORCE_PATH_STYLE: "true"
+      # Tumblr OAuth1 app (consumer) credentials — enable the "Connect with Tumblr" flow.
+      TUMBLR_CONSUMER_KEY: "${TUMBLR_CONSUMER_KEY:-}"
+      TUMBLR_CONSUMER_SECRET: "${TUMBLR_CONSUMER_SECRET:-}"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 5s
@@ -93,6 +96,9 @@ services:
       <<: *dotnet-env
       ApplyMigrations: "true"
       SeedServiceDefinitions: "true"
+      # Public base URL the OAuth provider redirects back to; must match the provider app's
+      # registered callback. Reuses the edge's public base URL (same host users reach the app on).
+      OAuth__CallbackBaseUrl: "${PUBLIC_BASE_URL:-}"
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

@@ -71,5 +71,34 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     },
   );
 
+  // --- OAuth "connect" flow (platforms that expose `oauth`, e.g. Tumblr) -------------------------
+  app.post<{ Params: { platform: string }; Body: { callbackUrl: string } }>(
+    "/connectors/:platform/oauth/request-token",
+    async (request, reply) => {
+      const connector = resolveConnector(registry, request.params.platform);
+      if (!connector) return reply.code(404).send({ error: "unknown platform" });
+      if (!connector.oauth) return reply.code(400).send({ error: "oauth not supported/configured" });
+      try {
+        return await connector.oauth.startAuthorization({ callbackUrl: request.body.callbackUrl });
+      } catch (err) {
+        return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+  );
+
+  app.post<{
+    Params: { platform: string };
+    Body: { requestToken: string; requestTokenSecret: string; verifier: string };
+  }>("/connectors/:platform/oauth/access-token", async (request, reply) => {
+    const connector = resolveConnector(registry, request.params.platform);
+    if (!connector) return reply.code(404).send({ error: "unknown platform" });
+    if (!connector.oauth) return reply.code(400).send({ error: "oauth not supported/configured" });
+    try {
+      return await connector.oauth.completeAuthorization(request.body);
+    } catch (err) {
+      return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   return app;
 }

@@ -90,6 +90,9 @@ services:
       OBJECT_STORE_SECRET_KEY: "rustfsadmin"
       OBJECT_STORE_BUCKET: "postyfox"
       OBJECT_STORE_FORCE_PATH_STYLE: "true"
+      # Tumblr OAuth1 app (consumer) credentials — enable the "Connect with Tumblr" flow.
+      TUMBLR_CONSUMER_KEY: "${TUMBLR_CONSUMER_KEY:-}"
+      TUMBLR_CONSUMER_SECRET: "${TUMBLR_CONSUMER_SECRET:-}"
     ports: ["8090:8090"]
     depends_on:
       rustfs: { condition: service_healthy }
@@ -110,6 +113,9 @@ services:
       <<: *dotnet-env
       ApplyMigrations: "true"
       SeedServiceDefinitions: "true"
+      # Public base URL the OAuth provider redirects back to; must match the provider app's
+      # registered callback. Behind the edge that's the oauth2-proxy address.
+      OAuth__CallbackBaseUrl: "${OAUTH_CALLBACK_BASE_URL:-http://localhost:4180}"
     ports: ["8080:8080"]
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.

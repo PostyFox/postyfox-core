@@ -53,7 +53,7 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>()));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "Tumblr",
-            new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null),
+            new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>()));
 

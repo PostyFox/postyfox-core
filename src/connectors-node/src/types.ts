@@ -55,4 +55,34 @@ export interface Connector {
   isAuthenticated(ctx: ConnectorContext): Promise<IsAuthenticatedResult>;
   listTargets(ctx: ConnectorContext): Promise<ListTargetsResult>;
   deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult>;
+  /** Present when the platform supports an interactive OAuth "connect" flow. */
+  oauth?: OAuthProvider;
+}
+
+/** Result of beginning an OAuth1 authorization. */
+export interface OAuthStartResult {
+  /** URL to send the user's browser to, to grant access. */
+  authorizeUrl: string;
+  /** OAuth1 request token — echoed back by the provider on callback. */
+  requestToken: string;
+  /** OAuth1 request-token secret — the caller holds this between start and callback. */
+  requestTokenSecret: string;
+}
+
+export interface OAuthCompleteResult {
+  /** JSON string to persist as the connector's secret (platform-specific shape). */
+  secretJson: string;
+}
+
+/**
+ * Interactive OAuth flow a connector can expose. OAuth1.0a for Tumblr: begin → the user authorizes
+ * at `authorizeUrl` → the provider calls back with a verifier → complete exchanges for the token.
+ */
+export interface OAuthProvider {
+  startAuthorization(input: { callbackUrl: string }): Promise<OAuthStartResult>;
+  completeAuthorization(input: {
+    requestToken: string;
+    requestTokenSecret: string;
+    verifier: string;
+  }): Promise<OAuthCompleteResult>;
 }

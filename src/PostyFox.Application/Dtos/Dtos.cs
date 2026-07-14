@@ -18,7 +18,8 @@ public sealed record ServiceDefinitionDto(
     bool SupportsTitle,
     bool SupportsMedia,
     bool SupportsThreads,
-    int? MaxContentLength);
+    int? MaxContentLength,
+    bool SupportsOAuth);
 
 public sealed record UserConnectorDto(Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled);
 

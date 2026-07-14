@@ -16,11 +16,30 @@ public sealed class HttpConnector(
     string platform,
     ConnectorDescriptor descriptor,
     IHttpClientFactory httpFactory,
-    IOptions<NodeConnectorsOptions> options) : IConnector
+    IOptions<NodeConnectorsOptions> options) : IConnector, IOAuthConnector
 {
     private readonly NodeConnectorsOptions _opts = options.Value;
 
     public ConnectorDescriptor Describe() => descriptor;
+
+    public async Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, CancellationToken ct = default)
+    {
+        var res = await PostAsync("oauth/request-token", new { callbackUrl }, ct);
+        if (res is null) return null;
+        var url = res.Value.TryGetProperty("authorizeUrl", out var a) ? a.GetString() : null;
+        var token = res.Value.TryGetProperty("requestToken", out var t) ? t.GetString() : null;
+        var secret = res.Value.TryGetProperty("requestTokenSecret", out var s) ? s.GetString() : null;
+        return url is not null && token is not null && secret is not null
+            ? new OAuthStart(url, token, secret)
+            : null;
+    }
+
+    public async Task<string?> CompleteAuthorizationAsync(string requestToken, string requestTokenSecret, string verifier, CancellationToken ct = default)
+    {
+        var res = await PostAsync("oauth/access-token", new { requestToken, requestTokenSecret, verifier }, ct);
+        if (res is null) return null;
+        return res.Value.TryGetProperty("secretJson", out var s) ? s.GetString() : null;
+    }
 
     public async Task<AuthState> IsAuthenticatedAsync(ConnectorContext context, CancellationToken ct = default)
     {
