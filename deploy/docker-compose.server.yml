@@ -24,7 +24,7 @@ x-dotnet-env: &dotnet-env
   # channel — mirrors the oauth2-proxy split below.
   Auth__Oidc__Enabled: "true"
   Auth__Oidc__Issuer: "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-PostyFox}"
-  Auth__Oidc__JwksUrl: "http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT:-8080}/realms/${KEYCLOAK_REALM:-PostyFox}/protocol/openid-connect/certs"
+  Auth__Oidc__JwksUrl: "${KEYCLOAK_PROTOCOL:-https}://${KEYCLOAK_HOST}:${KEYCLOAK_PORT:-8080}/realms/${KEYCLOAK_REALM:-PostyFox}/protocol/openid-connect/certs"
   Auth__Oidc__Audience: "${OIDC_CLIENT_ID:-oauth2-proxy}"
   NodeConnectors__BaseUrl: "http://connectors-node:8090"
   NodeConnectors__InternalToken: "${INTERNAL_TOKEN}"

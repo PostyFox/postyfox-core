@@ -35,6 +35,16 @@ The auth path includes a full, complete, Keycloak and all parts needed to valida
 external dependencies. Credentials which are imported and available for use can be found in the deploy/keycloak 
 directory. The default username is `postyfox` and the password is `postyfox`.
 
+### Swagger API Documentation
+Full Swagger Documentation is available for the API's, as they publish OpenAPI specs.
+This is also available on the development endpoint, as well as local stacks.
+
+To access Swagger you *must* be authenticated.
+
+Core: https://api-dev.postyfox.com/swagger/index.html <br/>
+Posting API: https://api-dev.postyfox.com/swagger-post/index.html
+
+
 ## REMINDER
 
 DO NOT checkin any passwords, secrets or other values if you use the local.settings.json file. *PLEASE* use local 
