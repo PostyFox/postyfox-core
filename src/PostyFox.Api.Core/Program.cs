@@ -30,6 +30,7 @@ if (builder.Configuration.GetValue<bool>("SeedServiceDefinitions"))
     await ServiceDefinitionSeeder.SeedAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
 }
 
+app.UsePostyFoxForwardedHeaders();
 app.MapOpenApi();
 app.UseSwaggerUI(o =>
 {
