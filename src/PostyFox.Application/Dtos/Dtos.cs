@@ -8,7 +8,17 @@ public sealed record ApiKeyDto(Guid Id, string Prefix, string? Name, DateTimeOff
 /// <summary>Returned once at creation; the plaintext key is never retrievable again.</summary>
 public sealed record ApiKeyCreatedDto(Guid Id, string ApiKey, string Prefix);
 
-public sealed record ServiceDefinitionDto(string Id, string Name, bool Enabled, string ConfigSchema, string? SecureConfigSchema, string Platform);
+public sealed record ServiceDefinitionDto(
+    string Id,
+    string Name,
+    bool Enabled,
+    string ConfigSchema,
+    string? SecureConfigSchema,
+    string Platform,
+    bool SupportsTitle,
+    bool SupportsMedia,
+    bool SupportsThreads,
+    int? MaxContentLength);
 
 public sealed record UserConnectorDto(Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled);
 
