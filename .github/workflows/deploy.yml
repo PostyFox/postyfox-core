@@ -85,6 +85,7 @@ jobs:
             deploy/docker-compose.dev.yml \
             deploy/rabbitmq \
             deploy/otel \
+            deploy/gateway \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/dev/ || {
             echo "❌ Failed to copy deployment files"
             exit 1
@@ -111,6 +112,8 @@ jobs:
             docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            echo '🔄 Reloading gateway (nginx.conf is bind-mounted; up -d alone does not pick up content changes)...' && \
+            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
             echo '✅ Dev stack deployed successfully' && \
             docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps" || {
             echo "❌ Dev deployment failed"
@@ -191,6 +194,7 @@ jobs:
             deploy/docker-compose.prod.yml \
             deploy/rabbitmq \
             deploy/otel \
+            deploy/gateway \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
             echo "❌ Failed to copy deployment files"
             exit 1
@@ -217,6 +221,8 @@ jobs:
             docker compose -f docker-compose.server.yml -f docker-compose.prod.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services (backup your data first!)...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            echo '🔄 Reloading gateway (nginx.conf is bind-mounted; up -d alone does not pick up content changes)...' && \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
             echo '✅ Prod stack deployed successfully' && \
             docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps" || {
             echo "❌ Prod deployment failed"

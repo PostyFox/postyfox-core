@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +10,26 @@ namespace PostyFox.Web.Extensions;
 
 public static class SecurityExtensions
 {
+    /// <summary>
+    /// Trusts <c>X-Forwarded-For/-Proto/-Host</c> from the internal gateway/oauth2-proxy chain, so
+    /// the app sees the original HTTPS scheme and public host. Without this, requests arrive as
+    /// plain HTTP with the internal Docker hostname (e.g. "core"), which makes generated absolute
+    /// URLs (like the OpenAPI "servers" entry used by Swagger's "Try it out") point at
+    /// "http://core/..." and get blocked as mixed content by browsers.
+    /// KnownNetworks/KnownProxies are cleared because the reverse proxies run as Docker containers
+    /// with non-static IPs on an internal network already isolated from the public internet.
+    /// </summary>
+    public static IApplicationBuilder UsePostyFoxForwardedHeaders(this IApplicationBuilder app)
+    {
+        var options = new ForwardedHeadersOptions
+        {
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
+        };
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+        return app.UseForwardedHeaders(options);
+    }
+
     /// <summary>
     /// Global fixed-window rate limiter, partitioned by authenticated user (falling back to client
     /// IP). Config: <c>RateLimit:PermitsPerWindow</c> (default 300), <c>RateLimit:WindowSeconds</c>

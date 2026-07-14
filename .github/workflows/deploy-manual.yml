@@ -169,6 +169,7 @@ jobs:
             deploy/docker-compose.${{ steps.stack.outputs.suffix }}.yml \
             deploy/rabbitmq \
             deploy/otel \
+            deploy/gateway \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.STACK_DIR }}/ || {
             echo "❌ Failed to copy deployment files"
             exit 1
@@ -200,6 +201,8 @@ jobs:
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            echo '🔄 Reloading gateway (nginx.conf is bind-mounted; up -d alone does not pick up content changes)...' && \
+            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
             echo '✅ Deployment completed' && \
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps" || {
             echo "❌ Deployment failed"
