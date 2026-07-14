@@ -162,6 +162,14 @@ jobs:
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
         run: |
+          echo "🧹 Removing stale gateway config (conf.d/*.conf is glob-included; leftover fragments would still load)..."
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "rm -rf ${{ env.STACK_DIR }}/gateway" || {
+            echo "❌ Failed to clean stale gateway config"
+            exit 1
+          }
           echo "📦 Copying deployment files to ${{ github.event.inputs.environment }} stack..."
           scp -P ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
@@ -201,7 +209,7 @@ jobs:
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
-            echo '🔄 Reloading gateway (nginx.conf is bind-mounted; up -d alone does not pick up content changes)...' && \
+            echo '🔄 Reloading gateway (nginx.conf + conf.d are bind-mounted; up -d alone does not pick up content changes)...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
             echo '✅ Deployment completed' && \
             docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps" || {

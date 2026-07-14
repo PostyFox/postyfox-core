@@ -146,6 +146,7 @@ services:
     image: nginx:alpine
     volumes:
       - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./gateway/conf.d:/etc/nginx/conf.d:ro
     depends_on:
       core-api: { condition: service_healthy }
       post-api: { condition: service_healthy }
