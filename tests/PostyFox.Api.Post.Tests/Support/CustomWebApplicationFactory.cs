@@ -7,11 +7,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Neillans.Adapters.Secrets.Core;
+using Neillans.Adapters.Secrets.InMemory;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Messaging;
 using PostyFox.Domain.Entities;
 using PostyFox.Infrastructure.Persistence;
-using PostyFox.Infrastructure.Secrets;
 
 namespace PostyFox.Api.Post.Tests.Support;
 
@@ -54,12 +55,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             RemoveEfCore(services);
             Remove<IObjectStore>(services);
             Remove<IMessageBus>(services);
-            Remove<ISecretStore>(services);
+            Remove<ISecretsProvider>(services);
 
             services.AddDbContext<AppDbContext>(o => o.UseSqlite(_connection));
             services.AddSingleton<IObjectStore, FakeObjectStore>();
             services.AddSingleton<IMessageBus, FakeBus>();
-            services.AddSingleton<ISecretStore, InMemorySecretStore>();
+            services.AddInMemorySecretsProvider();
         });
     }
 

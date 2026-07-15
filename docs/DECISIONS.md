@@ -13,9 +13,10 @@ EasyAuth, App Insights). The reimplementation must run anywhere (Container Apps 
 self-hosted).
 
 **Decision.** Long-running containerised services (ASP.NET Core + a worker) with every cloud concern
-behind an abstraction: `IAppDbContext`, `IObjectStore`, `IMessageBus`, `ISecretStore`, an auth edge,
-and OpenTelemetry. Default implementations are portable (PostgreSQL, S3/MinIO/RustFS, RabbitMQ, encrypted-
-in-DB secrets, oauth2-proxy, OTLP).
+behind an abstraction: `IAppDbContext`, `IObjectStore`, `IMessageBus`, `ISecretsProvider`, an auth edge,
+and OpenTelemetry. Default implementations are portable (PostgreSQL, S3/MinIO/RustFS, RabbitMQ, oauth2-proxy,
+OTLP); secrets use the external `adapters-secrets` library (in-memory for dev, BitWarden/VaultWarden,
+Azure Key Vault, or Infisical for deployments) rather than a bespoke store.
 
 **Trade-off.** We manage more moving parts than a serverless model, but gain portability and local
 dev parity (`docker compose up`).

@@ -9,6 +9,12 @@ data:
   RabbitMq__Host: {{ .Values.config.rabbitMqHost | quote }}
   RabbitMq__User: {{ .Values.config.rabbitMqUser | quote }}
   Auth__UserHeader: {{ .Values.config.authUserHeader | quote }}
+  # Secret store (Neillans.Adapters.Secrets). Provider selection + non-secret BitWarden options;
+  # credentials are in the Secret. AzureKeyVault/Infisical add their own Secrets__<Provider>__* keys.
+  Secrets__Provider: {{ .Values.config.secretsProvider | quote }}
+  Secrets__BitWarden__ServerUrl: {{ .Values.config.bitwardenServerUrl | quote }}
+  Secrets__BitWarden__OrganizationId: {{ .Values.config.bitwardenOrganizationId | quote }}
+  Secrets__BitWarden__IdentityUrl: {{ .Values.config.bitwardenIdentityUrl | quote }}
   # In-app OIDC bearer validation (defence-in-depth): the edge forwards the token, the APIs re-validate
   # it. The APIs trust no injected header, so this MUST be enabled or they reject every request.
   Auth__Oidc__Enabled: {{ .Values.config.authOidcEnabled | quote }}

@@ -17,7 +17,16 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "${RABBITMQ_USER}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
-  Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
+  # Secret store (Neillans.Adapters.Secrets). Production defaults to BitWarden/VaultWarden; supply
+  # the BITWARDEN_* vars. AzureKeyVault / Infisical follow the same Secrets__<Provider>__* pattern
+  # (see README) — set SECRETS_PROVIDER accordingly and provide that provider's options.
+  Secrets__Provider: "${SECRETS_PROVIDER:-BitWarden}"
+  Secrets__BitWarden__ServerUrl: "${BITWARDEN_SERVER_URL:-}"
+  Secrets__BitWarden__ApiKey: "${BITWARDEN_API_KEY:-}"
+  Secrets__BitWarden__ClientId: "${BITWARDEN_CLIENT_ID:-}"
+  Secrets__BitWarden__ClientSecret: "${BITWARDEN_CLIENT_SECRET:-}"
+  Secrets__BitWarden__OrganizationId: "${BITWARDEN_ORGANIZATION_ID:-}"
+  Secrets__BitWarden__IdentityUrl: "${BITWARDEN_IDENTITY_URL:-}"
   Auth__UserHeader: "X-Auth-Request-User"
   NodeConnectors__InternalToken: "${INTERNAL_TOKEN:-postyfox-internal-prod-token}"
   OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_ENDPOINT}"

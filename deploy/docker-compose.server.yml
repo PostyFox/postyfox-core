@@ -16,7 +16,16 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "${RABBITMQ_USER}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
-  Secrets__EncryptionKey: "${SECRETS_ENCRYPTION_KEY}"
+  # Secret store (Neillans.Adapters.Secrets). Defaults to BitWarden/VaultWarden; supply the
+  # BITWARDEN_* vars. AzureKeyVault / Infisical follow the same Secrets__<Provider>__* pattern
+  # (see README) — set SECRETS_PROVIDER accordingly and provide that provider's options.
+  Secrets__Provider: "${SECRETS_PROVIDER:-BitWarden}"
+  Secrets__BitWarden__ServerUrl: "${BITWARDEN_SERVER_URL:-}"
+  Secrets__BitWarden__ApiKey: "${BITWARDEN_API_KEY:-}"
+  Secrets__BitWarden__ClientId: "${BITWARDEN_CLIENT_ID:-}"
+  Secrets__BitWarden__ClientSecret: "${BITWARDEN_CLIENT_SECRET:-}"
+  Secrets__BitWarden__OrganizationId: "${BITWARDEN_ORGANIZATION_ID:-}"
+  Secrets__BitWarden__IdentityUrl: "${BITWARDEN_IDENTITY_URL:-}"
   Auth__UserHeader: "${AUTH_USER_HEADER:-X-Auth-Request-User}"
   # In-app OIDC bearer validation: the edge forwards the validated token, the APIs re-validate it.
   # This MUST be enabled — the APIs trust NO injected identity header, only the OIDC bearer / API key.

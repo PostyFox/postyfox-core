@@ -1,6 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Neillans.Adapters.Secrets.AzureKeyVault;
+using Neillans.Adapters.Secrets.BitWarden;
+using Neillans.Adapters.Secrets.Core;
+using Neillans.Adapters.Secrets.Infisical;
+using Neillans.Adapters.Secrets.InMemory;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Messaging;
@@ -8,7 +13,6 @@ using PostyFox.Application.Options;
 using PostyFox.Infrastructure.Connectors;
 using PostyFox.Infrastructure.Messaging;
 using PostyFox.Infrastructure.Persistence;
-using PostyFox.Infrastructure.Secrets;
 using PostyFox.Infrastructure.Storage;
 
 namespace PostyFox.Infrastructure;
@@ -18,7 +22,6 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         services.Configure<S3Options>(config.GetSection(S3Options.SectionName));
-        services.Configure<SecretStoreOptions>(config.GetSection(SecretStoreOptions.SectionName));
         services.Configure<RabbitMqOptions>(config.GetSection(RabbitMqOptions.SectionName));
         services.Configure<PipelineOptions>(config.GetSection(PipelineOptions.SectionName));
 
@@ -29,7 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
         services.AddSingleton<IObjectStore, S3ObjectStore>();
-        services.AddScoped<ISecretStore, EncryptedDbSecretStore>();
+        AddSecretsProvider(services, config);
 
         services.AddSingleton<RabbitMqConnection>();
         services.AddSingleton<IMessageBus, RabbitMqMessageBus>();
@@ -58,6 +61,44 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>()));
 
         return services;
+    }
+
+    /// <summary>
+    /// Registers an <see cref="ISecretsProvider"/> from the Neillans.Adapters.Secrets library based on
+    /// the <c>Secrets:Provider</c> configuration value (<c>InMemory</c>, <c>BitWarden</c>,
+    /// <c>AzureKeyVault</c> or <c>Infisical</c>). Provider-specific options are bound from the matching
+    /// <c>Secrets:{Provider}</c> sub-section. Defaults to <c>InMemory</c> when unset so local dev works
+    /// out of the box; deployed environments set <c>Secrets:Provider=BitWarden</c>.
+    /// </summary>
+    private static void AddSecretsProvider(IServiceCollection services, IConfiguration config)
+    {
+        var section = config.GetSection("Secrets");
+        var providerName = section["Provider"];
+        var provider = string.IsNullOrWhiteSpace(providerName)
+            ? SecretsProviderType.InMemory
+            : Enum.Parse<SecretsProviderType>(providerName, ignoreCase: true);
+
+        switch (provider)
+        {
+            case SecretsProviderType.InMemory:
+                services.AddInMemorySecretsProvider();
+                break;
+
+            case SecretsProviderType.BitWarden:
+                services.AddBitWardenSecretsProvider(o => section.GetSection("BitWarden").Bind(o));
+                break;
+
+            case SecretsProviderType.AzureKeyVault:
+                services.AddAzureKeyVaultSecretsProvider(o => section.GetSection("AzureKeyVault").Bind(o));
+                break;
+
+            case SecretsProviderType.Infisical:
+                services.AddInfisicalSecretsProvider(o => section.GetSection("Infisical").Bind(o));
+                break;
+
+            default:
+                throw new NotSupportedException($"Unknown secrets provider '{provider}'.");
+        }
     }
 
     /// <summary>Registers the queue consumers for the posting worker.</summary>

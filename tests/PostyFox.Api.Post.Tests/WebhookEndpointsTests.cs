@@ -2,8 +2,8 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Neillans.Adapters.Secrets.Core;
 using PostyFox.Api.Post.Tests.Support;
-using PostyFox.Application.Abstractions;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Triggers;
 using Xunit;
@@ -23,7 +23,7 @@ public class WebhookEndpointsTests : IClassFixture<CustomWebApplicationFactory>
 
         // Seed the signing secret + a trigger bound to the factory's seeded connector.
         using var scope = factory.Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<ISecretStore>()
+        scope.ServiceProvider.GetRequiredService<ISecretsProvider>()
             .SetSecretAsync("trigger-generic-signing", Secret).GetAwaiter().GetResult();
         scope.ServiceProvider.GetRequiredService<ExternalTriggerService>()
             .RegisterAsync("dev-user", new TriggerRegistrationRequest("generic", "acme", null, factory.SeededConnectorId, 0))

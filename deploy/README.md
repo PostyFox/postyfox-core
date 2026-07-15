@@ -117,6 +117,36 @@ Ensure these are:
 - Configured with PostyFox realms/buckets
 - Properly secured and backed up
 
+## Secret store
+
+Connector, platform, and trigger-signing secrets are stored via the
+[`adapters-secrets`](https://github.com/aneillans/adapters-secrets) library (`ISecretsProvider`),
+not a database. The backend is selected per stack with `SECRETS_PROVIDER` (→ `Secrets__Provider`):
+
+| Provider | `SECRETS_PROVIDER` | Notes |
+|----------|--------------------|-------|
+| In-memory | `InMemory` | Non-persistent — secrets are lost on restart. Local/dev default. |
+| BitWarden / VaultWarden | `BitWarden` | Deployed default. **Delete is unsupported** (best-effort cleanup only). |
+| Azure Key Vault | `AzureKeyVault` | — |
+| Infisical | `Infisical` | — |
+
+Options are passed as env vars named `Secrets__<Provider>__<Option>`. The compose files and
+`.env` templates wire the BitWarden set:
+
+```
+SECRETS_PROVIDER=BitWarden
+BITWARDEN_SERVER_URL=https://vault.example.com   # → Secrets__BitWarden__ServerUrl
+BITWARDEN_API_KEY=...                            # → Secrets__BitWarden__ApiKey
+# ...or an Organization API key (mutually exclusive with the API key):
+BITWARDEN_CLIENT_ID=... / BITWARDEN_CLIENT_SECRET=... / BITWARDEN_ORGANIZATION_ID=... / BITWARDEN_IDENTITY_URL=...
+```
+
+For Azure Key Vault set `Secrets__AzureKeyVault__VaultUri` (+ optional `TenantId`/`ClientId`/`ClientSecret`);
+for Infisical set `Secrets__Infisical__ClientId`/`ClientSecret`/`ProjectId`/`Environment` (+ `SiteUrl`/`SecretPath`).
+
+> The chosen store must be seeded with the platform secrets the app expects —
+> `TelegramApiID`/`TelegramApiHash` and each `trigger-{sourceType}-signing` key.
+
 ## Troubleshooting
 
 ### Deployment fails

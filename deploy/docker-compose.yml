@@ -15,7 +15,10 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "guest"
   RabbitMq__Password: "guest"
-  Secrets__EncryptionKey: "cG9zdHlmb3gtZGV2LXNlY3JldC1rZXktMzJieXRlcyE="
+  # Secret store (Neillans.Adapters.Secrets). The local stack has no external vault, so use the
+  # in-process store. Switch to a persistent backend by setting Secrets__Provider (BitWarden |
+  # AzureKeyVault | Infisical) + that provider's Secrets__<Provider>__* options.
+  Secrets__Provider: "InMemory"
   Auth__UserHeader: "X-Auth-Request-User"
   # In-app OIDC bearer validation. Issuer is the browser-facing Keycloak URL (matches the token `iss`);
   # JWKS is fetched over the in-cluster back channel (mirrors the oauth2-proxy split front/back-channel).
