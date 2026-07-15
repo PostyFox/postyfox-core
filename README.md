@@ -42,7 +42,7 @@ src/
   PostyFox.Api.Core         profile/keys, services catalogue, connector CRUD, template CRUD
   PostyFox.Api.Post         post intake + status, external-trigger webhook callback
   PostyFox.Worker.Posting   consumes generate/deliver queues; runs the pipeline
-  connectors-node/          Node/TS service: Bluesky (@atproto/api) + Tumblr (tumblr.js)
+  connectors-node/          Node/TS service: Bluesky (@atproto/api) + Tumblr (tumblr.js) + Fediverse (megalodon)
 tests/                      one project per layer (xUnit) — 99 C# tests (+18 in connectors-node)
 ```
 
@@ -57,9 +57,12 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 | Telegram | .NET in-process | **MTProto user account** via WTelegramClient (blob-backed session; see §4.5 statefulness note) |
 | Bluesky | **Node** service | `@atproto/api` — via the `HttpConnector` adapter over internal HTTP (`X-Internal-Token`) |
 | Tumblr | **Node** service | `tumblr.js` — same adapter |
+| Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon` — same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
 | ~~Twitch~~ | — | descoped |
 
-`connectors-node` exposes an `IConnector`-shaped HTTP contract (`/connectors/:platform/{is-authenticated,list-targets,deliver}`); the C# `HttpConnector` forwards to it, passing the resolved config + secret in the request so the Node side stays stateless. Connector auth/target operations are exposed at `GET /api/connectors/{id}/authenticated`, `GET /api/connectors/{id}/targets`, and the Telegram login flow at `POST /api/connectors/{id}/telegram/login`.
+`connectors-node` exposes an `IConnector`-shaped HTTP contract (`/connectors/:platform/{is-authenticated,list-targets,limits,deliver}`); the C# `HttpConnector` forwards to it, passing the resolved config + secret in the request so the Node side stays stateless. Connector auth/target operations are exposed at `GET /api/connectors/{id}/authenticated`, `GET /api/connectors/{id}/targets`, and the Telegram login flow at `POST /api/connectors/{id}/telegram/login`.
+
+**Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }` — sizes in bytes) — fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 
 ### External triggers (Phase 4)
 

@@ -65,6 +65,17 @@ public static class ServiceDefinitionSeeder
         } }
         """;
 
+    // Shared by every Fediverse platform (Mastodon, Pleroma, Pixelfed, …). The connect (OAuth/MiAuth)
+    // flow yields the access token, so there is no user-facing secure schema. https:// is added
+    // automatically when the scheme is omitted.
+    private const string FediverseSchema = """
+        { "InstanceUrl": {
+            "label": "Instance URL", "type": "url", "required": true,
+            "placeholder": "https://your.instance",
+            "help": "The URL of the server your account is on."
+        } }
+        """;
+
     public static readonly ServiceDefinition[] Definitions =
     [
         new() { Id = "DiscordWH", Name = "Discord Web Hook", Platform = "DiscordWH", Enabled = true,
@@ -77,6 +88,27 @@ public static class ServiceDefinitionSeeder
         // by hand — so there is no user-facing secure config schema.
         new() { Id = "Tumblr", Name = "Tumblr", Platform = "Tumblr", Enabled = true,
                 ConfigSchema = TumblrSchema, SecureConfigSchema = null },
+        // Fediverse platforms — credentials come from the OAuth/MiAuth "connect" flow (SupportsOAuth),
+        // not entered by hand, so there is no user-facing secure config schema. All share one config
+        // schema (just the instance URL); the connector auto-detects the server software at connect.
+        new() { Id = "Mastodon", Name = "Mastodon", Platform = "Mastodon", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
+        new() { Id = "Pleroma", Name = "Pleroma", Platform = "Pleroma", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
+        new() { Id = "Akkoma", Name = "Akkoma", Platform = "Akkoma", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
+        new() { Id = "Friendica", Name = "Friendica", Platform = "Friendica", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
+        new() { Id = "Firefish", Name = "Firefish", Platform = "Firefish", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
+        new() { Id = "Iceshrimp", Name = "Iceshrimp", Platform = "Iceshrimp", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
+        new() { Id = "GoToSocial", Name = "GoToSocial", Platform = "GoToSocial", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
+        new() { Id = "Hometown", Name = "Hometown", Platform = "Hometown", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
+        new() { Id = "Pixelfed", Name = "Pixelfed", Platform = "Pixelfed", Enabled = true,
+                ConfigSchema = FediverseSchema, SecureConfigSchema = null },
     ];
 
     public static async Task SeedAsync(AppDbContext db, CancellationToken ct = default)

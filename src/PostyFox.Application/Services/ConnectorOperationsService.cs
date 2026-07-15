@@ -36,6 +36,26 @@ public sealed class ConnectorOperationsService(
             : [];
     }
 
+    /// <summary>
+    /// Reports a connector's limits (character + attachment caps). Uses live per-instance values when
+    /// the connector supports it (Fediverse), otherwise falls back to the static descriptor limit.
+    /// Returns null only when the connector doesn't exist.
+    /// </summary>
+    public async Task<ConnectorLimits?> GetLimitsAsync(string userId, Guid connectorId, CancellationToken ct = default)
+    {
+        var built = await BuildAsync(userId, connectorId, ct);
+        if (built is null) return null;
+        var (platform, context) = built.Value;
+        if (!registry.TryGet(platform, out var connector)) return null;
+
+        if (connector is ILimitsConnector limitsConnector
+            && await limitsConnector.GetLimitsAsync(context, ct) is { } live)
+            return live;
+
+        var descriptor = connector.Describe();
+        return new ConnectorLimits(descriptor.MaxContentLength, null);
+    }
+
     /// <summary>Advances the Telegram interactive login for the connector's configured phone number.</summary>
     public async Task<TelegramLoginStep?> TelegramLoginAsync(string userId, Guid connectorId, string? value, CancellationToken ct = default)
     {
@@ -61,7 +81,7 @@ public sealed class ConnectorOperationsService(
             || !connector.Describe().SupportsOAuth)
             return null;
 
-        var start = await oauth.StartAuthorizationAsync(callbackUrl, ct);
+        var start = await oauth.StartAuthorizationAsync(callbackUrl, uc.ConfigJson, ct);
         if (start is null) return null;
 
         var pending = JsonSerializer.Serialize(new PendingOAuth(userId, connectorId, start.RequestTokenSecret));

@@ -16,15 +16,31 @@ public sealed class HttpConnector(
     string platform,
     ConnectorDescriptor descriptor,
     IHttpClientFactory httpFactory,
-    IOptions<NodeConnectorsOptions> options) : IConnector, IOAuthConnector
+    IOptions<NodeConnectorsOptions> options) : IConnector, IOAuthConnector, ILimitsConnector
 {
     private readonly NodeConnectorsOptions _opts = options.Value;
 
     public ConnectorDescriptor Describe() => descriptor;
 
-    public async Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, CancellationToken ct = default)
+    public async Task<ConnectorLimits?> GetLimitsAsync(ConnectorContext context, CancellationToken ct = default)
     {
-        var res = await PostAsync("oauth/request-token", new { callbackUrl }, ct);
+        // Platforms whose Node connector has no limits support respond 4xx → PostAsync returns null.
+        var res = await PostAsync("limits", Ctx(context), ct);
+        if (res is null) return null;
+        var r = res.Value;
+        int? max = r.TryGetProperty("maxContentLength", out var m) && m.ValueKind == JsonValueKind.Number ? m.GetInt32() : null;
+        int? att = r.TryGetProperty("maxMediaAttachments", out var a) && a.ValueKind == JsonValueKind.Number ? a.GetInt32() : null;
+        long? img = r.TryGetProperty("imageSizeLimit", out var i) && i.ValueKind == JsonValueKind.Number ? i.GetInt64() : null;
+        long? vid = r.TryGetProperty("videoSizeLimit", out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : null;
+        IReadOnlyList<string>? mimes = null;
+        if (r.TryGetProperty("supportedMimeTypes", out var t) && t.ValueKind == JsonValueKind.Array)
+            mimes = t.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!).ToList();
+        return new ConnectorLimits(max, att, mimes, img, vid);
+    }
+
+    public async Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, string? configJson, CancellationToken ct = default)
+    {
+        var res = await PostAsync("oauth/request-token", new { callbackUrl, configJson }, ct);
         if (res is null) return null;
         var url = res.Value.TryGetProperty("authorizeUrl", out var a) ? a.GetString() : null;
         var token = res.Value.TryGetProperty("requestToken", out var t) ? t.GetString() : null;

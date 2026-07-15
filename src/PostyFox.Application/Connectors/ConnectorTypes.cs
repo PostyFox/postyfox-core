@@ -21,8 +21,12 @@ public sealed record OAuthStart(string AuthorizeUrl, string RequestToken, string
 /// </summary>
 public interface IOAuthConnector
 {
-    /// <summary>Begins authorization; returns the provider URL to send the user to + the request token pair.</summary>
-    Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, CancellationToken ct = default);
+    /// <summary>
+    /// Begins authorization; returns the provider URL to send the user to + the request token pair.
+    /// <paramref name="configJson"/> carries the connector's non-secret config for providers whose
+    /// authorization is instance-scoped (e.g. Fediverse instance URL); OAuth1 providers ignore it.
+    /// </summary>
+    Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, string? configJson, CancellationToken ct = default);
 
     /// <summary>Completes authorization after the user returns; returns the secret JSON to persist.</summary>
     Task<string?> CompleteAuthorizationAsync(string requestToken, string requestTokenSecret, string verifier, CancellationToken ct = default);
@@ -30,6 +34,28 @@ public interface IOAuthConnector
 
 /// <summary>A destination within a connected account (a Telegram chat, Tumblr blog, etc.).</summary>
 public sealed record ConnectorTarget(string Id, string Name);
+
+/// <summary>
+/// Live, per-connector-instance limits. Fediverse instances each configure their own caps, so these
+/// are read from the instance rather than assumed per platform. Null means "not reported".
+/// <see cref="ImageSizeLimit"/> / <see cref="VideoSizeLimit"/> are in bytes.
+/// </summary>
+public sealed record ConnectorLimits(
+    int? MaxContentLength,
+    int? MaxMediaAttachments,
+    IReadOnlyList<string>? SupportedMimeTypes = null,
+    long? ImageSizeLimit = null,
+    long? VideoSizeLimit = null);
+
+/// <summary>
+/// Optional capability for connectors that can report live per-instance limits (e.g. Fediverse
+/// character/attachment caps from the instance config). Connectors without it fall back to the
+/// static <see cref="ConnectorDescriptor.MaxContentLength"/>.
+/// </summary>
+public interface ILimitsConnector
+{
+    Task<ConnectorLimits?> GetLimitsAsync(ConnectorContext context, CancellationToken ct = default);
+}
 
 /// <summary>Authentication state for a user's connector.</summary>
 public sealed record AuthState(bool IsAuthenticated, string? Detail = null);

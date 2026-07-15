@@ -60,6 +60,27 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>()));
 
+        // Fediverse platforms — all delivered by the megalodon connector in the Node service, all via
+        // an instance-scoped OAuth/MiAuth connect flow. They differ only in display name and the
+        // default max content length (a UI hint; instances configure their own limit). MaxContentLength
+        // null means "no client-side cap".
+        void AddFediverse(string platform, string displayName, int? maxContentLength) =>
+            services.AddSingleton<IConnector>(sp => new HttpConnector(
+                platform,
+                new ConnectorDescriptor(platform, displayName, SupportsTitle: false, SupportsMedia: true, SupportsThreads: false, MaxContentLength: maxContentLength, SupportsOAuth: true),
+                sp.GetRequiredService<IHttpClientFactory>(),
+                sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>()));
+
+        AddFediverse("Mastodon", "Mastodon", 500);
+        AddFediverse("Pleroma", "Pleroma", 5000);
+        AddFediverse("Akkoma", "Akkoma", 5000);
+        AddFediverse("Friendica", "Friendica", null);
+        AddFediverse("Firefish", "Firefish", 3000);
+        AddFediverse("Iceshrimp", "Iceshrimp", 3000);
+        AddFediverse("GoToSocial", "GoToSocial", 5000);
+        AddFediverse("Hometown", "Hometown", 500);
+        AddFediverse("Pixelfed", "Pixelfed", 500);
+
         return services;
     }
 

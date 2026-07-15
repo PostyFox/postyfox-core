@@ -50,6 +50,22 @@ export interface DeliverResult {
   error?: string;
 }
 
+/**
+ * Live, per-connector-instance limits. Fediverse instances each configure their own caps, so these
+ * are fetched from the instance rather than assumed per platform. `null` means "not reported / no
+ * client-side cap".
+ */
+export interface ConnectorLimits {
+  maxContentLength: number | null;
+  maxMediaAttachments: number | null;
+  /** Accepted media MIME types; null means "not reported / no restriction". */
+  supportedMimeTypes: string[] | null;
+  /** Max image file size in bytes; null means "not reported / no cap". */
+  imageSizeLimit: number | null;
+  /** Max video (and audio) file size in bytes; null means "not reported / no cap". */
+  videoSizeLimit: number | null;
+}
+
 /** Contract implemented by every platform connector. */
 export interface Connector {
   isAuthenticated(ctx: ConnectorContext): Promise<IsAuthenticatedResult>;
@@ -57,6 +73,8 @@ export interface Connector {
   deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult>;
   /** Present when the platform supports an interactive OAuth "connect" flow. */
   oauth?: OAuthProvider;
+  /** Present when the connector can report live per-instance limits (e.g. Fediverse). */
+  getLimits?(ctx: ConnectorContext): Promise<ConnectorLimits>;
 }
 
 /** Result of beginning an OAuth1 authorization. */
@@ -79,7 +97,12 @@ export interface OAuthCompleteResult {
  * at `authorizeUrl` → the provider calls back with a verifier → complete exchanges for the token.
  */
 export interface OAuthProvider {
-  startAuthorization(input: { callbackUrl: string }): Promise<OAuthStartResult>;
+  startAuthorization(input: {
+    callbackUrl: string;
+    /** JSON string of the connector's non-secret config. Needed by providers whose authorization is
+     * instance-scoped (e.g. Fediverse: the instance URL lives in config). OAuth1 providers ignore it. */
+    configJson?: string;
+  }): Promise<OAuthStartResult>;
   completeAuthorization(input: {
     requestToken: string;
     requestTokenSecret: string;
