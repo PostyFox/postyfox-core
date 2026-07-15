@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Dtos;
 using PostyFox.Domain.Entities;
 
 namespace PostyFox.Application.Services;
 
-public sealed class UserConnectorService(IAppDbContext db, ISecretStore secrets, IClock clock)
+public sealed class UserConnectorService(IAppDbContext db, ISecretsProvider secrets, IClock clock)
 {
     /// <summary>Secret store key for a connector's secure config.</summary>
     public static string SecretName(Guid connectorId, string userId) => $"conn-{connectorId:N}-{userId}";
@@ -64,7 +65,7 @@ public sealed class UserConnectorService(IAppDbContext db, ISecretStore secrets,
         if (entity is null) return false;
         db.UserConnectors.Remove(entity);
         await db.SaveChangesAsync(ct);
-        await secrets.DeleteSecretAsync(SecretName(id, userId), ct);
+        await secrets.TryDeleteSecretAsync(SecretName(id, userId), ct);
         return true;
     }
 }

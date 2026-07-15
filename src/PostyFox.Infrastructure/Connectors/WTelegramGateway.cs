@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using TL;
@@ -28,7 +29,7 @@ public sealed class WTelegramGateway(
     {
         if (_api is { } a) return a;
         await using var scope = scopeFactory.CreateAsyncScope();
-        var secrets = scope.ServiceProvider.GetRequiredService<ISecretStore>();
+        var secrets = scope.ServiceProvider.GetRequiredService<ISecretsProvider>();
         var id = await secrets.GetSecretAsync("TelegramApiID", ct);
         var hash = await secrets.GetSecretAsync("TelegramApiHash", ct);
         if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(hash))

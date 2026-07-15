@@ -12,7 +12,7 @@ RabbitMQ, object storage) are expected to be managed/external and supplied via v
 ## Usage
 ```bash
 cp terraform.tfvars.example terraform.tfvars   # fill in; keep secrets out of VCS
-export TF_VAR_encryption_key=... TF_VAR_internal_token=...   # prefer env for secrets
+export TF_VAR_bitwarden_api_key=... TF_VAR_internal_token=...   # prefer env for secrets
 terraform init
 terraform plan
 terraform apply

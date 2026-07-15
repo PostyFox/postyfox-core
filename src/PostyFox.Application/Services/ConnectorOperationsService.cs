@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 
@@ -11,7 +12,7 @@ namespace PostyFox.Application.Services;
 /// </summary>
 public sealed class ConnectorOperationsService(
     IAppDbContext db,
-    ISecretStore secrets,
+    ISecretsProvider secrets,
     IConnectorRegistry registry,
     ITelegramGateway telegram)
 {
@@ -90,7 +91,7 @@ public sealed class ConnectorOperationsService(
         if (secretJson is null) return false;
 
         await secrets.SetSecretAsync(UserConnectorService.SecretName(pending.ConnectorId, userId), secretJson, ct);
-        await secrets.DeleteSecretAsync(PendingKey(requestToken), ct);
+        await secrets.TryDeleteSecretAsync(PendingKey(requestToken), ct);
         return true;
     }
 

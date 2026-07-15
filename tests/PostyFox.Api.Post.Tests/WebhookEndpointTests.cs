@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Neillans.Adapters.Secrets.Core;
 using PostyFox.Api.Post.Tests.Support;
-using PostyFox.Application.Abstractions;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Triggers;
 using Xunit;
@@ -21,7 +21,7 @@ public class WebhookEndpointTests(CustomWebApplicationFactory factory) : IClassF
     private async Task ConfigureSecretAndTriggerAsync(string account)
     {
         using var scope = factory.Services.CreateScope();
-        await scope.ServiceProvider.GetRequiredService<ISecretStore>().SetSecretAsync("trigger-generic-signing", Secret);
+        await scope.ServiceProvider.GetRequiredService<ISecretsProvider>().SetSecretAsync("trigger-generic-signing", Secret);
         await scope.ServiceProvider.GetRequiredService<ExternalTriggerService>()
             .RegisterAsync("dev-user", new TriggerRegistrationRequest("generic", account, null, factory.SeededConnectorId, 24));
     }

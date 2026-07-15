@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Posting;
@@ -12,7 +13,7 @@ namespace PostyFox.Application.Triggers;
 /// </summary>
 public sealed class ExternalTriggerService(
     IAppDbContext db,
-    ISecretStore secrets,
+    ISecretsProvider secrets,
     IClock clock,
     ITriggerSourceRegistry sources,
     PostIntakeService intake)

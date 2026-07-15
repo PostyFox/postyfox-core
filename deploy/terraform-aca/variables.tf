@@ -63,15 +63,46 @@ variable "auth_oidc_audience" {
   default = "oauth2-proxy"
 }
 
+# Secret store (Neillans.Adapters.Secrets). Non-secret provider options; credentials are below.
+variable "secrets_provider" {
+  type        = string
+  default     = "BitWarden"
+  description = "Secret store backend: InMemory | BitWarden | AzureKeyVault | Infisical."
+}
+variable "bitwarden_server_url" {
+  type    = string
+  default = ""
+}
+variable "bitwarden_organization_id" {
+  type    = string
+  default = ""
+}
+variable "bitwarden_identity_url" {
+  type    = string
+  default = ""
+}
+
 # Secrets
 variable "postgres_connection" {
   type      = string
   sensitive = true
 }
-variable "encryption_key" {
-  type        = string
-  sensitive   = true
-  description = "Base64 32-byte AES key for the secret store."
+# Secret-store credentials for the selected secrets_provider (BitWarden shown). Supply EITHER
+# bitwarden_api_key OR the Organization API key pair (bitwarden_client_id + bitwarden_client_secret).
+variable "bitwarden_api_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "bitwarden_client_id" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "bitwarden_client_secret" {
+  type      = string
+  default   = ""
+  sensitive = true
 }
 variable "internal_token" {
   type      = string

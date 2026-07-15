@@ -16,7 +16,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostTarget> PostTargets => Set<PostTarget>();
     public DbSet<WebhookDedupe> WebhookDedupes => Set<WebhookDedupe>();
-    public DbSet<SecretEntry> Secrets => Set<SecretEntry>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -90,13 +89,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             e.ToTable("webhook_dedupe");
             e.HasKey(x => new { x.Source, x.MessageId });
-        });
-
-        b.Entity<SecretEntry>(e =>
-        {
-            e.ToTable("secrets");
-            e.HasKey(x => x.Name);
-            e.Property(x => x.Name).HasMaxLength(256);
         });
     }
 }

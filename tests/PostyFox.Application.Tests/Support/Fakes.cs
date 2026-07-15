@@ -1,3 +1,4 @@
+using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Messaging;
@@ -53,12 +54,15 @@ public sealed class FakeRegistry(params IConnector[] connectors) : IConnectorReg
     public IReadOnlyCollection<IConnector> All => _inner.All;
 }
 
-public sealed class FakeSecretStore : ISecretStore
+public sealed class FakeSecretStore : ISecretsProvider
 {
     public Dictionary<string, string> Store { get; } = new();
-    public Task SetSecretAsync(string name, string value, CancellationToken ct = default) { Store[name] = value; return Task.CompletedTask; }
-    public Task<string?> GetSecretAsync(string name, CancellationToken ct = default) => Task.FromResult(Store.GetValueOrDefault(name));
-    public Task DeleteSecretAsync(string name, CancellationToken ct = default) { Store.Remove(name); return Task.CompletedTask; }
+    public Task<string?> GetSecretAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult(Store.GetValueOrDefault(key));
+    public Task<IDictionary<string, string?>> GetSecretsAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IDictionary<string, string?>>(keys.ToDictionary(k => k, k => Store.GetValueOrDefault(k)));
+    public Task SetSecretAsync(string key, string value, CancellationToken cancellationToken = default) { Store[key] = value; return Task.CompletedTask; }
+    public Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default) { Store.Remove(key); return Task.CompletedTask; }
+    public Task<IEnumerable<string>> ListSecretsAsync(CancellationToken cancellationToken = default) => Task.FromResult<IEnumerable<string>>(Store.Keys.ToList());
 }
 
 public sealed class FakeTelegramGateway : ITelegramGateway

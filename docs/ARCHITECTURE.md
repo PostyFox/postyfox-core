@@ -47,7 +47,7 @@ flowchart TB
         pg[("PostgreSQL")]
         s3[("S3 / MinIO<br/>object store")]
         mq[["RabbitMQ<br/>(delayed exchange)"]]
-        sec{{"Secret store<br/>(encrypted in PG / Vault)"}}
+        sec{{"Secret store<br/>(BitWarden / Azure KV / Infisical / in-memory)"}}
         otel["OTel Collector"]
     end
 
@@ -83,7 +83,7 @@ flowchart TB
 | PostgreSQL | — | System of record. |
 | S3 / MinIO | — | Media, post payloads, Telegram MTProto sessions. |
 | RabbitMQ | — | Pipeline queues; delayed-message exchange for scheduling + retry backoff. |
-| Secret store | — | Per-user connector secrets, platform secrets, trigger signing secrets. |
+| Secret store | — | Per-user connector secrets, platform secrets, trigger signing secrets. Pluggable provider (BitWarden/VaultWarden, Azure Key Vault, Infisical, or in-memory) via the `adapters-secrets` library. |
 | oauth2-proxy + Keycloak | — | OIDC edge (opt-in `auth` compose profile); injects the trusted identity header. |
 | OTel Collector | — | Traces + metrics sink (OTLP). |
 
@@ -112,8 +112,8 @@ flowchart LR
 | Project | Contents                                                                                                                                                                                                                           |
 |---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `PostyFox.Domain` | Entities + enums. No dependencies.                                                                                                                                                                                                 |
-| `PostyFox.Application` | Abstractions (`IAppDbContext`, `IObjectStore`, `IMessageBus`, `ISecretStore`, `IConnector`, `ITelegramGateway`, `ITriggerSource`, …), services/use-cases, template engine, pipeline handlers, connector + trigger contracts, DTOs. |
-| `PostyFox.Infrastructure` | EF Core `AppDbContext` + migrations, S3 object store, RabbitMQ bus + topology, encrypted secret store, connectors (Discord, Telegram/WTelegram, `HttpConnector`), catalogue seeder.                                                |
+| `PostyFox.Application` | Abstractions (`IAppDbContext`, `IObjectStore`, `IMessageBus`, `IConnector`, `ITelegramGateway`, `ITriggerSource`, …), services/use-cases, template engine, pipeline handlers, connector + trigger contracts, DTOs. Secrets use `ISecretsProvider` from the external `adapters-secrets` library. |
+| `PostyFox.Infrastructure` | EF Core `AppDbContext` + migrations, S3 object store, RabbitMQ bus + topology, secret-store provider wiring (`adapters-secrets`), connectors (Discord, Telegram/WTelegram, `HttpConnector`), catalogue seeder.                                                |
 | `PostyFox.Web` | Shared auth handlers (header + API key) and OpenTelemetry wiring.                                                                                                                                                                  |
 | `PostyFox.Api.Core` / `PostyFox.Api.Post` | Minimal-API hosts + endpoint groups.                                                                                                                                                                                               |
 | `PostyFox.Worker.Posting` | Hosts the queue consumers.                                                                                                                                                                                                         |
@@ -207,18 +207,15 @@ erDiagram
         string MessageId PK
         datetime SeenAt
     }
-    secrets {
-        string Name PK
-        string CipherText
-    }
 ```
 
 Notes:
 - **Secrets are never in domain tables.** Per-user connector secrets live in the secret store under
   `conn-{connectorId:N}-{userId}`; trigger signing secrets under `trigger-{sourceType}-signing`;
-  platform secrets (e.g. `TelegramApiID`/`TelegramApiHash`) under their own names. The `secrets`
-  table is the local encrypted-at-rest (AES-256-GCM) backing for `ISecretStore`; production can
-  swap it for Vault/KMS.
+  platform secrets (e.g. `TelegramApiID`/`TelegramApiHash`) under their own names. The store is a
+  pluggable `ISecretsProvider` (`adapters-secrets` library): in-memory for local/dev, and
+  BitWarden/VaultWarden, Azure Key Vault, or Infisical for deployments — selected via
+  `Secrets:Provider`. There is no database table backing it.
 - **Enums stored as strings** (`RootStatus`, `Status`) for readability.
 - **Object store**: `post/{postId}/{title|description|description-html}`, media manifest entries, and
   `telegram/{userId}` MTProto session blobs.

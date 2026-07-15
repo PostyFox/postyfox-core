@@ -27,7 +27,7 @@ reference) · [docs/FOLLOWUPS.md](./docs/FOLLOWUPS.md) (deferred work).
 | Datastore | PostgreSQL (EF Core / Npgsql) | `IAppDbContext` |
 | Object storage | S3-compatible (MinIO local) | `IObjectStore` |
 | Message bus | RabbitMQ (delayed-message exchange for scheduling + backoff) | `IMessageBus` |
-| Secrets | Encrypted-in-Postgres (AES-GCM) locally; swap for Vault/KMS | `ISecretStore` |
+| Secrets | Pluggable provider (`adapters-secrets`): in-memory locally, BitWarden/Azure KV/Infisical deployed | `ISecretsProvider` |
 | AuthN | oauth2-proxy → Keycloak, header identity; **or** `X-API-Key` (hashed) | `PostyFox.Web.Auth` |
 | Observability | OpenTelemetry → OTLP collector | — |
 
@@ -37,7 +37,7 @@ reference) · [docs/FOLLOWUPS.md](./docs/FOLLOWUPS.md) (deferred work).
 src/
   PostyFox.Domain          entities + enums (no deps)
   PostyFox.Application      abstractions, services, template engine, pipeline handlers, connector contract
-  PostyFox.Infrastructure   EF Core + migrations, S3, RabbitMQ, secret store, Discord connector
+  PostyFox.Infrastructure   EF Core + migrations, S3, RabbitMQ, secret-store provider (adapters-secrets), Discord connector
   PostyFox.Web              shared auth (oauth2-proxy header + API key) + OpenTelemetry wiring
   PostyFox.Api.Core         profile/keys, services catalogue, connector CRUD, template CRUD
   PostyFox.Api.Post         post intake + status, external-trigger webhook callback
@@ -136,7 +136,8 @@ Telemetry (OTLP) is exported to a collector and forwarded to central **OpenSearc
 ## Configuration (env vars)
 
 Nested keys use `__`. Key settings: `ConnectionStrings__Postgres`, `ObjectStore__*`, `RabbitMq__*`,
-`Secrets__EncryptionKey` (base64 32-byte AES key), `Auth__Oidc__Enabled` / `Auth__Oidc__Issuer` /
+`Secrets__Provider` (`InMemory` | `BitWarden` | `AzureKeyVault` | `Infisical`; provider options under
+`Secrets__<Provider>__*`, e.g. `Secrets__BitWarden__ServerUrl`), `Auth__Oidc__Enabled` / `Auth__Oidc__Issuer` /
 `Auth__Oidc__JwksUrl` / `Auth__Oidc__Audience`, `Auth__UserHeader`,
 `NodeConnectors__BaseUrl` + `NodeConnectors__InternalToken` (→ connectors-node; also set as
 `INTERNAL_TOKEN` on that service), `ApplyMigrations`, `SeedServiceDefinitions`,

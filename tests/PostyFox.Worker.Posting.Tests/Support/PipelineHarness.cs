@@ -2,13 +2,13 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Neillans.Adapters.Secrets.InMemory;
 using PostyFox.Application;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Messaging;
 using PostyFox.Domain.Entities;
 using PostyFox.Infrastructure.Persistence;
-using PostyFox.Infrastructure.Secrets;
 
 namespace PostyFox.Worker.Posting.Tests.Support;
 
@@ -66,7 +66,7 @@ public sealed class PipelineHarness : IDisposable
         services.AddDbContext<AppDbContext>(o => o.UseSqlite(_connection));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddSingleton<IObjectStore, FakeObjectStore>();
-        services.AddSingleton<ISecretStore, InMemorySecretStore>();
+        services.AddInMemorySecretsProvider();
         services.AddSingleton<IMessageBus, InProcessBus>();
         foreach (var c in connectors) services.AddSingleton(c);
         services.AddSingleton<IEnumerable<IConnector>>(sp => connectors);

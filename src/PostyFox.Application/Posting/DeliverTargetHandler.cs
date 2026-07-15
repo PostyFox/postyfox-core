@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Messaging;
@@ -19,7 +20,7 @@ namespace PostyFox.Application.Posting;
 public sealed class DeliverTargetHandler(
     IAppDbContext db,
     IConnectorRegistry registry,
-    ISecretStore secrets,
+    ISecretsProvider secrets,
     IMessageBus bus,
     IClock clock,
     IOptions<PipelineOptions> options,
