@@ -1,3 +1,4 @@
+using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Services;
 using PostyFox.Application.Tests.Support;
@@ -40,6 +41,24 @@ public class UserConnectorServiceTests
         Assert.NotNull(dto);
         Assert.Equal("DiscordWH", dto!.Platform);
         Assert.Equal("{\"token\":\"abc\"}", secrets.Store[UserConnectorService.SecretName(dto.Id, "u1")]);
+    }
+
+    [Fact]
+    public async Task Upsert_rejects_config_that_violates_the_schema()
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition
+        {
+            Id = "BlueSky", Name = "BlueSky", Platform = "BlueSky", Enabled = true,
+            ConfigSchema = """{ "Handle": { "label": "Handle", "pattern": "^[^@]", "message": "No leading @." } }"""
+        });
+        await db.SaveChangesAsync();
+        var (svc, _) = New(db);
+
+        var ex = await Assert.ThrowsAsync<ConnectorValidationException>(() =>
+            svc.UpsertAsync("u1", new UserConnectorUpsertRequest(null, "BlueSky", "Bsky", "{\"Handle\":\"@me\"}", null, true)));
+        Assert.Equal("No leading @.", ex.Message);
+        Assert.Empty(db.UserConnectors);
     }
 
     [Fact]

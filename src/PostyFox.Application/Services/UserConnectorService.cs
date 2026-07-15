@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
+using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Domain.Entities;
 
@@ -30,6 +31,16 @@ public sealed class UserConnectorService(IAppDbContext db, ISecretsProvider secr
     {
         var def = await db.ServiceDefinitions.FirstOrDefaultAsync(s => s.Id == request.ServiceDefinitionId, ct);
         if (def is null) return null;
+
+        // Enforce the field descriptors declared on the service definition. The client runs the same
+        // checks for fast feedback, but this is the authoritative gate (throws → 400 with the message).
+        if (ConfigSchemaValidator.Validate(def.ConfigSchema, request.ConfigJson) is { } configError)
+            throw new ConnectorValidationException(configError);
+        // Secrets are only present when the user actually (re)entered them — a blank payload means
+        // "keep the stored secret unchanged", so there is nothing to validate in that case.
+        if (!string.IsNullOrWhiteSpace(request.SecureConfigJson)
+            && ConfigSchemaValidator.Validate(def.SecureConfigSchema, request.SecureConfigJson) is { } secretError)
+            throw new ConnectorValidationException(secretError);
 
         UserConnector? entity = request.Id is { } id
             ? await db.UserConnectors.FirstOrDefaultAsync(c => c.UserId == userId && c.Id == id, ct)

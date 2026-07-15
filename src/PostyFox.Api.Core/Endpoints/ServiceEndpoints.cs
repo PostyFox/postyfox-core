@@ -46,7 +46,18 @@ public static class ServiceEndpoints
         .Produces(StatusCodes.Status404NotFound);
 
         connectors.MapPut("", async (UserConnectorUpsertRequest body, ClaimsPrincipal user, UserConnectorService svc, CancellationToken ct) =>
-            await svc.UpsertAsync(user.UserId()!, body, ct) is { } dto ? Results.Ok(dto) : Results.BadRequest(new { error = "Unknown service definition" }))
+        {
+            try
+            {
+                return await svc.UpsertAsync(user.UserId()!, body, ct) is { } dto
+                    ? Results.Ok(dto)
+                    : Results.BadRequest(new { error = "Unknown service definition" });
+            }
+            catch (ConnectorValidationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        })
         .WithSummary("Create or update a connector")
         .WithDescription("Non-secret config is stored in the database; SecureConfigJson is written to the secret store.")
         .Produces<UserConnectorDto>()
