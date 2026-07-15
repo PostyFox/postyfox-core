@@ -61,6 +61,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     },
   );
 
+  app.post<{ Params: { platform: string }; Body: ConnectorContext }>(
+    "/connectors/:platform/limits",
+    async (request, reply) => {
+      const connector = resolveConnector(registry, request.params.platform);
+      if (!connector) return reply.code(404).send({ error: "unknown platform" });
+      if (!connector.getLimits) return reply.code(400).send({ error: "limits not supported" });
+      return connector.getLimits(request.body);
+    },
+  );
+
   app.post<{ Params: { platform: string }; Body: DeliverBody }>(
     "/connectors/:platform/deliver",
     async (request, reply) => {
@@ -72,14 +82,17 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   );
 
   // --- OAuth "connect" flow (platforms that expose `oauth`, e.g. Tumblr) -------------------------
-  app.post<{ Params: { platform: string }; Body: { callbackUrl: string } }>(
+  app.post<{ Params: { platform: string }; Body: { callbackUrl: string; configJson?: string } }>(
     "/connectors/:platform/oauth/request-token",
     async (request, reply) => {
       const connector = resolveConnector(registry, request.params.platform);
       if (!connector) return reply.code(404).send({ error: "unknown platform" });
       if (!connector.oauth) return reply.code(400).send({ error: "oauth not supported/configured" });
       try {
-        return await connector.oauth.startAuthorization({ callbackUrl: request.body.callbackUrl });
+        return await connector.oauth.startAuthorization({
+          callbackUrl: request.body.callbackUrl,
+          configJson: request.body.configJson,
+        });
       } catch (err) {
         return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
       }

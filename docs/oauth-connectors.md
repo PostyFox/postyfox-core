@@ -1,7 +1,25 @@
 # OAuth "connect" flow for connectors
 
 Some platforms let a user connect by clicking a button and authorizing in the provider's UI, rather
-than pasting API tokens. Today this covers **Tumblr** (OAuth 1.0a).
+than pasting API tokens. Today this covers **Tumblr** (OAuth 1.0a) and the **Fediverse** platforms —
+Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown and Pixelfed — all
+served by one generic megalodon connector that auto-detects the instance's software (nodeinfo → SNS)
+and runs whichever authorization the instance uses (OAuth2 for Mastodon-family, MiAuth for
+Firefish/Iceshrimp).
+
+The same generic start/callback plumbing serves three authorization families. The connector fills in
+the `requestToken` / `requestTokenSecret` / `verifier` fields differently, but core treats them
+opaquely:
+
+| Family | `requestToken` (correlation) | `verifier` (from callback) | Exchange credential |
+|--------|------------------------------|----------------------------|---------------------|
+| OAuth 1.0a (Tumblr) | request token | `oauth_verifier` | request token + verifier |
+| OAuth2 (Mastodon-style) | random `state` echoed back | `code` | authorization `code` |
+| MiAuth (Iceshrimp/Firefish) | session token | *(none)* | stored session token |
+
+The callback route accepts `oauth_token`/`oauth_verifier`, `state`/`code`, or `token`/`session`, and
+the verifier is optional (MiAuth carries no callback code — the session token minted at start is what
+gets exchanged).
 
 ## How it works
 
@@ -58,10 +76,29 @@ Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_to
    still lists in the catalogue but `SupportsOAuth` is reported false and the "Connect" button is
    hidden.
 
+## Operator setup (Iceshrimp / Fediverse)
+
+**Nothing to configure.** Unlike Tumblr, the Fediverse connector registers its own application on the
+user's instance dynamically at connect time (`registerApp`), so there are no operator-provided
+consumer credentials or environment variables. The only requirement is the shared callback base
+(`OAuth__CallbackBaseUrl` / `PUBLIC_BASE_URL`, already set for Tumblr) so the instance can redirect
+back to `{base}/api/connectors/oauth/callback`.
+
+The user supplies their **instance URL** in the connector's config; the connect flow then detects the
+instance's software (nodeinfo → megalodon SNS) and mints the app + session token per connect. The
+per-user secret holds only `{AccessToken, Sns}`.
+
+> **Note:** Firefish/Misskey MiAuth redirects back to the registered callback and the exact query
+> parameter carrying the session token can vary by instance software/version. The callback route
+> accepts `token`/`session`/`state` as correlation candidates; verify against your target instance if
+> a connect appears to succeed in the provider UI but does not complete.
+
 ## Adding another OAuth connector
 
 - **connectors-node**: implement an `OAuthProvider` (`startAuthorization` / `completeAuthorization`)
-  and attach it to the connector's `oauth` property (see `connectors/tumblr-oauth.ts`).
+  and attach it to the connector's `oauth` property (see `connectors/tumblr-oauth.ts` for OAuth1, or
+  `connectors/megalodon.ts` for OAuth2/MiAuth). `startAuthorization` receives the connector's
+  `configJson` for instance-scoped providers.
 - **core**: set `SupportsOAuth: true` on the connector's `ConnectorDescriptor`. The generic
   start/callback endpoints and `HttpConnector` forwarding handle the rest.
 - The frontend needs no per-platform change — it shows the "Connect" button whenever

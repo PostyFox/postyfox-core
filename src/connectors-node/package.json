@@ -1,7 +1,7 @@
 {
   "name": "connectors-node",
   "version": "1.0.0",
-  "description": "PostyFox connectors-node service: Bluesky and Tumblr delivery connectors behind an internal HTTP contract.",
+  "description": "PostyFox connectors-node service: Bluesky, Tumblr and Iceshrimp/Fediverse delivery connectors behind an internal HTTP contract.",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -16,6 +16,7 @@
     "@atproto/api": "^0.13.35",
     "@aws-sdk/client-s3": "^3.1083.0",
     "fastify": "^5.2.1",
+    "megalodon": "^10.3.0",
     "oauth-1.0a": "^2.2.6",
     "tumblr.js": "^5.0.1"
   },

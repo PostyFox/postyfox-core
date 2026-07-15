@@ -81,6 +81,12 @@ public static class ServiceEndpoints
         .Produces<IReadOnlyList<ConnectorTarget>>()
         .Produces(StatusCodes.Status404NotFound);
 
+        connectors.MapGet("{id:guid}/limits", async (Guid id, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
+            await svc.GetLimitsAsync(user.UserId()!, id, ct) is { } limits ? Results.Ok(limits) : Results.NotFound())
+        .WithSummary("Report a connector's limits (character/attachment caps; live per-instance where supported)")
+        .Produces<ConnectorLimits>()
+        .Produces(StatusCodes.Status404NotFound);
+
         connectors.MapPost("{id:guid}/telegram/login", async (Guid id, TelegramLoginBody body, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
             await svc.TelegramLoginAsync(user.UserId()!, id, body?.Value, ct) is { } step ? Results.Ok(step) : Results.NotFound())
         .WithSummary("Advance the Telegram MTProto login flow")
@@ -103,17 +109,29 @@ public static class ServiceEndpoints
         // Provider redirect target. The user still carries the oauth2-proxy session, so this is an
         // authenticated request; correlation to the connector is via the stashed request token.
         connectors.MapGet("oauth/callback", async (
+            // OAuth1 (Tumblr): oauth_token/oauth_verifier. OAuth2 (Mastodon): state/code.
+            // Firefish/Misskey MiAuth: the redirect echoes the session token (token/session) and
+            // there is no verifier — the stored session token is exchanged for the access token.
             [FromQuery(Name = "oauth_token")] string? oauthToken,
             [FromQuery(Name = "oauth_verifier")] string? oauthVerifier,
+            [FromQuery(Name = "state")] string? state,
+            [FromQuery(Name = "code")] string? code,
+            [FromQuery(Name = "token")] string? token,
+            [FromQuery(Name = "session")] string? session,
             ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
         {
-            var ok = !string.IsNullOrEmpty(oauthToken)
-                && !string.IsNullOrEmpty(oauthVerifier)
-                && await svc.CompleteOAuthAsync(user.UserId()!, oauthToken!, oauthVerifier!, ct);
+            // Correlation key stashed at start; verifier is optional (absent for MiAuth).
+            var requestToken = FirstNonEmpty(oauthToken, state, token, session);
+            var verifier = FirstNonEmpty(oauthVerifier, code) ?? "";
+            var ok = !string.IsNullOrEmpty(requestToken)
+                && await svc.CompleteOAuthAsync(user.UserId()!, requestToken!, verifier, ct);
             return Results.Content(OAuthCallbackHtml(ok), "text/html");
         })
         .WithSummary("OAuth provider callback — completes the connect flow and closes the popup");
     }
+
+    private static string? FirstNonEmpty(params string?[] values) =>
+        values.FirstOrDefault(v => !string.IsNullOrEmpty(v));
 
     private static string OAuthCallbackUrl(IConfiguration cfg, HttpRequest req)
     {
