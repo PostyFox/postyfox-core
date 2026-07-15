@@ -10,8 +10,14 @@ import type {
   DeliverResult,
   IsAuthenticatedResult,
   ListTargetsResult,
+  OAuthProvider,
   Post,
 } from "../types.js";
+import {
+  TumblrOAuth1Provider,
+  tumblrConsumerFromEnv,
+  type TumblrConsumerCredentials,
+} from "./tumblr-oauth.js";
 
 interface TumblrBlog {
   name: string;
@@ -62,8 +68,6 @@ interface TumblrConfig {
 }
 
 interface TumblrSecret {
-  ConsumerKey?: string;
-  ConsumerSecret?: string;
   OAuthToken?: string;
   OAuthTokenSecret?: string;
 }
@@ -124,10 +128,18 @@ const defaultClientFactory: TumblrClientFactory = (creds) => {
 };
 
 export class TumblrConnector implements Connector {
+  private readonly consumer?: TumblrConsumerCredentials;
+  /** Interactive OAuth1 "connect" flow, available when consumer credentials are configured. */
+  readonly oauth?: OAuthProvider;
+
   constructor(
     private readonly clientFactory: TumblrClientFactory = defaultClientFactory,
     private readonly mediaStore: MediaStore = mediaStoreFromEnv(),
-  ) {}
+    consumer: TumblrConsumerCredentials | undefined = tumblrConsumerFromEnv(),
+  ) {
+    this.consumer = consumer;
+    if (consumer) this.oauth = new TumblrOAuth1Provider(consumer);
+  }
 
   private parseCredentials(ctx: ConnectorContext): {
     username: string;
@@ -136,21 +148,19 @@ export class TumblrConnector implements Connector {
     const config = JSON.parse(ctx.configJson) as TumblrConfig;
     const username = config?.Username;
     if (!username) throw new Error("missing Tumblr Username in config");
+    if (!this.consumer) {
+      throw new Error("Tumblr consumer credentials not configured (TUMBLR_CONSUMER_KEY/SECRET)");
+    }
     if (ctx.secretJson === null) throw new Error("missing Tumblr credentials");
     const secret = JSON.parse(ctx.secretJson) as TumblrSecret;
-    if (
-      !secret?.ConsumerKey ||
-      !secret?.ConsumerSecret ||
-      !secret?.OAuthToken ||
-      !secret?.OAuthTokenSecret
-    ) {
-      throw new Error("missing Tumblr OAuth1 credentials");
+    if (!secret?.OAuthToken || !secret?.OAuthTokenSecret) {
+      throw new Error("missing Tumblr OAuth token — reconnect the account");
     }
     return {
       username,
       creds: {
-        consumer_key: secret.ConsumerKey,
-        consumer_secret: secret.ConsumerSecret,
+        consumer_key: this.consumer.consumerKey,
+        consumer_secret: this.consumer.consumerSecret,
         token: secret.OAuthToken,
         token_secret: secret.OAuthTokenSecret,
       },

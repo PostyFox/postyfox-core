@@ -26,7 +26,7 @@ public sealed class ServiceCatalogService(IAppDbContext db, IConnectorRegistry c
     // entry so clients can tailor the compose experience (char limits, media/title support, …).
     private ServiceDefinitionDto Map(ServiceDefinition s)
     {
-        bool supportsTitle = false, supportsMedia = false, supportsThreads = false;
+        bool supportsTitle = false, supportsMedia = false, supportsThreads = false, supportsOAuth = false;
         int? maxContentLength = null;
         if (connectors.TryGet(s.Platform, out var connector))
         {
@@ -35,10 +35,11 @@ public sealed class ServiceCatalogService(IAppDbContext db, IConnectorRegistry c
             supportsMedia = d.SupportsMedia;
             supportsThreads = d.SupportsThreads;
             maxContentLength = d.MaxContentLength;
+            supportsOAuth = d.SupportsOAuth;
         }
 
         return new ServiceDefinitionDto(
             s.Id, s.Name, s.Enabled, s.ConfigSchema, s.SecureConfigSchema, s.Platform,
-            supportsTitle, supportsMedia, supportsThreads, maxContentLength);
+            supportsTitle, supportsMedia, supportsThreads, maxContentLength, supportsOAuth);
     }
 }

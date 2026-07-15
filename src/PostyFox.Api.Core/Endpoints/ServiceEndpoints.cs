@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Services;
@@ -74,6 +76,59 @@ public static class ServiceEndpoints
         .WithDescription("Call repeatedly, supplying the requested value (verification code, then 2FA password) until Status is 'complete'.")
         .Produces<TelegramLoginStep>()
         .Produces(StatusCodes.Status404NotFound);
+
+        connectors.MapPost("{id:guid}/oauth/start", async (Guid id, ClaimsPrincipal user, ConnectorOperationsService svc, IConfiguration cfg, HttpRequest req, CancellationToken ct) =>
+        {
+            var url = await svc.StartOAuthAsync(user.UserId()!, id, OAuthCallbackUrl(cfg, req), ct);
+            return url is null
+                ? Results.BadRequest(new { error = "OAuth is not available for this connector" })
+                : Results.Ok(new { authorizeUrl = url });
+        })
+        .WithSummary("Begin the OAuth connect flow for a connector")
+        .WithDescription("Returns the provider authorize URL to open in the browser; the provider then calls back to /api/connectors/oauth/callback.")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        // Provider redirect target. The user still carries the oauth2-proxy session, so this is an
+        // authenticated request; correlation to the connector is via the stashed request token.
+        connectors.MapGet("oauth/callback", async (
+            [FromQuery(Name = "oauth_token")] string? oauthToken,
+            [FromQuery(Name = "oauth_verifier")] string? oauthVerifier,
+            ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
+        {
+            var ok = !string.IsNullOrEmpty(oauthToken)
+                && !string.IsNullOrEmpty(oauthVerifier)
+                && await svc.CompleteOAuthAsync(user.UserId()!, oauthToken!, oauthVerifier!, ct);
+            return Results.Content(OAuthCallbackHtml(ok), "text/html");
+        })
+        .WithSummary("OAuth provider callback — completes the connect flow and closes the popup");
+    }
+
+    private static string OAuthCallbackUrl(IConfiguration cfg, HttpRequest req)
+    {
+        // Must match the provider app's registered callback exactly, so prefer explicit config.
+        var baseUrl = cfg["OAuth:CallbackBaseUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl)) baseUrl = $"{req.Scheme}://{req.Host}";
+        return $"{baseUrl.TrimEnd('/')}/api/connectors/oauth/callback";
+    }
+
+    private static string OAuthCallbackHtml(bool ok)
+    {
+        var okJs = ok ? "true" : "false";
+        var msg = ok ? "Connected — you can close this window." : "Connection failed. Please try again.";
+        return $$"""
+            <!doctype html><html><head><meta charset="utf-8"><title>PostyFox</title></head>
+            <body style="font-family:sans-serif;padding:2rem;text-align:center">
+            <script>
+            (function () {
+              var ok = {{okJs}};
+              try { if (window.opener) window.opener.postMessage({ type: 'postyfox-oauth', ok: ok }, window.location.origin); } catch (e) {}
+              if (window.opener) { window.close(); }
+              else { window.location.replace('/connectors?oauth=' + (ok ? 'success' : 'error')); }
+            })();
+            </script>
+            <p>{{msg}}</p></body></html>
+            """;
     }
 
     public sealed record TelegramLoginBody(string? Value);

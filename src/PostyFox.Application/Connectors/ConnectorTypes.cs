@@ -7,7 +7,26 @@ public sealed record ConnectorDescriptor(
     bool SupportsTitle,
     bool SupportsMedia,
     bool SupportsThreads,
-    int? MaxContentLength);
+    int? MaxContentLength,
+    /// <summary>True when the connector exposes an interactive OAuth "connect" flow (see <see cref="IOAuthConnector"/>).</summary>
+    bool SupportsOAuth = false);
+
+/// <summary>Result of beginning an OAuth authorization for a connector.</summary>
+public sealed record OAuthStart(string AuthorizeUrl, string RequestToken, string RequestTokenSecret);
+
+/// <summary>
+/// Optional capability for connectors that support an interactive OAuth flow (e.g. Tumblr's
+/// OAuth 1.0a). The token exchange itself lives in the connector implementation; core orchestrates
+/// the browser redirect, correlates the callback, and persists the resulting secret.
+/// </summary>
+public interface IOAuthConnector
+{
+    /// <summary>Begins authorization; returns the provider URL to send the user to + the request token pair.</summary>
+    Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, CancellationToken ct = default);
+
+    /// <summary>Completes authorization after the user returns; returns the secret JSON to persist.</summary>
+    Task<string?> CompleteAuthorizationAsync(string requestToken, string requestTokenSecret, string verifier, CancellationToken ct = default);
+}
 
 /// <summary>A destination within a connected account (a Telegram chat, Tumblr blog, etc.).</summary>
 public sealed record ConnectorTarget(string Id, string Name);

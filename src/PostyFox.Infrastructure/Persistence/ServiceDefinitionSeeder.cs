@@ -18,8 +18,10 @@ public static class ServiceDefinitionSeeder
                 ConfigSchema = "{\"PhoneNumber\":\"\",\"DefaultPostingTarget\":\"\"}" },
         new() { Id = "BlueSky", Name = "BlueSky", Platform = "BlueSky", Enabled = true,
                 ConfigSchema = "{\"Handle\":\"\"}", SecureConfigSchema = "{\"AppPassword\":\"\"}" },
+        // Tumblr credentials are obtained via the OAuth "connect" flow (SupportsOAuth), not entered
+        // by hand — so there is no user-facing secure config schema.
         new() { Id = "Tumblr", Name = "Tumblr", Platform = "Tumblr", Enabled = true,
-                ConfigSchema = "{\"Username\":\"\"}", SecureConfigSchema = "{\"OAuthAccessToken\":\"\",\"OAuthRefreshToken\":\"\"}" },
+                ConfigSchema = "{\"Username\":\"\"}", SecureConfigSchema = null },
     ];
 
     public static async Task SeedAsync(AppDbContext db, CancellationToken ct = default)
