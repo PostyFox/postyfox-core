@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Neillans.Adapters.Secrets.AzureKeyVault;
 using Neillans.Adapters.Secrets.BitWarden;
 using Neillans.Adapters.Secrets.Core;
+using Neillans.Adapters.Secrets.HashiCorpVault;
 using Neillans.Adapters.Secrets.Infisical;
 using Neillans.Adapters.Secrets.InMemory;
 using PostyFox.Application.Abstractions;
@@ -87,9 +88,10 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers an <see cref="ISecretsProvider"/> from the Neillans.Adapters.Secrets library based on
     /// the <c>Secrets:Provider</c> configuration value (<c>InMemory</c>, <c>BitWarden</c>,
-    /// <c>AzureKeyVault</c> or <c>Infisical</c>). Provider-specific options are bound from the matching
-    /// <c>Secrets:{Provider}</c> sub-section. Defaults to <c>InMemory</c> when unset so local dev works
-    /// out of the box; deployed environments set <c>Secrets:Provider=BitWarden</c>.
+    /// <c>AzureKeyVault</c>, <c>HashiCorpVault</c> or <c>Infisical</c>). Provider-specific options are
+    /// bound from the matching <c>Secrets:{Provider}</c> sub-section. Defaults to <c>InMemory</c> when
+    /// unset so local dev works out of the box; deployed stacks select a persistent store (the docker
+    /// dev/prod stacks default to <c>Secrets:Provider=HashiCorpVault</c>).
     /// </summary>
     private static void AddSecretsProvider(IServiceCollection services, IConfiguration config)
     {
@@ -111,6 +113,10 @@ public static class ServiceCollectionExtensions
 
             case SecretsProviderType.AzureKeyVault:
                 services.AddAzureKeyVaultSecretsProvider(o => section.GetSection("AzureKeyVault").Bind(o));
+                break;
+
+            case SecretsProviderType.HashiCorpVault:
+                services.AddHashiCorpVaultSecretsProvider(o => section.GetSection("HashiCorpVault").Bind(o));
                 break;
 
             case SecretsProviderType.Infisical:

@@ -9,9 +9,13 @@ data:
   RabbitMq__Host: {{ .Values.config.rabbitMqHost | quote }}
   RabbitMq__User: {{ .Values.config.rabbitMqUser | quote }}
   Auth__UserHeader: {{ .Values.config.authUserHeader | quote }}
-  # Secret store (Neillans.Adapters.Secrets). Provider selection + non-secret BitWarden options;
+  # Secret store (Neillans.Adapters.Secrets). Provider selection + non-secret provider options;
   # credentials are in the Secret. AzureKeyVault/Infisical add their own Secrets__<Provider>__* keys.
   Secrets__Provider: {{ .Values.config.secretsProvider | quote }}
+  Secrets__HashiCorpVault__VaultAddress: {{ .Values.config.hashiCorpVaultAddress | quote }}
+  Secrets__HashiCorpVault__MountPoint: {{ .Values.config.hashiCorpVaultMountPoint | quote }}
+  Secrets__HashiCorpVault__BasePath: {{ .Values.config.hashiCorpVaultBasePath | quote }}
+  Secrets__HashiCorpVault__RoleId: {{ .Values.config.hashiCorpVaultRoleId | quote }}
   Secrets__BitWarden__ServerUrl: {{ .Values.config.bitwardenServerUrl | quote }}
   Secrets__BitWarden__OrganizationId: {{ .Values.config.bitwardenOrganizationId | quote }}
   Secrets__BitWarden__IdentityUrl: {{ .Values.config.bitwardenIdentityUrl | quote }}

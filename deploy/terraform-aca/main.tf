@@ -25,6 +25,9 @@ locals {
     { name = "Auth__Oidc__JwksUrl", value = var.auth_oidc_jwks_url },
     { name = "Auth__Oidc__Audience", value = var.auth_oidc_audience },
     { name = "Secrets__Provider", value = var.secrets_provider },
+    { name = "Secrets__AzureKeyVault__VaultUri", value = var.azure_key_vault_uri },
+    { name = "Secrets__AzureKeyVault__TenantId", value = var.azure_key_vault_tenant_id },
+    { name = "Secrets__AzureKeyVault__ClientId", value = var.azure_key_vault_client_id },
     { name = "Secrets__BitWarden__ServerUrl", value = var.bitwarden_server_url },
     { name = "Secrets__BitWarden__OrganizationId", value = var.bitwarden_organization_id },
     { name = "Secrets__BitWarden__IdentityUrl", value = var.bitwarden_identity_url },
@@ -35,13 +38,15 @@ locals {
   common_env_norm = [for e in local.common_env : { name = e.name, value = e.value, secret_name = null }]
 
   # Secret-store credentials for the selected provider. Only the ones actually supplied are wired as
-  # Container App secrets (ACA rejects empty secret values), so e.g. using an API key alone works.
-  bitwarden_secrets = [
+  # Container App secrets (ACA rejects empty secret values), so e.g. using managed identity for Key
+  # Vault (no client secret) or a BitWarden API key alone both work.
+  provider_secrets = [
+    { secret_name = "azure-kv-client-secret", env = "Secrets__AzureKeyVault__ClientSecret", value = var.azure_key_vault_client_secret },
     { secret_name = "bitwarden-api-key", env = "Secrets__BitWarden__ApiKey", value = var.bitwarden_api_key },
     { secret_name = "bitwarden-client-id", env = "Secrets__BitWarden__ClientId", value = var.bitwarden_client_id },
     { secret_name = "bitwarden-client-secret", env = "Secrets__BitWarden__ClientSecret", value = var.bitwarden_client_secret },
   ]
-  bitwarden_secrets_present = [for s in local.bitwarden_secrets : s if s.value != ""]
+  provider_secrets_present = [for s in local.provider_secrets : s if s.value != ""]
 
   secret_env = concat([
     { name = "ConnectionStrings__Postgres", secret_name = "postgres-connection" },
@@ -50,7 +55,7 @@ locals {
     { name = "ObjectStore__SecretKey", secret_name = "objectstore-secret-key" },
     { name = "RabbitMq__Password", secret_name = "rabbitmq-password" },
     ],
-    [for s in local.bitwarden_secrets_present : { name = s.env, secret_name = s.secret_name }],
+    [for s in local.provider_secrets_present : { name = s.env, secret_name = s.secret_name }],
   )
   secret_env_norm = [for e in local.secret_env : { name = e.name, value = null, secret_name = e.secret_name }]
 
@@ -63,7 +68,7 @@ locals {
     { name = "objectstore-secret-key", value = var.object_store_secret_key },
     { name = "rabbitmq-password", value = var.rabbitmq_password },
     ],
-    [for s in local.bitwarden_secrets_present : { name = s.secret_name, value = s.value }],
+    [for s in local.provider_secrets_present : { name = s.secret_name, value = s.value }],
   )
 
   node_base_url = "https://${azurerm_container_app.connectors_node.ingress[0].fqdn}"

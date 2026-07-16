@@ -6,11 +6,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="aneillans.adapters-secrets.Core" Version="1.1.27" />
-    <PackageReference Include="aneillans.adapters-secrets.AzureKeyVault" Version="1.1.27" />
-    <PackageReference Include="aneillans.adapters-secrets.BitWarden" Version="1.1.27" />
-    <PackageReference Include="aneillans.adapters-secrets.Infisical" Version="1.1.27" />
-    <PackageReference Include="aneillans.adapters-secrets.InMemory" Version="1.1.27" />
+    <PackageReference Include="aneillans.adapters-secrets.Core" Version="1.2.31" />
+    <PackageReference Include="aneillans.adapters-secrets.AzureKeyVault" Version="1.2.31" />
+    <PackageReference Include="aneillans.adapters-secrets.BitWarden" Version="1.2.31" />
+    <PackageReference Include="aneillans.adapters-secrets.HashiCorpVault" Version="1.2.31" />
+    <PackageReference Include="aneillans.adapters-secrets.Infisical" Version="1.2.31" />
+    <PackageReference Include="aneillans.adapters-secrets.InMemory" Version="1.2.31" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.100.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

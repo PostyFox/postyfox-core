@@ -66,8 +66,28 @@ variable "auth_oidc_audience" {
 # Secret store (Neillans.Adapters.Secrets). Non-secret provider options; credentials are below.
 variable "secrets_provider" {
   type        = string
-  default     = "BitWarden"
-  description = "Secret store backend: InMemory | BitWarden | AzureKeyVault | Infisical."
+  default     = "AzureKeyVault"
+  description = "Secret store backend: AzureKeyVault | BitWarden | InMemory | Infisical."
+}
+# Azure Key Vault (the ACA default). Leave tenant/client empty to use the Container App's managed
+# identity (DefaultAzureCredential); set all three for service-principal auth.
+variable "azure_key_vault_uri" {
+  type        = string
+  default     = ""
+  description = "Key Vault URI, e.g. https://my-vault.vault.azure.net/"
+}
+variable "azure_key_vault_tenant_id" {
+  type    = string
+  default = ""
+}
+variable "azure_key_vault_client_id" {
+  type    = string
+  default = ""
+}
+variable "azure_key_vault_client_secret" {
+  type      = string
+  default   = ""
+  sensitive = true
 }
 variable "bitwarden_server_url" {
   type    = string

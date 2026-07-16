@@ -1,4 +1,4 @@
-# PostyFox Platform (container reimplementation)
+# PostyFox Core Platform (container reimplementation)
 
 Cloud-agnostic, containerised reimplementation of PostyFox.
 
@@ -8,28 +8,19 @@ reference) · [docs/FOLLOWUPS.md](./docs/FOLLOWUPS.md) (deferred work).
 
 ## Status
 
-| Phase | Scope | State |
-|-------|-------|-------|
-| **0 — Foundations** | Solution layout, EF Core/Postgres, S3 object store, RabbitMQ bus, secret store, OpenTelemetry, health checks, docker-compose stack | ✅ done |
-| **1 — Identity, connectors, templates** | oauth2-proxy header auth + hashed API keys, service catalogue + connector CRUD, template CRUD | ✅ done |
-| **2 — Posting pipeline** | Post intake, template engine, generate→deliver worker with retries/backoff/DLQ, scheduling, status API, Discord connector | ✅ done |
-| **3 — Connectors** | Telegram (MTProto/WTelegramClient), Bluesky + Tumblr (Node service via HTTP adapter), connector auth/target endpoints. **Twitch descoped.** | ✅ done |
-| **4 — External triggers** | Generic source-agnostic trigger framework: signed webhooks → dedupe → frequency-throttled fan-out into the pipeline (generic HMAC source). | ✅ done |
-| **5 — Hardening & deploy** | Dependency audit suppressions, rate limiting + security headers, CI, Helm chart + Terraform/ACA deploy, OTLP→OpenSearch observability. | ✅ done |
-
 > **Media/image delivery is implemented** across all connectors (upload → object store → per-platform
 > upload). Residuals (alt text, video, limits) are in [docs/FOLLOWUPS.md](./docs/FOLLOWUPS.md).
 
 ## Architecture
 
-| Concern | Choice | Abstraction |
-|---------|--------|-------------|
-| Datastore | PostgreSQL (EF Core / Npgsql) | `IAppDbContext` |
-| Object storage | S3-compatible (MinIO local) | `IObjectStore` |
-| Message bus | RabbitMQ (delayed-message exchange for scheduling + backoff) | `IMessageBus` |
-| Secrets | Pluggable provider (`adapters-secrets`): in-memory locally, BitWarden/Azure KV/Infisical deployed | `ISecretsProvider` |
-| AuthN | oauth2-proxy → Keycloak, header identity; **or** `X-API-Key` (hashed) | `PostyFox.Web.Auth` |
-| Observability | OpenTelemetry → OTLP collector | — |
+| Concern | Choice                                                                                            | Abstraction |
+|---------|---------------------------------------------------------------------------------------------------|-------------|
+| Datastore | PostgreSQL (EF Core / Npgsql)                                                                     | `IAppDbContext` |
+| Object storage | S3-compatible (MinIO / RustFS local)                                                              | `IObjectStore` |
+| Message bus | RabbitMQ (delayed-message exchange for scheduling + backoff)                                      | `IMessageBus` |
+| Secrets | Pluggable provider (`adapters-secrets`) | `ISecretsProvider` |
+| AuthN | oauth2-proxy → Keycloak, header identity; **or** `X-API-Key` (hashed)                             | `PostyFox.Web.Auth` |
+| Observability | OpenTelemetry → OTLP collector                                                                    | — |
 
 ### Projects
 
@@ -64,7 +55,7 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 
 **Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }` — sizes in bytes) — fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 
-### External triggers (Phase 4)
+### External triggers
 
 Source-agnostic: an `ITriggerSource` encapsulates each source's signature scheme + payload shape (a
 generic HMAC-signed webhook source ships built-in). Register interest via `POST /api/triggers`;
@@ -158,9 +149,6 @@ requires `TelegramApiID` / `TelegramApiHash` in the secret store (real MTProto c
 - Scheduling uses the RabbitMQ delayed-message plugin; a durable scheduler / due-scan is a Phase 5
   hardening item for very long-horizon schedules.
 - **Telegram MTProto is stateful**: route a user's Telegram ops to a single instance (consistent
-  hashing / dedicated telegram-worker) — see reimplementation plan §4.5. The MTProto gateway is not
-  covered by automated tests (needs live credentials); the connector logic around it is (via the
-  `ITelegramGateway` seam).
-- Node connectors deliver text posts; media upload (fetching from object storage) is a follow-up.
+  hashing / dedicated telegram-worker).
 - There is no endpoint yet to set platform-level secrets (e.g. Telegram api id/hash, trigger signing
   secrets) — seed them into the secret store directly for now.

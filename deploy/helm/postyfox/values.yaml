@@ -21,11 +21,16 @@ config:
   authOidcJwksUrl: "https://keycloak.example/realms/PostyFox/protocol/openid-connect/certs"
   authOidcAudience: "oauth2-proxy"
   otelEndpoint: "http://otel-collector:4317"
-  # Secret store (Neillans.Adapters.Secrets): InMemory | BitWarden | AzureKeyVault | Infisical.
-  # Non-secret provider options go here; credentials live under `secrets` below. For AzureKeyVault
-  # or Infisical, set secretsProvider and add the matching Secrets__<Provider>__* keys to the
-  # ConfigMap/Secret templates.
-  secretsProvider: "BitWarden"
+  # Secret store (Neillans.Adapters.Secrets): HashiCorpVault | BitWarden | AzureKeyVault | Infisical
+  # | InMemory. Non-secret provider options go here; credentials live under `secrets` below. Defaults
+  # to HashiCorpVault — point it at your cluster's Vault (this chart does not deploy Vault itself).
+  # For AzureKeyVault/Infisical, set secretsProvider and add their Secrets__<Provider>__* keys.
+  secretsProvider: "HashiCorpVault"
+  # HashiCorp Vault (KV v2) — the RoleId is non-secret; the SecretId/Token live under `secrets`.
+  hashiCorpVaultAddress: "https://vault.example.com:8200"
+  hashiCorpVaultMountPoint: "secret"
+  hashiCorpVaultBasePath: "postyfox"
+  hashiCorpVaultRoleId: ""
   bitwardenServerUrl: "https://vault.example.com"
   bitwardenOrganizationId: ""
   bitwardenIdentityUrl: ""
@@ -36,8 +41,12 @@ config:
 secrets:
   create: true
   postgresConnection: "Host=postgres;Port=5432;Database=postyfox;Username=postyfox;Password=postyfox"
-  # Secret-store credentials for the selected config.secretsProvider (BitWarden shown). Supply EITHER
-  # bitwardenApiKey OR the Organization API key pair (bitwardenClientId + bitwardenClientSecret).
+  # Secret-store credentials for the selected config.secretsProvider.
+  # HashiCorp Vault: supply EITHER an AppRole SecretId (with config.hashiCorpVaultRoleId) OR a Token.
+  hashiCorpVaultSecretId: ""
+  hashiCorpVaultToken: ""
+  # BitWarden: supply EITHER bitwardenApiKey OR the Organization API key pair (bitwardenClientId +
+  # bitwardenClientSecret).
   bitwardenApiKey: ""
   bitwardenClientId: ""
   bitwardenClientSecret: ""

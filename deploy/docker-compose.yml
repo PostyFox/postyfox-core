@@ -15,9 +15,10 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "guest"
   RabbitMq__Password: "guest"
-  # Secret store (Neillans.Adapters.Secrets). The local stack has no external vault, so use the
-  # in-process store. Switch to a persistent backend by setting Secrets__Provider (BitWarden |
-  # AzureKeyVault | Infisical) + that provider's Secrets__<Provider>__* options.
+  # Secret store (Neillans.Adapters.Secrets). The base local stack bundles no vault, so use the
+  # in-process store. Switch to a persistent backend by setting Secrets__Provider (HashiCorpVault |
+  # BitWarden | AzureKeyVault | Infisical) + that provider's Secrets__<Provider>__* options. (The
+  # dev/prod stacks add a bundled HashiCorp Vault and default to it — see docker-compose.dev/prod.yml.)
   Secrets__Provider: "InMemory"
   Auth__UserHeader: "X-Auth-Request-User"
   # In-app OIDC bearer validation. Issuer is the browser-facing Keycloak URL (matches the token `iss`);

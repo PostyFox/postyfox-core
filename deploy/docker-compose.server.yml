@@ -16,10 +16,18 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "${RABBITMQ_USER}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
-  # Secret store (Neillans.Adapters.Secrets). Defaults to BitWarden/VaultWarden; supply the
-  # BITWARDEN_* vars. AzureKeyVault / Infisical follow the same Secrets__<Provider>__* pattern
-  # (see README) — set SECRETS_PROVIDER accordingly and provide that provider's options.
-  Secrets__Provider: "${SECRETS_PROVIDER:-BitWarden}"
+  # Secret store (Neillans.Adapters.Secrets). Defaults to the bundled HashiCorp Vault (the `vault`
+  # service, provisioned + AppRole-wired by `vault-init`). Switch backends by setting SECRETS_PROVIDER
+  # (InMemory | BitWarden | AzureKeyVault | Infisical) and that provider's Secrets__<Provider>__*
+  # options — see README.
+  Secrets__Provider: "${SECRETS_PROVIDER:-HashiCorpVault}"
+  # HashiCorp Vault (bundled) — AppRole auth against the internal `vault` service. RoleId/SecretId
+  # are the same values vault-init pins on the AppRole, so the app authenticates with no hand-off.
+  Secrets__HashiCorpVault__VaultAddress: "${VAULT_APP_ADDR:-http://vault:8200}"
+  Secrets__HashiCorpVault__RoleId: "${VAULT_ROLE_ID:-}"
+  Secrets__HashiCorpVault__SecretId: "${VAULT_SECRET_ID:-}"
+  Secrets__HashiCorpVault__MountPoint: "${VAULT_MOUNT:-secret}"
+  Secrets__HashiCorpVault__BasePath: "${VAULT_BASE_PATH:-postyfox}"
   Secrets__BitWarden__ServerUrl: "${BITWARDEN_SERVER_URL:-}"
   Secrets__BitWarden__ApiKey: "${BITWARDEN_API_KEY:-}"
   Secrets__BitWarden__ClientId: "${BITWARDEN_CLIENT_ID:-}"
@@ -79,6 +87,58 @@ services:
       - ./otel/config.yaml:/etc/otel/config.yaml:ro
     restart: unless-stopped
 
+  # HashiCorp Vault — file storage backend + Shamir seal. Stays on the internal network (never
+  # publishes a host port, same rule as the APIs). Initialised + auto-unsealed by `vault-init`.
+  vault:
+    image: "hashicorp/vault:${VAULT_VERSION:-1.18}"
+    command: ["vault", "server", "-config=/vault/config/vault.hcl"]
+    environment:
+      VAULT_ADDR: "http://127.0.0.1:8200"
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./vault/config/vault.hcl:/vault/config/vault.hcl:ro
+      - vaultdata:/vault/file
+    healthcheck:
+      # Healthy once the API answers, whether sealed (exit 2) or unsealed (exit 0); only an
+      # unreachable server (exit 1) is unhealthy — that lets vault-init run to unseal it.
+      test: ["CMD-SHELL", "vault status >/dev/null 2>&1; s=$$?; [ $$s -eq 0 ] || [ $$s -eq 2 ]"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # Bootstrap + auto-unseal sidecar. On first boot it initialises Vault and saves the generated
+  # unseal keys + root token to the `vaultkeys` volume; thereafter it watches Vault and re-applies
+  # the saved keys whenever it is sealed, so the stack comes up unsealed unattended.
+  vault-init:
+    image: "hashicorp/vault:${VAULT_VERSION:-1.18}"
+    entrypoint: ["/bin/sh", "/usr/local/bin/vault-bootstrap.sh"]
+    environment:
+      VAULT_ADDR: "http://vault:8200"
+      VAULT_KEY_SHARES: "${VAULT_KEY_SHARES:-5}"
+      VAULT_KEY_THRESHOLD: "${VAULT_KEY_THRESHOLD:-3}"
+      # App secret-store provisioning: KV v2 mount + scoped policy + AppRole with pinned credentials.
+      # These MUST match the Secrets__HashiCorpVault__* the app uses. Provisioning is skipped unless
+      # both RoleId and SecretId are set (so pointing the app at another provider is a clean no-op).
+      VAULT_MOUNT: "${VAULT_MOUNT:-secret}"
+      VAULT_BASE_PATH: "${VAULT_BASE_PATH:-postyfox}"
+      VAULT_ROLE_ID: "${VAULT_ROLE_ID:-}"
+      VAULT_SECRET_ID: "${VAULT_SECRET_ID:-}"
+    volumes:
+      - ./vault/bootstrap.sh:/usr/local/bin/vault-bootstrap.sh:ro
+      - vaultkeys:/vault/init
+    depends_on:
+      vault: { condition: service_healthy }
+    healthcheck:
+      # Healthy only when Vault is actually unsealed (exit 0), i.e. the sidecar has done its job.
+      test: ["CMD-SHELL", "vault status >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+
   connectors-node:
     image: "${IMAGE_REPOSITORY}-connectors-node:${IMAGE_TAG}"
     environment:
@@ -112,6 +172,9 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
+      # Wait for the bundled Vault to be provisioned + unsealed (AppRole ready). Harmless when the
+      # stack is pointed at another secret store — vault/vault-init still run for both dev/prod.
+      vault-init: { condition: service_healthy }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -131,12 +194,13 @@ services:
       core-api: { condition: service_healthy }
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+      vault-init: { condition: service_healthy }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
       interval: 5s
       timeout: 3s
-      retries: 20      
+      retries: 20
     restart: unless-stopped
 
   worker:
@@ -147,6 +211,7 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
+      vault-init: { condition: service_healthy }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -218,4 +283,6 @@ services:
 volumes:
   pgdata:
   rabbitmqdata:
+  vaultdata:
+  vaultkeys:
 
