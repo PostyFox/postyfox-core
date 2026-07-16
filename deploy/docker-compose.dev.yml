@@ -16,10 +16,16 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "${RABBITMQ_USER:-guest}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
-  # Secret store (Neillans.Adapters.Secrets). Dev defaults to the in-process store; set
-  # SECRETS_PROVIDER=BitWarden (+ the BITWARDEN_* vars) for a persistent VaultWarden/BitWarden
-  # backend. AzureKeyVault / Infisical follow the same Secrets__<Provider>__* pattern (see README).
-  Secrets__Provider: "${SECRETS_PROVIDER:-InMemory}"
+  # Secret store (Neillans.Adapters.Secrets). Dev defaults to the bundled HashiCorp Vault (the
+  # `vault` service, provisioned + AppRole-wired by `vault-init`). Set SECRETS_PROVIDER=InMemory for
+  # an ephemeral store, or another provider (+ its Secrets__<Provider>__* options) — see README.
+  Secrets__Provider: "${SECRETS_PROVIDER:-HashiCorpVault}"
+  # HashiCorp Vault (bundled) — AppRole auth against the internal `vault` service.
+  Secrets__HashiCorpVault__VaultAddress: "${VAULT_APP_ADDR:-http://vault:8200}"
+  Secrets__HashiCorpVault__RoleId: "${VAULT_ROLE_ID:-}"
+  Secrets__HashiCorpVault__SecretId: "${VAULT_SECRET_ID:-}"
+  Secrets__HashiCorpVault__MountPoint: "${VAULT_MOUNT:-secret}"
+  Secrets__HashiCorpVault__BasePath: "${VAULT_BASE_PATH:-postyfox}"
   Secrets__BitWarden__ServerUrl: "${BITWARDEN_SERVER_URL:-}"
   Secrets__BitWarden__ApiKey: "${BITWARDEN_API_KEY:-}"
   Secrets__BitWarden__ClientId: "${BITWARDEN_CLIENT_ID:-}"
@@ -69,6 +75,23 @@ services:
         reservations:
           cpus: '0.5'
           memory: 256M
+
+  vault:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  vault-init:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
 
   # Only the edge publishes a host port; front it with your TLS terminator.
   oauth2-proxy:
@@ -126,4 +149,8 @@ volumes:
     name: postyfox-dev-pgdata
   rabbitmqdata:
     name: postyfox-dev-rabbitmq-data
+  vaultdata:
+    name: postyfox-dev-vault-data
+  vaultkeys:
+    name: postyfox-dev-vault-keys
 

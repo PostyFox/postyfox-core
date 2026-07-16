@@ -17,10 +17,17 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "${RABBITMQ_USER}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
-  # Secret store (Neillans.Adapters.Secrets). Production defaults to BitWarden/VaultWarden; supply
-  # the BITWARDEN_* vars. AzureKeyVault / Infisical follow the same Secrets__<Provider>__* pattern
-  # (see README) — set SECRETS_PROVIDER accordingly and provide that provider's options.
-  Secrets__Provider: "${SECRETS_PROVIDER:-BitWarden}"
+  # Secret store (Neillans.Adapters.Secrets). Production defaults to the bundled HashiCorp Vault (the
+  # `vault` service, provisioned + AppRole-wired by `vault-init`). Switch backends by setting
+  # SECRETS_PROVIDER (+ that provider's Secrets__<Provider>__* options) — see README.
+  Secrets__Provider: "${SECRETS_PROVIDER:-HashiCorpVault}"
+  # HashiCorp Vault (bundled) — AppRole auth against the internal `vault` service. RoleId/SecretId
+  # are the same values vault-init pins on the AppRole, so the app authenticates with no hand-off.
+  Secrets__HashiCorpVault__VaultAddress: "${VAULT_APP_ADDR:-http://vault:8200}"
+  Secrets__HashiCorpVault__RoleId: "${VAULT_ROLE_ID:-}"
+  Secrets__HashiCorpVault__SecretId: "${VAULT_SECRET_ID:-}"
+  Secrets__HashiCorpVault__MountPoint: "${VAULT_MOUNT:-secret}"
+  Secrets__HashiCorpVault__BasePath: "${VAULT_BASE_PATH:-postyfox}"
   Secrets__BitWarden__ServerUrl: "${BITWARDEN_SERVER_URL:-}"
   Secrets__BitWarden__ApiKey: "${BITWARDEN_API_KEY:-}"
   Secrets__BitWarden__ClientId: "${BITWARDEN_CLIENT_ID:-}"
@@ -71,6 +78,23 @@ services:
         reservations:
           cpus: '1'
           memory: 512M
+
+  vault:
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  vault-init:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
 
   # Only the edge publishes a host port; front it with your TLS terminator / load balancer. The APIs
   # are reached internally (compose DNS round-robins across replicas), so no per-replica port ranges.
@@ -147,4 +171,8 @@ volumes:
     name: postyfox-prod-pgdata
   rabbitmqdata:
     name: postyfox-prod-rabbitmq-data
+  vaultdata:
+    name: postyfox-prod-vault-data
+  vaultkeys:
+    name: postyfox-prod-vault-keys
 

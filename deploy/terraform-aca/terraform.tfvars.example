@@ -13,14 +13,21 @@ auth_oidc_issuer   = "https://keycloak.example/realms/PostyFox"
 auth_oidc_jwks_url = "https://keycloak.example/realms/PostyFox/protocol/openid-connect/certs"
 auth_oidc_audience = "oauth2-proxy"
 
-# Secret store (Neillans.Adapters.Secrets): InMemory | BitWarden | AzureKeyVault | Infisical.
-secrets_provider     = "BitWarden"
-bitwarden_server_url = "https://vault.example.com"
+# Secret store (Neillans.Adapters.Secrets): AzureKeyVault | BitWarden | InMemory | Infisical.
+# ACA defaults to Azure Key Vault — pairs naturally with the Container App's managed identity.
+secrets_provider    = "AzureKeyVault"
+azure_key_vault_uri = "https://my-vault.vault.azure.net/"
+# Leave tenant/client empty to authenticate via the Container App's managed identity; set all three
+# (incl. TF_VAR_azure_key_vault_client_secret) for service-principal auth instead.
+# azure_key_vault_tenant_id = "<tenant-id>"
+# azure_key_vault_client_id = "<client-id>"
 
 # Secrets — supply via TF_VAR_* env vars in CI, not this file.
-postgres_connection     = "Host=...;Port=5432;Database=postyfox;Username=...;Password=..."
-# BitWarden: supply EITHER bitwarden_api_key OR the Organization API key pair.
-bitwarden_api_key       = "<vaultwarden-access-token>"
+postgres_connection = "Host=...;Port=5432;Database=postyfox;Username=...;Password=..."
+# BitWarden (only when secrets_provider = "BitWarden"): supply EITHER bitwarden_api_key OR the
+# Organization API key pair.
+# bitwarden_server_url    = "https://vault.example.com"
+# bitwarden_api_key       = "<vaultwarden-access-token>"
 # bitwarden_client_id     = "<org-client-id>"
 # bitwarden_client_secret = "<org-client-secret>"
 internal_token          = "<random>"
