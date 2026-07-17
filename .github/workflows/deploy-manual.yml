@@ -162,11 +162,18 @@ jobs:
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
         run: |
-          echo "🧹 Removing stale gateway config (conf.d/*.conf is glob-included; leftover fragments would still load)..."
+          echo "🧹 Removing stale gateway config, preserving any frontend-deployed overrides (conf.d/*.conf is glob-included; leftover fragments would still load)..."
+          # The postyfox-frontend deploy drops routes/90-root.conf + upstreams/frontend.conf into this
+          # same tree to point the SPA route at its container. Back those two up, wipe core's base, and
+          # restore them after the copy so a frontend deploy survives a core redeploy.
           ssh -p ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "rm -rf ${{ env.STACK_DIR }}/gateway" || {
+            "set -e; cd ${{ env.STACK_DIR }}; \
+             rm -rf .gwbak; mkdir -p .gwbak/routes .gwbak/upstreams; \
+             cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true; \
+             cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true; \
+             rm -rf gateway" || {
             echo "❌ Failed to clean stale gateway config"
             exit 1
           }
@@ -178,8 +185,20 @@ jobs:
             deploy/rabbitmq \
             deploy/otel \
             deploy/gateway \
+            deploy/vault \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.STACK_DIR }}/ || {
             echo "❌ Failed to copy deployment files"
+            exit 1
+          }
+          echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "set -e; cd ${{ env.STACK_DIR }}; \
+             [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true; \
+             [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true; \
+             rm -rf .gwbak" || {
+            echo "❌ Failed to restore frontend gateway overrides"
             exit 1
           }
 
