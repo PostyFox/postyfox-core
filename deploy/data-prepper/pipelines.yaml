@@ -1,0 +1,23 @@
+entry-pipeline-traces:
+  source:
+    otel_trace_source:
+      ssl: false
+      port: 21890
+  sink:
+    - stdout:
+
+entry-pipeline-metrics:
+  source:
+    otel_metrics_source:
+      ssl: false
+      port: 21891
+  sink:
+    - stdout:
+
+entry-pipeline-logs:
+  source:
+    otel_logs_source:
+      ssl: false
+      port: 21892
+  sink:
+    - stdout:
