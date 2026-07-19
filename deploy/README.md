@@ -16,15 +16,18 @@ sudo nano /opt/postyfox/prod/.env     # Configure prod stack
 ```
 
 ### 3. GitHub Secrets
-Add to repository → Settings → Secrets:
+Add to repository → Settings → Secrets (required for production/manual remote deploys):
 - `DEPLOY_HOST`: server hostname
 - `DEPLOY_USER`: SSH user
 - `DEPLOY_SSH_KEY`: private SSH key
 - `DEPLOY_PORT`: (optional) SSH port
 
-### 4. GitHub Environments
+### 4. Self-hosted runner
+Install a Linux self-hosted GitHub Actions runner on the dev deployment host. Dev deploy jobs run there directly; production still uses SSH from GitHub-hosted runners.
+
+### 5. GitHub Environments
 Create in repository → Settings → Environments:
-- `development`: auto-deploy from main
+- `development`: auto-deploy from main on the self-hosted runner
 - `production`: requires approval for manual deployment
 
 ## Deployment Flow
@@ -34,7 +37,7 @@ Push to main
     ↓
 platform-ci.yml: test, build, push images
     ↓
-    ├─→ Dev: auto-deploy ✅
+    ├─→ Dev: self-hosted runner deploy ✅
     │
     └─→ Prod: wait for approval → deploy ⏳
 ```
@@ -43,7 +46,8 @@ platform-ci.yml: test, build, push images
 
 | File | Purpose |
 |------|---------|
-| `.github/workflows/deploy.yml` | Deployment workflow (GitHub Actions) |
+| `.github/workflows/deploy.yml` | Auto deploy: dev on self-hosted runner, prod via SSH |
+| `.github/workflows/deploy-manual.yml` | Manual deploy: dev on self-hosted runner, prod via SSH |
 | `deploy/docker-compose.server.yml` | Deployment base composition |
 | `deploy/docker-compose.dev.yml` | Dev overrides (isolation, lighter resources) |
 | `deploy/docker-compose.prod.yml` | Prod overrides (replication, HA, monitoring) |
@@ -57,6 +61,7 @@ platform-ci.yml: test, build, push images
 
 ### Development
 - Auto-deploy on every successful build
+- Runs directly on a self-hosted Linux GitHub Actions runner
 - Single instances of each service
 - Shared auth/storage (external Keycloak, RustFS)
 - Isolated postgres & rabbitmq (dev-specific)
@@ -257,4 +262,3 @@ ssh deploy@server "cd /opt/postyfox/prod && \
 - [Full Deployment Guide](./DEPLOYMENT.md)
 - [Architecture](../docs/ARCHITECTURE.md)
 - [Local Development](../README.md#run-locally)
-

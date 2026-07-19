@@ -49,12 +49,12 @@ jobs:
           echo "✅ Required deployment secrets are configured"
 
   deploy-dev:
-    # Always deploy dev when images are successfully built
+    # Runs on the self-hosted dev agent; production still deploys over SSH.
     needs: check-prerequisites
     if: |
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, D2]
     environment: development
     steps:
       - uses: actions/checkout@v7
@@ -66,102 +66,72 @@ jobs:
         run: |
           echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Prepare SSH
+      - name: Determine stack dir
+        id: stack
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo "dir=/opt/postyfox/dev" >> "$GITHUB_OUTPUT"
 
       - name: Copy deployment files
         env:
-          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
-          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          STACK_DIR: ${{ steps.stack.outputs.dir }}
         run: |
           echo "🧹 Removing stale gateway config, preserving any frontend-deployed overrides (conf.d/*.conf is glob-included; leftover fragments would still load)..."
           # The postyfox-frontend deploy drops routes/90-root.conf + upstreams/frontend.conf into this
           # same tree to point the SPA route at its container. Back those two up, wipe core's base, and
           # restore them after the copy so a frontend deploy survives a core redeploy.
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "set -e; cd /opt/postyfox/dev; \
-             rm -rf .gwbak; mkdir -p .gwbak/routes .gwbak/upstreams; \
-             cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true; \
-             cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true; \
-             rm -rf gateway" || {
-            echo "❌ Failed to clean stale gateway config"
-            exit 1
-          }
+          cd "$STACK_DIR"
+          rm -rf .gwbak
+          mkdir -p .gwbak/routes .gwbak/upstreams
+          cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true
+          cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true
+          rm -rf gateway
           echo "📦 Copying deployment files to dev stack..."
-          scp -P ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            -r deploy/docker-compose.server.yml \
-            deploy/docker-compose.dev.yml \
-            deploy/rabbitmq \
-            deploy/otel \
-            deploy/gateway \
-            deploy/vault \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/dev/ || {
-            echo "❌ Failed to copy deployment files"
-            exit 1
-          }
+          cp -a "$GITHUB_WORKSPACE"/deploy/docker-compose.server.yml \
+            "$GITHUB_WORKSPACE"/deploy/docker-compose.dev.yml \
+            "$GITHUB_WORKSPACE"/deploy/rabbitmq \
+            "$GITHUB_WORKSPACE"/deploy/otel \
+            "$GITHUB_WORKSPACE"/deploy/gateway \
+            "$GITHUB_WORKSPACE"/deploy/vault \
+            "$STACK_DIR"/
           echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "set -e; cd /opt/postyfox/dev; \
-             [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true; \
-             [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true; \
-             rm -rf .gwbak" || {
-            echo "❌ Failed to restore frontend gateway overrides"
-            exit 1
-          }
+          [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true
+          [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true
+          rm -rf .gwbak
 
       - name: Deploy dev stack
         env:
           IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          STACK_DIR: ${{ steps.stack.outputs.dir }}
         run: |
           echo "🚀 Deploying to dev stack..."
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "set -e; \
-            cd /opt/postyfox/dev && \
-            echo '📋 Checking .env file exists...' && \
-            [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }; \
-            source .env 2>/dev/null || true; \
-            export IMAGE_REPOSITORY=${{ env.IMAGE_REPOSITORY }} && \
-            export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
-            export COMPOSE_PROJECT_NAME=postyfox-dev && \
-            echo '🔄 Pulling latest images...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
-            echo '⬆️ Updating services...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
-            echo '🔄 Reloading gateway (nginx.conf + conf.d are bind-mounted; up -d alone does not pick up content changes)...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
-            echo '✅ Dev stack deployed successfully' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps" || {
-            echo "❌ Dev deployment failed"
-            exit 1
-          }
+          cd "$STACK_DIR"
+          echo '📋 Checking .env file exists...'
+          [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }
+          source .env 2>/dev/null || true
+          export IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"
+          export IMAGE_TAG="${IMAGE_TAG}"
+          export COMPOSE_PROJECT_NAME=postyfox-dev
+          echo '🔄 Pulling latest images...'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }
+          echo '⬆️ Updating services...'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d || { echo '❌ Failed to start services'; exit 1; }
+          echo '🔄 Reloading gateway (nginx.conf + conf.d are bind-mounted; up -d alone does not pick up content changes)...'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }
+          echo '✅ Dev stack deployed successfully'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps
 
       - name: Health check
+        env:
+          STACK_DIR: ${{ steps.stack.outputs.dir }}
         run: |
           echo "🏥 Running health checks..."
           sleep 10
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "cd /opt/postyfox/dev && \
-            docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
-            echo '⚠️ Warning: Some services may not be healthy yet'; }; \
-            true"
-
-      - name: Cleanup SSH
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+          cd "$STACK_DIR"
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || {
+            echo '⚠️ Warning: Some services may not be healthy yet'
+          }
+          true
 
       - name: Deployment summary
         if: success()
@@ -324,7 +294,6 @@ jobs:
           - Check external service connectivity (Keycloak, RustFS)
           - Verify backups are in place
           EOF
-
 
 
 

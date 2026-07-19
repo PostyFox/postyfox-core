@@ -110,11 +110,12 @@ jobs:
             PROJECT=${{ matrix.project }}
             ASSEMBLY=${{ matrix.assembly }}
 
-  deploy-manual:
+  deploy-development:
     needs: [validate-confirmation, build-images]
-    name: Deploy ${{ github.event.inputs.environment }}
-    runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    if: github.event.inputs.environment == 'development'
+    name: Deploy development
+    runs-on: [self-hosted, linux, D2]
+    environment: development
     steps:
       - uses: actions/checkout@v7
         with:
@@ -128,21 +129,124 @@ jobs:
           else
             TAG="${{ github.event.inputs.image_tag }}"
           fi
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $TAG"
+
+      - name: Resolve image repository
+        id: image
+        run: |
+          echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve stack settings
+        id: stack
+        run: |
+          echo "directory=dev" >> "$GITHUB_OUTPUT"
+          echo "project=postyfox-dev" >> "$GITHUB_OUTPUT"
+
+      - name: Copy deployment files
+        env:
+          STACK_DIR: /opt/postyfox/dev
+        run: |
+          echo "🧹 Removing stale gateway config, preserving any frontend-deployed overrides (conf.d/*.conf is glob-included; leftover fragments would still load)..."
+          # The postyfox-frontend deploy drops routes/90-root.conf + upstreams/frontend.conf into this
+          # same tree to point the SPA route at its container. Back those two up, wipe core's base, and
+          # restore them after the copy so a frontend deploy survives a core redeploy.
+          cd "$STACK_DIR"
+          rm -rf .gwbak
+          mkdir -p .gwbak/routes .gwbak/upstreams
+          cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true
+          cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true
+          rm -rf gateway
+          echo "📦 Copying deployment files to dev stack..."
+          cp -a "$GITHUB_WORKSPACE"/deploy/docker-compose.server.yml \
+            "$GITHUB_WORKSPACE"/deploy/docker-compose.dev.yml \
+            "$GITHUB_WORKSPACE"/deploy/rabbitmq \
+            "$GITHUB_WORKSPACE"/deploy/otel \
+            "$GITHUB_WORKSPACE"/deploy/gateway \
+            "$GITHUB_WORKSPACE"/deploy/vault \
+            "$STACK_DIR"/
+          echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
+          [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true
+          [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true
+          rm -rf .gwbak
+
+      - name: Deploy dev stack
+        env:
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          STACK_DIR: /opt/postyfox/dev
+        run: |
+          echo "🚀 Manually deploying development stack..."
+          echo "Image: $IMAGE_REPOSITORY:${IMAGE_TAG}"
+          cd "$STACK_DIR"
+          echo '📋 Checking .env file exists...'
+          [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }
+          source .env 2>/dev/null || true
+          export IMAGE_REPOSITORY="$IMAGE_REPOSITORY"
+          export IMAGE_TAG="$IMAGE_TAG"
+          export COMPOSE_PROJECT_NAME=postyfox-dev
+          echo '🔄 Pulling latest images...'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }
+          echo '⬆️ Updating services...'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d || { echo '❌ Failed to start services'; exit 1; }
+          echo '🔄 Reloading gateway (nginx.conf + conf.d are bind-mounted; up -d alone does not pick up content changes)...'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }
+          echo '✅ Deployment completed'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps
+
+      - name: Health check
+        env:
+          STACK_DIR: /opt/postyfox/dev
+        run: |
+          echo "🏥 Running health checks..."
+          sleep 10
+          cd "$STACK_DIR"
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || {
+            echo '⚠️ Warning: Services may still be starting'
+          }
+          true
+
+      - name: Summary
+        if: success()
+        run: |
+          cat << 'EOF'
+          ✅ Manual deployment completed!
+
+          📊 Deployment Details:
+          - Environment: development
+          - Image Tag: ${{ steps.tag.outputs.tag }}
+          - Triggered by: ${{ github.actor }}
+          - Runner: self-hosted Linux
+          - Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+
+  deploy-production:
+    needs: [validate-confirmation, build-images]
+    if: github.event.inputs.environment == 'production'
+    name: Deploy production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.image_tag || github.ref }}
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ -z "${{ github.event.inputs.image_tag }}" ]; then
+            TAG=$(git rev-parse HEAD)
+          else
+            TAG="${{ github.event.inputs.image_tag }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Image tag: $TAG"
 
       - name: Resolve stack settings
         id: stack
         run: |
-          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
-            echo "suffix=prod" >> "$GITHUB_OUTPUT"
-            echo "directory=prod" >> "$GITHUB_OUTPUT"
-            echo "project=postyfox-prod" >> "$GITHUB_OUTPUT"
-          else
-            echo "suffix=dev" >> "$GITHUB_OUTPUT"
-            echo "directory=dev" >> "$GITHUB_OUTPUT"
-            echo "project=postyfox-dev" >> "$GITHUB_OUTPUT"
-          fi
+          echo "directory=prod" >> "$GITHUB_OUTPUT"
+          echo "project=postyfox-prod" >> "$GITHUB_OUTPUT"
 
       - name: Resolve image repository
         id: image
@@ -158,9 +262,7 @@ jobs:
 
       - name: Copy deployment files
         env:
-          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
-          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-          STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
+          STACK_DIR: /opt/postyfox/prod
         run: |
           echo "🧹 Removing stale gateway config, preserving any frontend-deployed overrides (conf.d/*.conf is glob-included; leftover fragments would still load)..."
           # The postyfox-frontend deploy drops routes/90-root.conf + upstreams/frontend.conf into this
@@ -169,7 +271,7 @@ jobs:
           ssh -p ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "set -e; cd ${{ env.STACK_DIR }}; \
+            "set -e; cd $STACK_DIR; \
              rm -rf .gwbak; mkdir -p .gwbak/routes .gwbak/upstreams; \
              cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true; \
              cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true; \
@@ -177,16 +279,16 @@ jobs:
             echo "❌ Failed to clean stale gateway config"
             exit 1
           }
-          echo "📦 Copying deployment files to ${{ github.event.inputs.environment }} stack..."
+          echo "📦 Copying deployment files to prod stack..."
           scp -P ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
             -r deploy/docker-compose.server.yml \
-            deploy/docker-compose.${{ steps.stack.outputs.suffix }}.yml \
+            deploy/docker-compose.prod.yml \
             deploy/rabbitmq \
             deploy/otel \
             deploy/gateway \
             deploy/vault \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.STACK_DIR }}/ || {
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
             echo "❌ Failed to copy deployment files"
             exit 1
           }
@@ -194,7 +296,7 @@ jobs:
           ssh -p ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "set -e; cd ${{ env.STACK_DIR }}; \
+            "set -e; cd $STACK_DIR; \
              [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true; \
              [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true; \
              rm -rf .gwbak" || {
@@ -202,22 +304,18 @@ jobs:
             exit 1
           }
 
-      - name: Deploy ${{ github.event.inputs.environment }} stack
+      - name: Deploy prod stack
         env:
           IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           STACK_NAME: ${{ steps.stack.outputs.project }}
-          STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
-          COMPOSE_SUFFIX: ${{ steps.stack.outputs.suffix }}
         run: |
-          echo "🚀 Manually deploying ${{ github.event.inputs.environment }} stack..."
-          echo "Image: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}"
-          
+          echo "🚀 Deploying to prod stack (⚠️ PRODUCTION)..."
           ssh -p ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
             "set -e; \
-            cd ${{ env.STACK_DIR }} && \
+            cd /opt/postyfox/prod && \
             echo '📋 Checking .env file exists...' && \
             [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }; \
             source .env 2>/dev/null || true; \
@@ -225,30 +323,29 @@ jobs:
             export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
             export COMPOSE_PROJECT_NAME=${{ env.STACK_NAME }} && \
             echo '🔄 Pulling latest images...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
-            echo '⬆️ Updating services...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            echo '⬆️ Updating services (backup your data first!)...' && \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d || { echo '❌ Failed to start services'; exit 1; }; \
             echo '🔄 Reloading gateway (nginx.conf + conf.d are bind-mounted; up -d alone does not pick up content changes)...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
-            echo '✅ Deployment completed' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps" || {
-            echo "❌ Deployment failed"
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
+            echo '✅ Prod stack deployed successfully' && \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps" || {
+            echo "❌ Prod deployment failed"
             exit 1
           }
 
       - name: Health check
         env:
-          STACK_DIR: /opt/postyfox/${{ steps.stack.outputs.directory }}
-          COMPOSE_SUFFIX: ${{ steps.stack.outputs.suffix }}
+          STACK_DIR: /opt/postyfox/prod
         run: |
           echo "🏥 Running health checks..."
           sleep 15
           ssh -p ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "cd ${{ env.STACK_DIR }} && \
-            docker compose -f docker-compose.server.yml -f docker-compose.${{ env.COMPOSE_SUFFIX }}.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || { \
-            echo '⚠️ Warning: Services may still be starting'; }; \
+            "cd $STACK_DIR && \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps | grep -E '(core-api|post-api|worker)' | grep -E '(Up|healthy)' || { \
+            echo '⚠️ Warning: Some services may not be healthy yet'; }; \
             true"
 
       - name: Cleanup SSH
@@ -256,15 +353,14 @@ jobs:
         run: rm -f ~/.ssh/deploy_key
 
       - name: Summary
+        if: success()
         run: |
           cat << 'EOF'
           ✅ Manual deployment completed!
           
           📊 Deployment Details:
-          - Environment: ${{ github.event.inputs.environment }}
+          - Environment: production
           - Image Tag: ${{ steps.tag.outputs.tag }}
           - Triggered by: ${{ github.actor }}
           - Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EOF
-
-
