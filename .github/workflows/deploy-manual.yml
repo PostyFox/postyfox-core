@@ -161,10 +161,15 @@ jobs:
           cp -a "$GITHUB_WORKSPACE"/deploy/docker-compose.server.yml \
             "$GITHUB_WORKSPACE"/deploy/docker-compose.dev.yml \
             "$GITHUB_WORKSPACE"/deploy/rabbitmq \
-            "$GITHUB_WORKSPACE"/deploy/otel \
             "$GITHUB_WORKSPACE"/deploy/gateway \
             "$GITHUB_WORKSPACE"/deploy/vault \
             "$STACK_DIR"/
+          if [ ! -d "$STACK_DIR/otel" ]; then
+            echo "📦 otel directory not found in dev stack; copying default otel config..."
+            cp -a "$GITHUB_WORKSPACE"/deploy/otel "$STACK_DIR"/
+          else
+            echo "⏭️ otel directory already exists in dev stack; skipping copy."
+          fi
           echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
           [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true
           [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true
@@ -285,13 +290,31 @@ jobs:
             -r deploy/docker-compose.server.yml \
             deploy/docker-compose.prod.yml \
             deploy/rabbitmq \
-            deploy/otel \
             deploy/gateway \
             deploy/vault \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
             echo "❌ Failed to copy deployment files"
             exit 1
           }
+          REMOTE_OTEL_MISSING=$(ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "if [ -d $STACK_DIR/otel ]; then echo no; else echo yes; fi") || {
+            echo "❌ Failed to determine whether otel directory exists on prod stack"
+            exit 1
+          }
+          if [ "$REMOTE_OTEL_MISSING" = "yes" ]; then
+            echo "📦 otel directory not found in prod stack; copying default otel config..."
+            scp -P ${{ env.DEPLOY_PORT }} \
+              -i ~/.ssh/deploy_key \
+              -r deploy/otel \
+              ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
+              echo "❌ Failed to copy otel directory"
+              exit 1
+            }
+          else
+            echo "⏭️ otel directory already exists in prod stack; skipping copy."
+          fi
           echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
           ssh -p ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
