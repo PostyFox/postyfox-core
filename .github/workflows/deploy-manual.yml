@@ -114,7 +114,7 @@ jobs:
     needs: [validate-confirmation, build-images]
     if: github.event.inputs.environment == 'development'
     name: Deploy development
-    runs-on: [self-hosted, D2]
+    runs-on: [self-hosted]
     environment: development
     steps:
       - uses: actions/checkout@v7
