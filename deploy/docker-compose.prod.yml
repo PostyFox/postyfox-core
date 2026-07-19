@@ -166,6 +166,16 @@ services:
           cpus: '0.5'
           memory: 256M
 
+  data-prepper:
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
 volumes:
   pgdata:
     name: postyfox-prod-pgdata
@@ -175,4 +185,3 @@ volumes:
     name: postyfox-prod-vault-data
   vaultkeys:
     name: postyfox-prod-vault-keys
-

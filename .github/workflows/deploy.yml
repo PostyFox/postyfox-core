@@ -98,6 +98,12 @@ jobs:
           else
             echo "⏭️ otel directory already exists in dev stack; skipping copy."
           fi
+          if [ ! -d "$STACK_DIR/data-prepper" ]; then
+            echo "📦 data-prepper directory not found in dev stack; copying default data-prepper config..."
+            cp -a "$GITHUB_WORKSPACE"/deploy/data-prepper "$STACK_DIR"/
+          else
+            echo "⏭️ data-prepper directory already exists in dev stack; skipping copy."
+          fi
           echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
           [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true
           [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true
@@ -235,6 +241,25 @@ jobs:
           else
             echo "⏭️ otel directory already exists in prod stack; skipping copy."
           fi
+          REMOTE_DATA_PREPPER_MISSING=$(ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "if [ -d /opt/postyfox/prod/data-prepper ]; then echo no; else echo yes; fi") || {
+            echo "❌ Failed to determine whether data-prepper directory exists on prod stack"
+            exit 1
+          }
+          if [ "$REMOTE_DATA_PREPPER_MISSING" = "yes" ]; then
+            echo "📦 data-prepper directory not found in prod stack; copying default data-prepper config..."
+            scp -P ${{ env.DEPLOY_PORT }} \
+              -i ~/.ssh/deploy_key \
+              -r deploy/data-prepper \
+              ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
+              echo "❌ Failed to copy data-prepper directory"
+              exit 1
+            }
+          else
+            echo "⏭️ data-prepper directory already exists in prod stack; skipping copy."
+          fi
           echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
           ssh -p ${{ env.DEPLOY_PORT }} \
             -i ~/.ssh/deploy_key \
@@ -317,5 +342,4 @@ jobs:
           - Check external service connectivity (Keycloak, RustFS)
           - Verify backups are in place
           EOF
-
 

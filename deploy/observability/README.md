@@ -8,9 +8,13 @@ deploying into Azure, you can pipe the information to **Azure Monitor** / **Appl
 ## Pipeline
 
 ```
-services ──OTLP──▶ OpenTelemetry Collector ──▶ OpenSearch (central)
-                                              └▶ OpenSearch Dashboards
+services ──OTLP──▶ OpenTelemetry Collector ──OTLP──▶ Data Prepper ──▶ OpenSearch (central)
 ```
+
+The compose stack now includes both:
+
+- `deploy/otel/config.yaml` (collector receives OTLP from services and forwards to Data Prepper)
+- `deploy/data-prepper/pipelines.yaml` (Data Prepper OTEL trace/metrics/log sources)
 
 Two common ways to land OTLP data in OpenSearch:
 
@@ -34,9 +38,9 @@ service:
     metrics: { receivers: [otlp], processors: [batch], exporters: [opensearch] }
 ```
 
-Swap the compose collector's debug exporter (`deploy/otel/config.yaml`) for the above when wiring
-the real cluster. Dashboards/queries live centrally in OpenSearch Dashboards, so none are shipped
-here.
+Swap the compose defaults (`deploy/otel/config.yaml` and `deploy/data-prepper/pipelines.yaml`) for
+your central OpenSearch settings when wiring the real cluster. Dashboards/queries live centrally in
+OpenSearch Dashboards, so none are shipped here.
 
 ## Health / readiness
 

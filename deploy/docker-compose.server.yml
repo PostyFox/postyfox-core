@@ -85,6 +85,15 @@ services:
     command: ["--config=/etc/otel/config.yaml"]
     volumes:
       - ./otel/config.yaml:/etc/otel/config.yaml:ro
+    depends_on:
+      data-prepper: { condition: service_started }
+    restart: unless-stopped
+
+  data-prepper:
+    image: opensearchproject/data-prepper:latest
+    volumes:
+      - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml:ro
+      - ./data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml:ro
     restart: unless-stopped
 
   # HashiCorp Vault — file storage backend + Shamir seal. Stays on the internal network (never
@@ -285,4 +294,3 @@ volumes:
   rabbitmqdata:
   vaultdata:
   vaultkeys:
-
