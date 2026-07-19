@@ -54,7 +54,7 @@ jobs:
     if: |
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push'
-    runs-on: [self-hosted, D2]
+    runs-on: [self-hosted]
     environment: development
     steps:
       - uses: actions/checkout@v7
