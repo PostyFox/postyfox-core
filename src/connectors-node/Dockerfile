@@ -32,4 +32,6 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 
 EXPOSE 8090
-CMD ["node", "dist/index.js"]
+# --import registers OpenTelemetry auto-instrumentation (traces/metrics/logs) before app code.
+# Exporter/endpoint/service-name come from OTEL_* env (set in docker-compose). No-op if unset.
+CMD ["node", "--import", "@opentelemetry/auto-instrumentations-node/register", "dist/index.js"]

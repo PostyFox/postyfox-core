@@ -1,17 +1,42 @@
 # OpenTelemetry Collector — DEPLOYED stack (docker-compose.server.yml + dev/prod overrides).
 #
-# Forwards OTLP to the CENTRAL OpenSearch Data Prepper, which owns the OpenSearch write path
-# (Observability plugin schema, service maps, index templates, credentials + certs). This edge
-# collector holds NO OpenSearch secrets; its job is to REDUCE what crosses the wire — batching,
-# gzip compression, and health-check filtering — before handing off to the central instance.
+# Forwards OTLP to the CENTRAL OpenSearch Data Prepper, which owns the OpenSearch write path.
+# This edge collector: (1) receives OTLP from the apps, (2) scrapes infra Prometheus endpoints
+# (rabbitmq, oauth2-proxy), (3) tails Docker container logs for infra services, (4) stamps every
+# signal with deployment.environment/cluster so it's filterable, then reduces + forwards.
 #
-# Central host is env-driven (set OTEL_CENTRAL_HOST in the env file). Data Prepper exposes one
-# OTLP source per signal on the standard ports: traces 21890, metrics 21891, logs 21892.
+# Env-driven: OTEL_CENTRAL_HOST (central DP host), DEPLOY_ENV (dev/prod), DEPLOY_CLUSTER.
 receivers:
   otlp:
     protocols:
       grpc: { endpoint: 0.0.0.0:4317 }
       http: { endpoint: 0.0.0.0:4318 }
+
+  # Infra metrics: scrape Prometheus endpoints. rabbitmq_prometheus plugin (:15692) and
+  # oauth2-proxy metrics endpoint (:44180) must be enabled — see docker-compose.server.yml.
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: rabbitmq
+          scrape_interval: 30s
+          static_configs: [{ targets: ["rabbitmq:15692"] }]
+        - job_name: oauth2-proxy
+          scrape_interval: 30s
+          static_configs: [{ targets: ["oauth2-proxy:44180"] }]
+
+  # Infra logs: tail Docker's container stdout/stderr json logs. Captures nginx (gateway/frontend),
+  # oauth2-proxy, rabbitmq, postgres — anything not already emitting OTLP. Requires the host's
+  # docker containers dir mounted read-only into the collector (see compose). NOTE: docker-compose
+  # container *names* aren't in the log path, so infra logs are tagged by container.id; filter by
+  # that (or switch to per-service file logging for friendly names).
+  filelog/containers:
+    include: ["/var/lib/docker/containers/*/*-json.log"]
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: container
+        format: docker
+        add_metadata_from_filepath: true
 
 processors:
   # Guardrail: keep the collector from ballooning if telemetry spikes. Must run first.
@@ -19,6 +44,12 @@ processors:
     check_interval: 1s
     limit_percentage: 80
     spike_limit_percentage: 25
+  # Stamp environment + cluster on EVERY signal so OpenSearch can filter by them.
+  # Lands as resource.attributes.deployment@environment / deployment@cluster.
+  resource/env:
+    attributes:
+      - { key: deployment.environment, value: "${env:DEPLOY_ENV:-dev}", action: upsert }
+      - { key: deployment.cluster, value: "${env:DEPLOY_CLUSTER:-postyfox}", action: upsert }
   # Drop health-check spans — pure noise, never worth shipping to the central cluster.
   filter/healthchecks:
     error_mode: ignore
@@ -34,10 +65,6 @@ processors:
     send_batch_max_size: 2048
 
   # ── Optional volume reducer (uncomment the processor AND add it to the traces pipeline) ─────────
-  # Tail sampling MUST live here in the collector — it needs to see whole traces before fan-out.
-  # Keeps every error and every slow trace; samples the rest. Service maps / RED metrics built at
-  # the centre become statistical when this is on; add the `spanmetrics` connector if you need exact
-  # metrics alongside sampled traces.
   # tail_sampling:
   #   decision_wait: 10s
   #   policies:
@@ -52,7 +79,7 @@ exporters:
     tls:
       insecure: true            # internal-network hop (plaintext). For real TLS, see below.
       # insecure: false
-      # ca_file: /etc/otel/certs/opensearch-ca.pem   # mount the CA that signed the Data Prepper cert
+      # ca_file: /etc/otel/certs/opensearch-ca.pem
   otlp/metrics:
     endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21891"
     compression: gzip
@@ -64,7 +91,7 @@ exporters:
 
 service:
   pipelines:
-    # To enable tail sampling, add `tail_sampling` to the traces processors (after filter, before batch).
-    traces:  { receivers: [otlp], processors: [memory_limiter, filter/healthchecks, batch], exporters: [otlp/traces] }
-    metrics: { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlp/metrics] }
-    logs:    { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlp/logs] }
+    # resource/env runs on every pipeline so env/cluster tags apply to app AND infra signals.
+    traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp/traces] }
+    metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, batch], exporters: [otlp/metrics] }
+    logs:    { receivers: [otlp, filelog/containers], processors: [memory_limiter, resource/env, batch], exporters: [otlp/logs] }

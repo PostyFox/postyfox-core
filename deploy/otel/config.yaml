@@ -16,6 +16,11 @@ processors:
     check_interval: 1s
     limit_percentage: 80
     spike_limit_percentage: 25
+  # Stamp environment/cluster so local telemetry matches the deployed shape.
+  resource/env:
+    attributes:
+      - { key: deployment.environment, value: "${env:DEPLOY_ENV:-local}", action: upsert }
+      - { key: deployment.cluster, value: "${env:DEPLOY_CLUSTER:-postyfox}", action: upsert }
   # Drop health-check spans before they hit the logs.
   filter/healthchecks:
     error_mode: ignore
@@ -31,6 +36,6 @@ exporters:
 
 service:
   pipelines:
-    traces:  { receivers: [otlp], processors: [memory_limiter, filter/healthchecks, batch], exporters: [debug] }
-    metrics: { receivers: [otlp], processors: [memory_limiter, batch], exporters: [debug] }
-    logs:    { receivers: [otlp], processors: [memory_limiter, batch], exporters: [debug] }
+    traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [debug] }
+    metrics: { receivers: [otlp], processors: [memory_limiter, resource/env, batch], exporters: [debug] }
+    logs:    { receivers: [otlp], processors: [memory_limiter, resource/env, batch], exporters: [debug] }

@@ -49,10 +49,25 @@ Traffic-reduction levers, all in `config.central.yaml`:
 Run one shared Data Prepper next to the central cluster. Example `pipelines.yaml` landing data in the
 Observability-plugin indices:
 
+`otel_traces` and `service_map` are BOTH peer-forwarding processors, and Data Prepper allows only
+one peer-forwarder per connected-pipeline graph. So traces use the canonical **three-pipeline**
+layout: an entry pipeline with the source only (no processor) fans out to two downstream pipelines,
+each holding exactly one of those processors. (Putting `otel_traces` in the entry pipeline fails with
+`Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type`.)
+
 ```yaml
-entry-pipeline-traces:
+# ── Traces ───────────────────────────────────────────────────────────────────────
+# Entry: OTLP source only, fans out. NO processor here (see note above).
+otel-trace-pipeline:
   source:
     otlp_traces: { ssl: false, port: 21890 }   # front with TLS at the network edge if exposed
+  sink:
+    - pipeline: { name: raw-trace-pipeline }
+    - pipeline: { name: service-map-pipeline }
+
+raw-trace-pipeline:
+  source:
+    pipeline: { name: otel-trace-pipeline }
   processor:
     - otel_traces:            # normalise spans into the OTel-standard raw-trace schema
   sink:
@@ -63,9 +78,10 @@ entry-pipeline-traces:
         cert: "/usr/share/data-prepper/certs/opensearch-ca.pem"   # the cluster's CA (public cert)
         # insecure: true                        # dev-only: skip TLS verification instead of a CA
         index_type: trace-analytics-raw         # otel-v1-apm-span-* — powers Trace Analytics
+
 service-map-pipeline:
   source:
-    pipeline: { name: entry-pipeline-traces }
+    pipeline: { name: otel-trace-pipeline }
   processor:
     - service_map:            # builds the service map from the same span stream
   sink:
@@ -76,6 +92,7 @@ service-map-pipeline:
         cert: "/usr/share/data-prepper/certs/opensearch-ca.pem"
         index_type: trace-analytics-service-map
 
+# ── Metrics ──────────────────────────────────────────────────────────────────────
 entry-pipeline-metrics:
   source: { otlp_metrics: { ssl: false, port: 21891 } }
   sink:
@@ -86,6 +103,7 @@ entry-pipeline-metrics:
         cert: "/usr/share/data-prepper/certs/opensearch-ca.pem"
         index: otel-metrics-%{yyyy.MM.dd}
 
+# ── Logs ─────────────────────────────────────────────────────────────────────────
 entry-pipeline-logs:
   source: { otlp_logs: { ssl: false, port: 21892 } }
   sink:

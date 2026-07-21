@@ -94,6 +94,13 @@ services:
       OBJECT_STORE_SECRET_KEY: "rustfsadmin"
       OBJECT_STORE_BUCKET: "postyfox"
       OBJECT_STORE_FORCE_PATH_STYLE: "true"
+      # OpenTelemetry (auto-instrumentation via --import). OTLP/HTTP → local collector :4318.
+      OTEL_SERVICE_NAME: "postyfox-connectors-node"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_LOGS_EXPORTER: "otlp"
+      # Skip cloud resource detectors — avoids metadata-lookup timeouts at startup.
+      OTEL_NODE_RESOURCE_DETECTORS: "env,host,os,serviceinstance,process"
       # Tumblr OAuth1 app (consumer) credentials — enable the "Connect with Tumblr" flow.
       TUMBLR_CONSUMER_KEY: "${TUMBLR_CONSUMER_KEY:-}"
       TUMBLR_CONSUMER_SECRET: "${TUMBLR_CONSUMER_SECRET:-}"
