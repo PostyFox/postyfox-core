@@ -30,7 +30,8 @@ receivers:
   # root read-only (see compose) and point the receiver at it with root_path; it uses the host's
   # journalctl via that path. Apps ship their logs via OTLP, not here.
   journald:
-    root_path: /host
+    root_path: /host                       # chroot into the mounted host root...
+    journalctl_path: /usr/bin/journalctl    # ...then run the host's journalctl (path is inside the chroot)
     start_at: end
 
 processors:
@@ -68,18 +69,18 @@ processors:
   #     - { name: sample-rest, type: probabilistic, probabilistic: { sampling_percentage: 10 } }
 
 exporters:
-  otlp/traces:
+  otlp_grpc/traces:
     endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21890"
     compression: gzip
     tls:
       insecure: true            # internal-network hop (plaintext). For real TLS, see below.
       # insecure: false
       # ca_file: /etc/otel/certs/opensearch-ca.pem
-  otlp/metrics:
+  otlp_grpc/metrics:
     endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21891"
     compression: gzip
     tls: { insecure: true }
-  otlp/logs:
+  otlp_grpc/logs:
     endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21892"
     compression: gzip
     tls: { insecure: true }
@@ -87,6 +88,6 @@ exporters:
 service:
   pipelines:
     # resource/env runs on every pipeline so env/cluster tags apply to app AND infra signals.
-    traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp/traces] }
-    metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, batch], exporters: [otlp/metrics] }
-    logs:    { receivers: [otlp, journald], processors: [memory_limiter, resource/env, batch], exporters: [otlp/logs] }
+    traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp_grpc/traces] }
+    metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, batch], exporters: [otlp_grpc/metrics] }
+    logs:    { receivers: [otlp, journald], processors: [memory_limiter, resource/env, batch], exporters: [otlp_grpc/logs] }
