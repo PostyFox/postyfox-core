@@ -33,6 +33,19 @@ receivers:
     root_path: /host                       # chroot into the mounted host root...
     journalctl_path: /usr/bin/journalctl    # ...then run the host's journalctl (path is inside the chroot)
     start_at: end
+    operators:
+      # The journald driver tags container stdout with CONTAINER_NAME/CONTAINER_ID. Drop everything
+      # else (Podman daemon events, systemd units, host noise) that lacks both.
+      - type: filter
+        expr: 'body.CONTAINER_NAME == nil && body.CONTAINER_ID == nil'
+      # Name the source so infra logs are filterable like a service (e.g. postyfox-dev-rabbitmq-1).
+      - type: move
+        from: body.CONTAINER_NAME
+        to: resource["service.name"]
+      # Replace the raw journal-entry map with the actual log line.
+      - type: move
+        from: body.MESSAGE
+        to: body
 
 processors:
   # Guardrail: keep the collector from ballooning if telemetry spikes. Must run first.
