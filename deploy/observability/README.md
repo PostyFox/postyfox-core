@@ -1,50 +1,138 @@
 # Observability
 
-All four services emit **OpenTelemetry** traces + metrics over **OTLP** to the endpoint in
-`OTEL_EXPORTER_OTLP_ENDPOINT`. In the compose stack an `otel-collector` receives OTLP; in real
-environments the collector forwards telemetry a the **central OpenSearch** cluster, or if you are
-deploying into Azure, you can pipe the information to **Azure Monitor** / **Application Insights**.
+All services emit **OpenTelemetry** traces, metrics, and logs over **OTLP** to the endpoint in
+`OTEL_EXPORTER_OTLP_ENDPOINT` (`OTEL_ENDPOINT` in the env files) — always the *local* edge
+collector. What happens after the edge collector depends on the stack:
 
-## Pipeline
+- **Bare local stack** (`docker-compose.yml`): the collector prints telemetry to its own logs, so
+  the stack is observable with no external dependency — `docker compose logs otel-collector`.
+- **Deployed stacks** (`docker-compose.server.yml` + dev/prod overrides): the collector shapes and
+  forwards OTLP to a **central OpenSearch Data Prepper**, which writes to the shared OpenSearch
+  cluster. Or, on Azure, point the collector at **Azure Monitor** / **Application Insights** (see
+  below).
+
+## Topology
 
 ```
-services ──OTLP──▶ OpenTelemetry Collector ──▶ OpenSearch (central)
-                                              └▶ OpenSearch Dashboards
+                          reduce traffic here                 heavy lifting here
+                          (batch · gzip · filter · sample)     (OTel schema · service maps · index
+                                                                templates · OpenSearch auth + certs)
+each env:  app SDKs ─OTLP─▶ local OTel Collector ──OTLP──▶ ┐
+                                                           ├─▶ CENTRAL Data Prepper ──▶ OpenSearch
+other env: app SDKs ─OTLP─▶ local OTel Collector ──OTLP──▶ ┘        │                    (central)
+                                                                    └─────────────▶ OpenSearch Dashboards
 ```
 
-Two common ways to land OTLP data in OpenSearch:
+**Division of labour:** the edge collector is the *only* place to reduce volume before it crosses
+the wire; the central Data Prepper is the *only* place that holds OpenSearch credentials + certs and
+owns the OpenSearch Observability-plugin schema, service maps, and index templates. Per-environment
+app stacks therefore hold **no OpenSearch secrets**.
 
-1. **Collector OpenSearch exporter** — add the `opensearch` exporter to the collector and point it
-   at the central cluster.
-2. **Data Prepper** — run OpenSearch Data Prepper with `otel_trace_source` / `otel_metrics_source`
-   / `otel_logs_source` and an `opensearch` sink.
+### Edge collector (this repo)
 
-### Example collector exporter (option 1)
+- `deploy/otel/config.yaml` — bare-local: OTLP in → `debug` (stdout) out.
+- `deploy/otel/config.central.yaml` — deployed: OTLP in → shape → OTLP out to `OTEL_CENTRAL_HOST`
+  (traces `21890`, metrics `21891`, logs `21892`). Set `OTEL_CENTRAL_HOST` in the env file.
+
+Traffic-reduction levers, all in `config.central.yaml`:
+
+- **gzip compression** on every exporter (on by default).
+- **batching** — fewer, larger requests (`batch` processor).
+- **health-check filtering** — `/healthz`, `/readyz`, `/health` spans are dropped (on by default).
+- **tail sampling** (opt-in, commented) — keep all errors + slow traces, sample the rest. Must live
+  in the collector because it needs whole traces before fan-out. With sampling on, central service
+  maps / RED metrics become statistical; add the collector `spanmetrics` connector if you need exact
+  metrics alongside sampled traces.
+
+## Central Data Prepper (deployed with the OpenSearch cluster, not in this repo)
+
+Run one shared Data Prepper next to the central cluster. Example `pipelines.yaml` landing data in the
+Observability-plugin indices:
+
+`otel_traces` and `service_map` are BOTH peer-forwarding processors, and Data Prepper allows only
+one peer-forwarder per connected-pipeline graph. So traces use the canonical **three-pipeline**
+layout: an entry pipeline with the source only (no processor) fans out to two downstream pipelines,
+each holding exactly one of those processors. (Putting `otel_traces` in the entry pipeline fails with
+`Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type`.)
 
 ```yaml
-exporters:
-  opensearch:
-    http:
-      endpoint: "https://opensearch.internal:9200"
-    # auth/tls per your cluster
-service:
-  pipelines:
-    traces:  { receivers: [otlp], processors: [batch], exporters: [opensearch] }
-    logs:    { receivers: [otlp], processors: [batch], exporters: [opensearch] }
-    metrics: { receivers: [otlp], processors: [batch], exporters: [opensearch] }
+# ── Traces ───────────────────────────────────────────────────────────────────────
+# Entry: OTLP source only, fans out. NO processor here (see note above).
+otel-trace-pipeline:
+  source:
+    otlp_traces: { ssl: false, port: 21890 }   # front with TLS at the network edge if exposed
+  sink:
+    - pipeline: { name: raw-trace-pipeline }
+    - pipeline: { name: service-map-pipeline }
+
+raw-trace-pipeline:
+  source:
+    pipeline: { name: otel-trace-pipeline }
+  processor:
+    - otel_traces:            # normalise spans into the OTel-standard raw-trace schema
+  sink:
+    - opensearch:
+        hosts: ["https://opensearch.internal:9200"]
+        username: "${OPENSEARCH_USER}"          # internal user with write perms, created cluster-side
+        password: "${OPENSEARCH_PASSWORD}"
+        cert: "/usr/share/data-prepper/certs/opensearch-ca.pem"   # the cluster's CA (public cert)
+        # insecure: true                        # dev-only: skip TLS verification instead of a CA
+        index_type: trace-analytics-raw         # otel-v1-apm-span-* — powers Trace Analytics
+
+service-map-pipeline:
+  source:
+    pipeline: { name: otel-trace-pipeline }
+  processor:
+    - service_map:            # builds the service map from the same span stream
+  sink:
+    - opensearch:
+        hosts: ["https://opensearch.internal:9200"]
+        username: "${OPENSEARCH_USER}"
+        password: "${OPENSEARCH_PASSWORD}"
+        cert: "/usr/share/data-prepper/certs/opensearch-ca.pem"
+        index_type: trace-analytics-service-map
+
+# ── Metrics ──────────────────────────────────────────────────────────────────────
+entry-pipeline-metrics:
+  source: { otlp_metrics: { ssl: false, port: 21891 } }
+  sink:
+    - opensearch:
+        hosts: ["https://opensearch.internal:9200"]
+        username: "${OPENSEARCH_USER}"
+        password: "${OPENSEARCH_PASSWORD}"
+        cert: "/usr/share/data-prepper/certs/opensearch-ca.pem"
+        index: otel-metrics-%{yyyy.MM.dd}
+
+# ── Logs ─────────────────────────────────────────────────────────────────────────
+entry-pipeline-logs:
+  source: { otlp_logs: { ssl: false, port: 21892 } }
+  sink:
+    - opensearch:
+        hosts: ["https://opensearch.internal:9200"]
+        username: "${OPENSEARCH_USER}"
+        password: "${OPENSEARCH_PASSWORD}"
+        cert: "/usr/share/data-prepper/certs/opensearch-ca.pem"
+        index: otel-logs-%{yyyy.MM.dd}
 ```
 
-Swap the compose collector's debug exporter (`deploy/otel/config.yaml`) for the above when wiring
-the real cluster. Dashboards/queries live centrally in OpenSearch Dashboards, so none are shipped
-here.
+### Auth from Data Prepper to OpenSearch — what you need
+
+- **No client certificates.** Data Prepper authenticates with a **username/password** (self-managed,
+  OpenSearch Security plugin internal user) or an **`aws:` block** (AWS OpenSearch / IAM SigV4). Both
+  are created cluster-side, not here.
+- **TLS is separate from auth.** OpenSearch serves HTTPS on 9200; point the sink `cert:` at the
+  **CA that signed the OpenSearch node cert** (a public cert you copy from the cluster) so Data
+  Prepper can verify the server. Use `insecure: true` only for dev. A client cert is needed *only* if
+  the cluster is configured for mutual TLS — uncommon, and not required here.
+
+Dashboards/queries live centrally in OpenSearch Dashboards, so none are shipped here.
 
 ## Health / readiness
 
 `GET /healthz` (liveness) and `GET /readyz` (DB connectivity) on both APIs; `GET /health` on
-connectors-node.
+connectors-node. These routes are filtered out of traces at the edge collector.
 
 ## Azure specifics
 
-If you are wanting to pipe the information into, for example, Application Insights, you can use the 
-`azuremonitor` exporter in the collector. You will need to set the `OTEL_EXPORTER_AZUREMONITOR_CONNECTION_STRING` 
-environment variable with your Application Insights connection string.
+To pipe telemetry into Application Insights instead, use the `azuremonitor` exporter in the collector
+and set `OTEL_EXPORTER_AZUREMONITOR_CONNECTION_STRING` to your Application Insights connection string.

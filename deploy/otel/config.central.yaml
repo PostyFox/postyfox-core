@@ -1,0 +1,97 @@
+# OpenTelemetry Collector — DEPLOYED stack (docker-compose.server.yml + dev/prod overrides).
+#
+# Forwards OTLP to the CENTRAL OpenSearch Data Prepper, which owns the OpenSearch write path.
+# This edge collector: (1) receives OTLP from the apps, (2) scrapes infra Prometheus endpoints
+# (rabbitmq, oauth2-proxy), (3) tails Docker container logs for infra services, (4) stamps every
+# signal with deployment.environment/cluster so it's filterable, then reduces + forwards.
+#
+# Env-driven: OTEL_CENTRAL_HOST (central DP host), DEPLOY_ENV (dev/prod), DEPLOY_CLUSTER.
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+
+  # Infra metrics: scrape Prometheus endpoints. rabbitmq_prometheus plugin (:15692) and
+  # oauth2-proxy metrics endpoint (:44180) must be enabled — see docker-compose.server.yml.
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: rabbitmq
+          scrape_interval: 30s
+          static_configs: [{ targets: ["rabbitmq:15692"] }]
+        - job_name: oauth2-proxy
+          scrape_interval: 30s
+          static_configs: [{ targets: ["oauth2-proxy:44180"] }]
+
+  # Infra logs: tail Docker's container stdout/stderr json logs. Captures nginx (gateway/frontend),
+  # oauth2-proxy, rabbitmq, postgres — anything not already emitting OTLP. Requires the host's
+  # docker containers dir mounted read-only into the collector (see compose). NOTE: docker-compose
+  # container *names* aren't in the log path, so infra logs are tagged by container.id; filter by
+  # that (or switch to per-service file logging for friendly names).
+  filelog/containers:
+    include: ["/var/lib/docker/containers/*/*-json.log"]
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: container
+        format: docker
+        add_metadata_from_filepath: true
+
+processors:
+  # Guardrail: keep the collector from ballooning if telemetry spikes. Must run first.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  # Stamp environment + cluster on EVERY signal so OpenSearch can filter by them.
+  # Lands as resource.attributes.deployment@environment / deployment@cluster.
+  resource/env:
+    attributes:
+      - { key: deployment.environment, value: "${env:DEPLOY_ENV:-dev}", action: upsert }
+      - { key: deployment.cluster, value: "${env:DEPLOY_CLUSTER:-postyfox}", action: upsert }
+  # Drop health-check spans — pure noise, never worth shipping to the central cluster.
+  filter/healthchecks:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["http.route"] == "/healthz"'
+        - 'attributes["http.route"] == "/readyz"'
+        - 'attributes["http.route"] == "/health"'
+  # Larger batches = fewer, bigger requests over the wire.
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # ── Optional volume reducer (uncomment the processor AND add it to the traces pipeline) ─────────
+  # tail_sampling:
+  #   decision_wait: 10s
+  #   policies:
+  #     - { name: errors,      type: status_code,   status_code: { status_codes: [ERROR] } }
+  #     - { name: slow,        type: latency,       latency: { threshold_ms: 500 } }
+  #     - { name: sample-rest, type: probabilistic, probabilistic: { sampling_percentage: 10 } }
+
+exporters:
+  otlp/traces:
+    endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21890"
+    compression: gzip
+    tls:
+      insecure: true            # internal-network hop (plaintext). For real TLS, see below.
+      # insecure: false
+      # ca_file: /etc/otel/certs/opensearch-ca.pem
+  otlp/metrics:
+    endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21891"
+    compression: gzip
+    tls: { insecure: true }
+  otlp/logs:
+    endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21892"
+    compression: gzip
+    tls: { insecure: true }
+
+service:
+  pipelines:
+    # resource/env runs on every pipeline so env/cluster tags apply to app AND infra signals.
+    traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp/traces] }
+    metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, batch], exporters: [otlp/metrics] }
+    logs:    { receivers: [otlp, filelog/containers], processors: [memory_limiter, resource/env, batch], exporters: [otlp/logs] }

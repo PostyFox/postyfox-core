@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -18,7 +19,14 @@ builder.Services.AddHealthChecks()
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("postyfox-posting-worker"))
     .WithTracing(t => t.AddHttpClientInstrumentation().AddOtlpExporter())
-    .WithMetrics(m => m.AddHttpClientInstrumentation().AddOtlpExporter());
+    .WithMetrics(m => m.AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddOtlpExporter())
+    .WithLogging(
+        l => l.AddOtlpExporter(),
+        o =>
+        {
+            o.IncludeFormattedMessage = true;
+            o.IncludeScopes = true;
+        });
 
 var app = builder.Build();
 

@@ -175,4 +175,3 @@ volumes:
     name: postyfox-prod-vault-data
   vaultkeys:
     name: postyfox-prod-vault-keys
-

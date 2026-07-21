@@ -80,11 +80,24 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # Edge collector: shapes + forwards OTLP to the CENTRAL Data Prepper (config.central.yaml).
+  # Holds no OpenSearch secrets. Set OTEL_CENTRAL_HOST to the central Data Prepper host.
   otel-collector:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
+    # Root so the filelog receiver can read root-owned /var/lib/docker/containers/*.log.
+    user: "0:0"
+    environment:
+      OTEL_CENTRAL_HOST: "${OTEL_CENTRAL_HOST:-central-data-prepper}"
+      # Stamped onto every signal (resource.attributes.deployment@environment/@cluster).
+      DEPLOY_ENV: "${DEPLOY_ENV:-dev}"
+      DEPLOY_CLUSTER: "${DEPLOY_CLUSTER:-postyfox}"
     volumes:
-      - ./otel/config.yaml:/etc/otel/config.yaml:ro
+      - ./otel/config.central.yaml:/etc/otel/config.yaml:ro
+      # Infra logs: tail the host's Docker container json logs (filelog receiver). Read-only.
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # For verified TLS to the central instance, mount the CA and switch on tls in config.central.yaml:
+      # - ./otel/certs:/etc/otel/certs:ro
     restart: unless-stopped
 
   # HashiCorp Vault — file storage backend + Shamir seal. Stays on the internal network (never
@@ -149,6 +162,14 @@ services:
       OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
       OBJECT_STORE_BUCKET: "postyfox"
       OBJECT_STORE_FORCE_PATH_STYLE: "true"
+      # OpenTelemetry (auto-instrumentation via --import in the image). Node uses OTLP/HTTP → the
+      # collector's :4318. deployment.environment/cluster are stamped by the collector.
+      OTEL_SERVICE_NAME: "postyfox-connectors-node"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_LOGS_EXPORTER: "otlp"
+      # Skip cloud (GCP/AWS/Azure) resource detectors — avoids metadata-lookup timeouts at startup.
+      OTEL_NODE_RESOURCE_DETECTORS: "env,host,os,serviceinstance,process"
       # Tumblr OAuth1 app (consumer) credentials — enable the "Connect with Tumblr" flow.
       TUMBLR_CONSUMER_KEY: "${TUMBLR_CONSUMER_KEY:-}"
       TUMBLR_CONSUMER_SECRET: "${TUMBLR_CONSUMER_SECRET:-}"
@@ -245,6 +266,8 @@ services:
     image: quay.io/oauth2-proxy/oauth2-proxy:latest
     environment:
       OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      # Prometheus metrics endpoint scraped by the otel-collector (job: oauth2-proxy).
+      OAUTH2_PROXY_METRICS_ADDRESS: "0.0.0.0:44180"
       OAUTH2_PROXY_PROVIDER: "oidc"
       OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
       OAUTH2_PROXY_OIDC_ISSUER_URL: "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-PostyFox}"
@@ -285,4 +308,3 @@ volumes:
   rabbitmqdata:
   vaultdata:
   vaultkeys:
-
