@@ -1,6 +1,6 @@
 entry-pipeline-traces:
   source:
-    otel_trace_source:
+    otlp_traces:
       ssl: false
       port: 21890
   sink:
@@ -8,7 +8,7 @@ entry-pipeline-traces:
 
 entry-pipeline-metrics:
   source:
-    otel_metrics_source:
+    otlp_metrics:
       ssl: false
       port: 21891
   sink:
@@ -16,7 +16,7 @@ entry-pipeline-metrics:
 
 entry-pipeline-logs:
   source:
-    otel_logs_source:
+    otlp_logs:
       ssl: false
       port: 21892
   sink:

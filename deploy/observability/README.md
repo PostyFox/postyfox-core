@@ -20,8 +20,8 @@ Two common ways to land OTLP data in OpenSearch:
 
 1. **Collector OpenSearch exporter** — add the `opensearch` exporter to the collector and point it
    at the central cluster.
-2. **Data Prepper** — run OpenSearch Data Prepper with `otel_trace_source` / `otel_metrics_source`
-   / `otel_logs_source` and an `opensearch` sink.
+2. **Data Prepper** — run OpenSearch Data Prepper with `otlp_traces` / `otlp_metrics`
+   / `otlp_logs` and an `opensearch` sink.
 
 ### Example collector exporter (option 1)
 
