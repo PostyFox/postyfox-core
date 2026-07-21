@@ -121,7 +121,7 @@ jobs:
           echo '⬆️ Updating services...'
           docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d --build || { echo '❌ Failed to start services'; exit 1; }
           echo '♻️ Force-recreating app services onto the pulled image tag (podman up -d will not swap images on its own; --no-deps protects vault/postgres/rabbitmq)...'
-          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d --force-recreate --no-deps core-api post-api worker connectors-node || { echo '❌ Failed to recreate app services'; exit 1; }
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d --pull always --force-recreate --no-deps core-api post-api worker connectors-node || { echo '❌ Failed to recreate app services'; exit 1; }
           echo '🔄 Reloading gateway (nginx.conf + conf.d are bind-mounted; up -d alone does not pick up content changes)...'
           docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }
           echo '✅ Dev stack deployed successfully'
@@ -266,7 +266,7 @@ jobs:
             docker compose -f docker-compose.server.yml -f docker-compose.prod.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
             echo '⬆️ Updating services (backup your data first!)...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d --build || { echo '❌ Failed to start services'; exit 1; }; \
-            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d --force-recreate --no-deps core-api post-api worker connectors-node || { echo '❌ Failed to recreate app services'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d --pull always --force-recreate --no-deps core-api post-api worker connectors-node || { echo '❌ Failed to recreate app services'; exit 1; }; \
             echo '🔄 Reloading gateway (nginx.conf + conf.d are bind-mounted; up -d alone does not pick up content changes)...' && \
             docker compose -f docker-compose.server.yml -f docker-compose.prod.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
             echo '✅ Prod stack deployed successfully' && \
