@@ -112,9 +112,13 @@ jobs:
           cd "$STACK_DIR"
           echo '📋 Checking .env file exists...'
           [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }
+          # Capture the workflow-resolved image coords BEFORE sourcing .env — a pinned or `latest`
+          # IMAGE_TAG in .env would otherwise clobber the correct commit-SHA tag (there is no
+          # `:latest` image; build-images only pushes commit-SHA tags).
+          WF_IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"; WF_IMAGE_TAG="${IMAGE_TAG}"
           source .env 2>/dev/null || true
-          export IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"
-          export IMAGE_TAG="${IMAGE_TAG}"
+          export IMAGE_REPOSITORY="${WF_IMAGE_REPOSITORY}"
+          export IMAGE_TAG="${WF_IMAGE_TAG}"
           export COMPOSE_PROJECT_NAME=postyfox-dev
           echo '🔄 Pulling latest images...'
           docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }
