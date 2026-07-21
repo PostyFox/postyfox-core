@@ -80,20 +80,17 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # Edge collector: shapes + forwards OTLP to the CENTRAL Data Prepper (config.central.yaml).
+  # Holds no OpenSearch secrets. Set OTEL_CENTRAL_HOST to the central Data Prepper host.
   otel-collector:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
+    environment:
+      OTEL_CENTRAL_HOST: "${OTEL_CENTRAL_HOST:-central-data-prepper}"
     volumes:
-      - ./otel/config.yaml:/etc/otel/config.yaml:ro
-    depends_on:
-      data-prepper: { condition: service_started }
-    restart: unless-stopped
-
-  data-prepper:
-    image: opensearchproject/data-prepper:latest
-    volumes:
-      - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml:ro
-      - ./data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml:ro
+      - ./otel/config.central.yaml:/etc/otel/config.yaml:ro
+      # For verified TLS to the central instance, mount the CA and switch on tls in config.central.yaml:
+      # - ./otel/certs:/etc/otel/certs:ro
     restart: unless-stopped
 
   # HashiCorp Vault — file storage backend + Shamir seal. Stays on the internal network (never

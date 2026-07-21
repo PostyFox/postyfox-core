@@ -1,0 +1,70 @@
+# OpenTelemetry Collector — DEPLOYED stack (docker-compose.server.yml + dev/prod overrides).
+#
+# Forwards OTLP to the CENTRAL OpenSearch Data Prepper, which owns the OpenSearch write path
+# (Observability plugin schema, service maps, index templates, credentials + certs). This edge
+# collector holds NO OpenSearch secrets; its job is to REDUCE what crosses the wire — batching,
+# gzip compression, and health-check filtering — before handing off to the central instance.
+#
+# Central host is env-driven (set OTEL_CENTRAL_HOST in the env file). Data Prepper exposes one
+# OTLP source per signal on the standard ports: traces 21890, metrics 21891, logs 21892.
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+
+processors:
+  # Guardrail: keep the collector from ballooning if telemetry spikes. Must run first.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  # Drop health-check spans — pure noise, never worth shipping to the central cluster.
+  filter/healthchecks:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["http.route"] == "/healthz"'
+        - 'attributes["http.route"] == "/readyz"'
+        - 'attributes["http.route"] == "/health"'
+  # Larger batches = fewer, bigger requests over the wire.
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # ── Optional volume reducer (uncomment the processor AND add it to the traces pipeline) ─────────
+  # Tail sampling MUST live here in the collector — it needs to see whole traces before fan-out.
+  # Keeps every error and every slow trace; samples the rest. Service maps / RED metrics built at
+  # the centre become statistical when this is on; add the `spanmetrics` connector if you need exact
+  # metrics alongside sampled traces.
+  # tail_sampling:
+  #   decision_wait: 10s
+  #   policies:
+  #     - { name: errors,      type: status_code,   status_code: { status_codes: [ERROR] } }
+  #     - { name: slow,        type: latency,       latency: { threshold_ms: 500 } }
+  #     - { name: sample-rest, type: probabilistic, probabilistic: { sampling_percentage: 10 } }
+
+exporters:
+  otlp/traces:
+    endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21890"
+    compression: gzip
+    tls:
+      insecure: true            # internal-network hop (plaintext). For real TLS, see below.
+      # insecure: false
+      # ca_file: /etc/otel/certs/opensearch-ca.pem   # mount the CA that signed the Data Prepper cert
+  otlp/metrics:
+    endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21891"
+    compression: gzip
+    tls: { insecure: true }
+  otlp/logs:
+    endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21892"
+    compression: gzip
+    tls: { insecure: true }
+
+service:
+  pipelines:
+    # To enable tail sampling, add `tail_sampling` to the traces processors (after filter, before batch).
+    traces:  { receivers: [otlp], processors: [memory_limiter, filter/healthchecks, batch], exporters: [otlp/traces] }
+    metrics: { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlp/metrics] }
+    logs:    { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlp/logs] }

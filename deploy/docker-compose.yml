@@ -78,18 +78,10 @@ services:
       retries: 20
 
   otel-collector:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
     volumes: ["./otel/config.yaml:/etc/otel/config.yaml:ro"]
-    depends_on:
-      data-prepper: { condition: service_started }
     ports: ["4317:4317", "4318:4318"]
-
-  data-prepper:
-    image: opensearchproject/data-prepper:latest
-    volumes:
-      - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml:ro
-      - ./data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml:ro
 
   connectors-node:
     build:
