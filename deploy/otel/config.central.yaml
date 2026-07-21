@@ -2,8 +2,8 @@
 #
 # Forwards OTLP to the CENTRAL OpenSearch Data Prepper, which owns the OpenSearch write path.
 # This edge collector: (1) receives OTLP from the apps, (2) scrapes infra Prometheus endpoints
-# (rabbitmq, oauth2-proxy), (3) tails Docker container logs for infra services, (4) stamps every
-# signal with deployment.environment/cluster so it's filterable, then reduces + forwards.
+# (rabbitmq, oauth2-proxy), (3) reads infra container logs from the host journal (journald),
+# (4) stamps every signal with deployment.environment/cluster so it's filterable, then forwards.
 #
 # Env-driven: OTEL_CENTRAL_HOST (central DP host), DEPLOY_ENV (dev/prod), DEPLOY_CLUSTER.
 receivers:
@@ -24,19 +24,14 @@ receivers:
           scrape_interval: 30s
           static_configs: [{ targets: ["oauth2-proxy:44180"] }]
 
-  # Infra logs: tail Docker's container stdout/stderr json logs. Captures nginx (gateway/frontend),
-  # oauth2-proxy, rabbitmq, postgres — anything not already emitting OTLP. Requires the host's
-  # docker containers dir mounted read-only into the collector (see compose). NOTE: docker-compose
-  # container *names* aren't in the log path, so infra logs are tagged by container.id; filter by
-  # that (or switch to per-service file logging for friendly names).
-  filelog/containers:
-    include: ["/var/lib/docker/containers/*/*-json.log"]
+  # Infra logs: read the host systemd journal. Infra services log via the `journald` driver (set in
+  # compose), so their stdout lands in the journal with CONTAINER_NAME set — runtime-agnostic
+  # (works on Docker AND Podman). The stock collector image has no journalctl, so we mount the host
+  # root read-only (see compose) and point the receiver at it with root_path; it uses the host's
+  # journalctl via that path. Apps ship their logs via OTLP, not here.
+  journald:
+    root_path: /host
     start_at: end
-    include_file_path: true
-    operators:
-      - type: container
-        format: docker
-        add_metadata_from_filepath: true
 
 processors:
   # Guardrail: keep the collector from ballooning if telemetry spikes. Must run first.
@@ -94,4 +89,4 @@ service:
     # resource/env runs on every pipeline so env/cluster tags apply to app AND infra signals.
     traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp/traces] }
     metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, batch], exporters: [otlp/metrics] }
-    logs:    { receivers: [otlp, filelog/containers], processors: [memory_limiter, resource/env, batch], exporters: [otlp/logs] }
+    logs:    { receivers: [otlp, journald], processors: [memory_limiter, resource/env, batch], exporters: [otlp/logs] }
