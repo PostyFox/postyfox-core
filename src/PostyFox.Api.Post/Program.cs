@@ -2,8 +2,11 @@ using PostyFox.Api.Post.Endpoints;
 using PostyFox.Application;
 using PostyFox.Infrastructure;
 using PostyFox.Infrastructure.Persistence;
+using PostyFox.Infrastructure.Telemetry;
 using PostyFox.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +14,8 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPostyFoxAuth(builder.Configuration);
 builder.Services.AddPostyFoxTelemetry("postyfox-post-api");
+// Enrich logs with PostId from Baggage (added here, not in shared Web, which can't ref Infrastructure).
+builder.Services.AddOpenTelemetry().WithLogging(l => l.AddProcessor(new PostIdLogEnricher()));
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddPostyFoxRateLimiting();

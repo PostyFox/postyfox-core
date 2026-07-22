@@ -1,8 +1,11 @@
+using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry;
 using PostyFox.Application;
+using PostyFox.Application.Telemetry;
 using PostyFox.Application.Messaging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -35,11 +38,30 @@ public sealed class RabbitMqSubscriber<T>(
         var consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.ReceivedAsync += async (_, ea) =>
         {
+            // Continue the producer's trace: extract the context the publisher injected and start a
+            // consumer span parented to it. All handler logs (and any HttpClient spans it makes)
+            // inherit this span's traceId, so the work links back to the originating API request.
+            var parent = MessagingTelemetry.Extract(ea.BasicProperties);
+            Baggage.Current = parent.Baggage;
+            using var activity = MessagingTelemetry.Source.StartActivity(
+                $"{queue} receive", ActivityKind.Consumer, parent.ActivityContext);
+            activity?.SetTag("messaging.system", "rabbitmq");
+            activity?.SetTag("messaging.destination.name", queue);
+            activity?.SetTag("messaging.operation", "receive");
+
             try
             {
                 var json = Encoding.UTF8.GetString(ea.Body.Span);
                 var message = Json.Deserialize<T>(json)
                     ?? throw new InvalidOperationException($"Null message for {queue}");
+
+                // Stamp the business keys onto the span + ambient Baggage so every log emitted while
+                // handling this message (incl. framework/HttpClient logs) is searchable by PostId.
+                if (message is ITraceableMessage tm)
+                {
+                    MessagingTelemetry.TagSpan(activity, tm.PostId, tm.TargetId);
+                    PostTelemetry.SetBusinessBaggage(tm.PostId, tm.TargetId);
+                }
 
                 await using var scope = scopeFactory.CreateAsyncScope();
                 var handler = scope.ServiceProvider.GetRequiredService<IMessageHandler<T>>();
@@ -49,6 +71,7 @@ public sealed class RabbitMqSubscriber<T>(
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 logger.LogError(ex, "Handler for {Queue} failed; dead-lettering message", queue);
                 await _channel!.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false, stoppingToken);
             }

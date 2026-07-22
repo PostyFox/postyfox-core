@@ -1,4 +1,5 @@
 import { AtpAgent, RichText } from "@atproto/api";
+import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import type {
   Connector,
@@ -74,7 +75,7 @@ export class BlueskyConnector implements Connector {
       await agent.login({ identifier: handle, password: appPassword });
       return { isAuthenticated: true };
     } catch (err) {
-      return { isAuthenticated: false, detail: errorMessage(err) };
+      return { isAuthenticated: false, detail: describeError(err) };
     }
   }
 
@@ -136,11 +137,8 @@ export class BlueskyConnector implements Connector {
       const externalUrl = `https://bsky.app/profile/${handle}/post/${rkey}`;
       return { success: true, externalId: result.uri, externalUrl };
     } catch (err) {
-      return { success: false, error: errorMessage(err) };
+      return { success: false, error: describeError(err) };
     }
   }
 }
 
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}

@@ -249,6 +249,9 @@ services:
     depends_on:
       core-api: { condition: service_healthy }
       post-api: { condition: service_healthy }
+      # nginx resolves the otel-collector hostname at startup for the /otlp browser-traces route
+      # (conf.d/routes/20-otlp.conf); must be running or nginx fails to load the config.
+      otel-collector: { condition: service_started }
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
       interval: 5s

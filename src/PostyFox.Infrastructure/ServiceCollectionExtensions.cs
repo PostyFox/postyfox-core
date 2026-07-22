@@ -54,12 +54,14 @@ public static class ServiceCollectionExtensions
             "BlueSky",
             new ConnectorDescriptor("BlueSky", "Bluesky", SupportsTitle: false, SupportsMedia: true, SupportsThreads: true, MaxContentLength: 300),
             sp.GetRequiredService<IHttpClientFactory>(),
-            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>()));
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "Tumblr",
             new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true),
             sp.GetRequiredService<IHttpClientFactory>(),
-            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>()));
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
 
         // Fediverse platforms — all delivered by the megalodon connector in the Node service, all via
         // an instance-scoped OAuth/MiAuth connect flow. They differ only in display name and the
@@ -70,7 +72,8 @@ public static class ServiceCollectionExtensions
                 platform,
                 new ConnectorDescriptor(platform, displayName, SupportsTitle: false, SupportsMedia: true, SupportsThreads: false, MaxContentLength: maxContentLength, SupportsOAuth: true),
                 sp.GetRequiredService<IHttpClientFactory>(),
-                sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>()));
+                sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
 
         AddFediverse("Mastodon", "Mastodon", 500);
         AddFediverse("Pleroma", "Pleroma", 5000);

@@ -160,6 +160,86 @@ test("megalodon deliver uploads media and attaches ids", async () => {
   assert.deepEqual(store.calls, [{ container: "media", key: "u1/a/pic.jpg" }]);
 });
 
+test("megalodon deliver sets alt text via setMediaComment where the driver drops it (firefish)", async () => {
+  const store = fakeMediaStore(Buffer.from("img-bytes"));
+  const commentCalls: { fileId: string; comment: string }[] = [];
+  const connector = build(
+    fakeClient({
+      async uploadMedia() {
+        return { data: { id: "media-1" } };
+      },
+      async setMediaComment(fileId, comment) {
+        commentCalls.push({ fileId, comment });
+      },
+    }),
+    store,
+  );
+
+  const mediaPost: Post = {
+    title: null,
+    body: "with pics",
+    tags: [],
+    media: [{ container: "media", key: "u1/a/pic.jpg", contentType: "image/jpeg", alt: "a cat" }],
+  };
+
+  const result = await connector.deliver(ctx, mediaPost);
+  assert.equal(result.success, true);
+  assert.deepEqual(commentCalls, [{ fileId: "media-1", comment: "a cat" }]);
+});
+
+test("megalodon deliver skips setMediaComment when there is no alt text", async () => {
+  const store = fakeMediaStore(Buffer.from("img-bytes"));
+  let commentCalled = false;
+  const connector = build(
+    fakeClient({
+      async uploadMedia() {
+        return { data: { id: "media-1" } };
+      },
+      async setMediaComment() {
+        commentCalled = true;
+      },
+    }),
+    store,
+  );
+
+  const mediaPost: Post = {
+    title: null,
+    body: "with pics",
+    tags: [],
+    media: [{ container: "media", key: "u1/a/pic.jpg", contentType: "image/jpeg", alt: "" }],
+  };
+
+  const result = await connector.deliver(ctx, mediaPost);
+  assert.equal(result.success, true);
+  assert.equal(commentCalled, false);
+});
+
+test("megalodon deliver surfaces a failure to set alt text", async () => {
+  const store = fakeMediaStore(Buffer.from("img-bytes"));
+  const connector = build(
+    fakeClient({
+      async uploadMedia() {
+        return { data: { id: "media-1" } };
+      },
+      async setMediaComment() {
+        throw new Error("drive/files/update failed: HTTP 403");
+      },
+    }),
+    store,
+  );
+
+  const mediaPost: Post = {
+    title: null,
+    body: "with pics",
+    tags: [],
+    media: [{ container: "media", key: "u1/a/pic.jpg", contentType: "image/jpeg", alt: "a cat" }],
+  };
+
+  const result = await connector.deliver(ctx, mediaPost);
+  assert.equal(result.success, false);
+  assert.ok(result.error?.includes("403"));
+});
+
 test("megalodon getLimits reports character, attachment, MIME and size caps", async () => {
   const limits = await build(fakeClient()).getLimits(ctx);
   assert.deepEqual(limits, {
@@ -313,6 +393,41 @@ test("megalodon oauth start registers an app and carries the MiAuth session toke
   assert.equal(pending.instanceUrl, "https://shrimp.example");
   assert.equal(pending.sessionToken, "sess-tok");
   assert.equal(pending.clientSecret, "csecret");
+});
+
+test("megalodon oauth start requests granular write:notes permission for firefish (Iceshrimp)", async () => {
+  // Regression: registering with coarse Mastodon "read"/"write" scopes yields an app that cannot
+  // create notes on Iceshrimp/Firefish — /api/notes/create returns PERMISSION_DENIED.
+  let requested: string[] | undefined;
+  const client = fakeClient({
+    async registerApp(_name, options) {
+      requested = options?.scopes;
+      return { client_id: "cid", client_secret: "csecret", url: "https://shrimp.example/auth/sess", session_token: "sess-tok" };
+    },
+  });
+  await build(client).oauth.startAuthorization({
+    callbackUrl: "https://app/cb",
+    configJson: JSON.stringify({ InstanceUrl: "shrimp.example" }),
+  });
+  assert.ok(requested, "registerApp should receive scopes");
+  assert.ok(requested.includes("write:notes"), `expected granular Misskey permissions, got ${JSON.stringify(requested)}`);
+  assert.ok(!requested.includes("write"), "should not send coarse Mastodon scopes to a firefish instance");
+});
+
+test("megalodon oauth start requests coarse read/write scopes for Mastodon-style providers", async () => {
+  let requested: string[] | undefined;
+  const client = fakeClient({
+    async registerApp(_name, options) {
+      requested = options?.scopes;
+      return { client_id: "cid", client_secret: "csecret", url: "https://mastodon.example/oauth/authorize?client_id=cid", session_token: null };
+    },
+  });
+  const connector = new MegalodonConnector("mastodon", fakeMediaStore(Buffer.from("")), () => client, async () => "mastodon");
+  await connector.oauth.startAuthorization({
+    callbackUrl: "https://app/cb",
+    configJson: JSON.stringify({ InstanceUrl: "https://mastodon.example" }),
+  });
+  assert.deepEqual(requested, ["read", "write"]);
 });
 
 test("megalodon oauth start (OAuth2, no session token) appends state to the authorize URL", async () => {
