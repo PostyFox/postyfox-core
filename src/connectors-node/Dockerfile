@@ -28,10 +28,12 @@ ENV OBJECT_STORE_REGION=us-east-1
 ENV OBJECT_STORE_FORCE_PATH_STYLE=true
 
 COPY package.json ./
+COPY instrumentation.mjs ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 
 EXPOSE 8090
-# --import registers OpenTelemetry auto-instrumentation (traces/metrics/logs) before app code.
-# Exporter/endpoint/service-name come from OTEL_* env (set in docker-compose). No-op if unset.
-CMD ["node", "--import", "@opentelemetry/auto-instrumentations-node/register", "dist/index.js"]
+# --import runs our OpenTelemetry bootstrap (instrumentation.mjs) before app code: auto-instrumentation
+# for traces/metrics/logs, exporter/endpoint/service-name from OTEL_* env, and an ignore hook so the
+# GET /health container check produces no span/metric.
+CMD ["node", "--import", "./instrumentation.mjs", "dist/index.js"]

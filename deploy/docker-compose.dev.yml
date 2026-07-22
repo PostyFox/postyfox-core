@@ -9,7 +9,7 @@
 
 x-dotnet-env: &dotnet-env
   ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-postyfox_dev};Username=postyfox;Password=${DB_PASSWORD}"
-  ObjectStore__ServiceUrl: "http://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
+  ObjectStore__ServiceUrl: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
   ObjectStore__AccessKey: "${RUSTFS_ACCESS_KEY}"
   ObjectStore__SecretKey: "${RUSTFS_SECRET_KEY}"
   ObjectStore__Bucket: "postyfox-dev"
@@ -63,10 +63,10 @@ services:
 
   connectors-node:
     environment:
-      OBJECT_STORE_SERVICE_URL: "http://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
+      OBJECT_STORE_SERVICE_URL: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
       OBJECT_STORE_ACCESS_KEY: "${RUSTFS_ACCESS_KEY}"
       OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
-      OBJECT_STORE_BUCKET: "postyfox-dev"
+      OBJECT_STORE_BUCKET: "${RUSTFS_BUCKET-postyfoxdev}"
     deploy:
       resources:
         limits:

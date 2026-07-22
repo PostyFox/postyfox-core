@@ -41,7 +41,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     }
   });
 
-  app.get("/health", async () => ({ status: "ok" }));
+  // logLevel: silent — the container healthcheck hits this constantly; don't emit access logs for it.
+  app.get("/health", { logLevel: "silent" }, async () => ({ status: "ok" }));
 
   app.post<{ Params: { platform: string }; Body: ConnectorContext }>(
     "/connectors/:platform/is-authenticated",
@@ -74,10 +75,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   app.post<{ Params: { platform: string }; Body: DeliverBody }>(
     "/connectors/:platform/deliver",
     async (request, reply) => {
-      const connector = resolveConnector(registry, request.params.platform);
+      const platform = request.params.platform;
+      const connector = resolveConnector(registry, platform);
       if (!connector) return reply.code(404).send({ error: "unknown platform" });
       const { context, post } = request.body;
-      return connector.deliver(context, post);
+      request.log.info({ platform, mediaCount: post.media.length }, "deliver: start");
+      try {
+        const result = await connector.deliver(context, post);
+        if (result?.success) {
+          request.log.info({ platform, externalId: result.externalId }, "deliver: ok");
+        } else {
+          request.log.warn({ platform, error: result?.error }, "deliver: failed");
+        }
+        return result;
+      } catch (err) {
+        request.log.error({ err, platform }, "deliver: threw");
+        return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
+      }
     },
   );
 
@@ -94,6 +108,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           configJson: request.body.configJson,
         });
       } catch (err) {
+        request.log.error({ err, platform: request.params.platform }, "oauth request-token failed");
         return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
       }
     },
@@ -109,6 +124,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     try {
       return await connector.oauth.completeAuthorization(request.body);
     } catch (err) {
+      request.log.error({ err, platform: request.params.platform }, "oauth access-token failed");
       return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
     }
   });

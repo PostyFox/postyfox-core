@@ -9,7 +9,7 @@
 
 x-dotnet-env: &dotnet-env
   ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=postyfox;Username=postyfox;Password=${DB_PASSWORD}"
-  ObjectStore__ServiceUrl: "http://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
+  ObjectStore__ServiceUrl: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
   ObjectStore__AccessKey: "${RUSTFS_ACCESS_KEY}"
   ObjectStore__SecretKey: "${RUSTFS_SECRET_KEY}"
   ObjectStore__Bucket: "postyfox"
@@ -85,8 +85,6 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
-    # Root so the filelog receiver can read root-owned /var/lib/docker/containers/*.log.
-    user: "0:0"
     environment:
       OTEL_CENTRAL_HOST: "${OTEL_CENTRAL_HOST:-central-data-prepper}"
       # Stamped onto every signal (resource.attributes.deployment@environment/@cluster).
@@ -94,8 +92,6 @@ services:
       DEPLOY_CLUSTER: "${DEPLOY_CLUSTER:-postyfox}"
     volumes:
       - ./otel/config.central.yaml:/etc/otel/config.yaml:ro
-      # Infra logs: tail the host's Docker container json logs (filelog receiver). Read-only.
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
       # For verified TLS to the central instance, mount the CA and switch on tls in config.central.yaml:
       # - ./otel/certs:/etc/otel/certs:ro
     restart: unless-stopped
@@ -157,7 +153,7 @@ services:
     environment:
       PORT: "8090"
       INTERNAL_TOKEN: "${INTERNAL_TOKEN}"
-      OBJECT_STORE_SERVICE_URL: "http://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
+      OBJECT_STORE_SERVICE_URL: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
       OBJECT_STORE_ACCESS_KEY: "${RUSTFS_ACCESS_KEY}"
       OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
       OBJECT_STORE_BUCKET: "postyfox"
@@ -248,6 +244,8 @@ services:
     volumes:
       - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./gateway/conf.d:/etc/nginx/conf.d:ro
+      # nginx writes access/error logs here; the fluent-bit sidecar tails them (see below).
+      - gateway-logs:/var/log/gateway
     depends_on:
       core-api: { condition: service_healthy }
       post-api: { condition: service_healthy }
@@ -256,6 +254,19 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    restart: unless-stopped
+
+  # Tails nginx (gateway) access/error logs and forwards them to the local otel-collector (Fluent
+  # Forward), which routes them to Data Prepper → ss4o_logs-nginx for the nginx integration. Holds
+  # NO OpenSearch creds — this host only talks to the collector.
+  fluent-bit:
+    image: cr.fluentbit.io/fluent/fluent-bit:latest
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - gateway-logs:/var/log/gateway:ro
+    depends_on:
+      gateway: { condition: service_started }
+      otel-collector: { condition: service_started }
     restart: unless-stopped
 
   # The OIDC edge — the ONLY service that should publish a public port (done in the env overrides).
@@ -308,3 +319,4 @@ volumes:
   rabbitmqdata:
   vaultdata:
   vaultkeys:
+  gateway-logs:   # nginx access/error logs shared gateway → fluent-bit

@@ -1,9 +1,11 @@
 # OpenTelemetry Collector — DEPLOYED stack (docker-compose.server.yml + dev/prod overrides).
 #
 # Forwards OTLP to the CENTRAL OpenSearch Data Prepper, which owns the OpenSearch write path.
-# This edge collector: (1) receives OTLP from the apps, (2) scrapes infra Prometheus endpoints
-# (rabbitmq, oauth2-proxy), (3) tails Docker container logs for infra services, (4) stamps every
-# signal with deployment.environment/cluster so it's filterable, then reduces + forwards.
+# This edge collector: (1) receives OTLP from the apps (traces/metrics/logs), (2) scrapes infra
+# Prometheus endpoints (rabbitmq, oauth2-proxy), (3) stamps every signal with
+# deployment.environment/cluster so it's filterable, then forwards.
+# (nginx access logs are shipped separately by Fluent Bit → OpenSearch; other infra stdout is not
+#  collected here — view it on the host. App logs arrive via OTLP.)
 #
 # Env-driven: OTEL_CENTRAL_HOST (central DP host), DEPLOY_ENV (dev/prod), DEPLOY_CLUSTER.
 receivers:
@@ -24,19 +26,11 @@ receivers:
           scrape_interval: 30s
           static_configs: [{ targets: ["oauth2-proxy:44180"] }]
 
-  # Infra logs: tail Docker's container stdout/stderr json logs. Captures nginx (gateway/frontend),
-  # oauth2-proxy, rabbitmq, postgres — anything not already emitting OTLP. Requires the host's
-  # docker containers dir mounted read-only into the collector (see compose). NOTE: docker-compose
-  # container *names* aren't in the log path, so infra logs are tagged by container.id; filter by
-  # that (or switch to per-service file logging for friendly names).
-  filelog/containers:
-    include: ["/var/lib/docker/containers/*/*-json.log"]
-    start_at: end
-    include_file_path: true
-    operators:
-      - type: container
-        format: docker
-        add_metadata_from_filepath: true
+  # nginx access/error logs arrive here from the Fluent Bit sidecar (Fluent Forward protocol). Kept
+  # on a SEPARATE receiver/pipeline so they can be routed to their own Data Prepper port + index
+  # (ss4o_logs-nginx) rather than mixed into the app OTLP logs (otel-logs).
+  fluentforward:
+    endpoint: 0.0.0.0:24224
 
 processors:
   # Guardrail: keep the collector from ballooning if telemetry spikes. Must run first.
@@ -50,6 +44,10 @@ processors:
     attributes:
       - { key: deployment.environment, value: "${env:DEPLOY_ENV:-dev}", action: upsert }
       - { key: deployment.cluster, value: "${env:DEPLOY_CLUSTER:-postyfox}", action: upsert }
+  # Tag the nginx-log pipeline so it lands with a service name in OpenSearch.
+  resource/nginx:
+    attributes:
+      - { key: service.name, value: "gateway", action: upsert }
   # Drop health-check spans — pure noise, never worth shipping to the central cluster.
   filter/healthchecks:
     error_mode: ignore
@@ -58,6 +56,26 @@ processors:
         - 'attributes["http.route"] == "/healthz"'
         - 'attributes["http.route"] == "/readyz"'
         - 'attributes["http.route"] == "/health"'
+  # Drop health-check metric data points (e.g. .NET http.server.request.duration{http.route=/healthz}).
+  # (Node's http.server.duration has no route attribute, so node /health is silenced app-side instead.)
+  filter/health_metrics:
+    error_mode: ignore
+    metrics:
+      datapoint:
+        - 'attributes["http.route"] == "/healthz"'
+        - 'attributes["http.route"] == "/readyz"'
+        - 'attributes["http.route"] == "/health"'
+  # Drop any logs emitted by health-check requests (matched on route or path attribute).
+  filter/health_logs:
+    error_mode: ignore
+    logs:
+      log_record:
+        - 'attributes["http.route"] == "/healthz"'
+        - 'attributes["http.route"] == "/readyz"'
+        - 'attributes["http.route"] == "/health"'
+        - 'attributes["url.path"] == "/healthz"'
+        - 'attributes["url.path"] == "/readyz"'
+        - 'attributes["url.path"] == "/health"'
   # Larger batches = fewer, bigger requests over the wire.
   batch:
     timeout: 5s
@@ -73,25 +91,32 @@ processors:
   #     - { name: sample-rest, type: probabilistic, probabilistic: { sampling_percentage: 10 } }
 
 exporters:
-  otlp/traces:
+  otlp_grpc/traces:
     endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21890"
     compression: gzip
     tls:
       insecure: true            # internal-network hop (plaintext). For real TLS, see below.
       # insecure: false
       # ca_file: /etc/otel/certs/opensearch-ca.pem
-  otlp/metrics:
+  otlp_grpc/metrics:
     endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21891"
     compression: gzip
     tls: { insecure: true }
-  otlp/logs:
+  otlp_grpc/logs:
     endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21892"
+    compression: gzip
+    tls: { insecure: true }
+  # Dedicated nginx-logs hop → a separate Data Prepper OTLP-logs source (:21893) that writes to
+  # ss4o_logs-nginx-<env>. Keeps nginx logs out of otel-logs and off any direct OpenSearch access.
+  otlp_grpc/nginx:
+    endpoint: "${env:OTEL_CENTRAL_HOST:-central-data-prepper}:21893"
     compression: gzip
     tls: { insecure: true }
 
 service:
   pipelines:
     # resource/env runs on every pipeline so env/cluster tags apply to app AND infra signals.
-    traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp/traces] }
-    metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, batch], exporters: [otlp/metrics] }
-    logs:    { receivers: [otlp, filelog/containers], processors: [memory_limiter, resource/env, batch], exporters: [otlp/logs] }
+    traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp_grpc/traces] }
+    metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, filter/health_metrics, batch], exporters: [otlp_grpc/metrics] }
+    logs:    { receivers: [otlp], processors: [memory_limiter, resource/env, filter/health_logs, batch], exporters: [otlp_grpc/logs] }
+    logs/nginx: { receivers: [fluentforward], processors: [memory_limiter, resource/env, resource/nginx, batch], exporters: [otlp_grpc/nginx] }
