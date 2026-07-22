@@ -51,6 +51,13 @@ export interface MegalodonClientLike {
     file: unknown,
     options?: { description?: string },
   ): Promise<{ data: { id: string } }>;
+  /**
+   * Sets a drive file's alt text (`comment`). Present only on the firefish (Iceshrimp/Firefish)
+   * client: megalodon's firefish uploadMedia/updateMedia both drop the description, so alt text has
+   * to be applied via /api/drive/files/update directly. Mastodon-style clients set it at upload
+   * time and leave this undefined.
+   */
+  setMediaComment?(fileId: string, comment: string): Promise<void>;
   postStatus(
     status: string,
     options?: {
@@ -86,8 +93,41 @@ export type SnsDetector = (url: string) => Promise<MegalodonSns>;
 
 const APP_NAME = "PostyFox";
 const APP_WEBSITE = "https://postyfox.com";
-/** read+write covers posting and credential verification across the Fediverse drivers. */
-const SCOPES = ["read", "write"];
+/** Coarse Mastodon-style OAuth2 scopes (Mastodon, Pleroma, Friendica, GoToSocial, Pixelfed). */
+const MASTODON_SCOPES = ["read", "write"];
+
+/**
+ * Misskey-family (Iceshrimp/Firefish) authorize *granular* permissions via MiAuth. The coarse
+ * Mastodon "read"/"write" strings are not recognised as Misskey permissions, so an app registered
+ * with them cannot create notes — /api/notes/create returns PERMISSION_DENIED. This mirrors
+ * megalodon's firefish DEFAULT_SCOPE (the permission set its endpoints expect); "write:notes" and
+ * "read/write:drive" are what posting + media upload actually need.
+ */
+const FIREFISH_SCOPES = [
+  "read:account",
+  "write:account",
+  "read:blocks",
+  "write:blocks",
+  "read:drive",
+  "write:drive",
+  "read:favorites",
+  "write:favorites",
+  "read:following",
+  "write:following",
+  "read:mutes",
+  "write:mutes",
+  "write:notes",
+  "read:notifications",
+  "write:notifications",
+  "read:reactions",
+  "write:reactions",
+  "write:votes",
+];
+
+/** MiAuth (firefish) needs granular permissions; Mastodon-style OAuth2 uses coarse scopes. */
+function scopesForSns(sns: MegalodonSns): string[] {
+  return sns === "firefish" ? FIREFISH_SCOPES : MASTODON_SCOPES;
+}
 
 interface MegalodonConfig {
   InstanceUrl: string;
@@ -110,8 +150,28 @@ interface PendingConnect {
   callbackUrl: string;
 }
 
-const defaultClientFactory: MegalodonClientFactory = (sns, baseUrl, accessToken) =>
-  generator(sns, baseUrl, accessToken ?? null) as unknown as MegalodonClientLike;
+const defaultClientFactory: MegalodonClientFactory = (sns, baseUrl, accessToken) => {
+  const client = generator(sns, baseUrl, accessToken ?? null) as unknown as MegalodonClientLike;
+  if (sns === "firefish") {
+    // megalodon's firefish driver silently drops the alt text on both uploadMedia and updateMedia,
+    // so set the drive file's `comment` via the Misskey-native endpoint (uses the same write:drive
+    // permission the upload needed). Only wired up for firefish; other drivers honour the upload
+    // description and leave setMediaComment undefined.
+    const apiBase = baseUrl.replace(/\/+$/, "");
+    client.setMediaComment = async (fileId, comment) => {
+      const resp = await fetch(`${apiBase}/api/drive/files/update`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ i: accessToken, fileId, comment }),
+      });
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => "");
+        throw new Error(`drive/files/update failed: HTTP ${resp.status}${body ? `: ${body}` : ""}`);
+      }
+    };
+  }
+  return client;
+};
 
 const defaultDetector: SnsDetector = (url) => detector(url) as Promise<MegalodonSns>;
 
@@ -165,7 +225,7 @@ export class MegalodonConnector implements Connector {
     const sns = await this.resolveSns(instanceUrl);
     const client = this.clientFactory(sns, instanceUrl);
     const app = await client.registerApp(APP_NAME, {
-      scopes: SCOPES,
+      scopes: scopesForSns(sns),
       redirect_uris: callbackUrl,
       website: APP_WEBSITE,
     });
@@ -355,6 +415,10 @@ export class MegalodonConnector implements Connector {
         const uploaded = await client.uploadMedia(createReadStream(filePath), {
           description: item.alt ?? undefined,
         });
+        // Where the driver drops the upload description (firefish), apply alt text explicitly.
+        if (item.alt && client.setMediaComment) {
+          await client.setMediaComment(uploaded.data.id, item.alt);
+        }
         ids.push(uploaded.data.id);
       }
       return ids;
