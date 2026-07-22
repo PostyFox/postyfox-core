@@ -5,9 +5,7 @@ Quick reference for GitHub Actions-based Docker deployment with two isolated sta
 ## Quick Start
 
 ### 1. Server Setup (one-time)
-```bash
-curl https://raw.githubusercontent.com/your-org/postyfox-core/main/deploy/setup-deploy.sh | sudo bash
-```
+Go through and check folders, env file etc is there.
 
 ### 2. Configure Environment
 ```bash
@@ -79,6 +77,7 @@ platform-ci.yml: test, build, push images
 
 ## Common Commands
 
+### Check Status
 ### Check Status
 ```bash
 ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps"
