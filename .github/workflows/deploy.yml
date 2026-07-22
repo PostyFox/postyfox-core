@@ -91,6 +91,7 @@ jobs:
             "$GITHUB_WORKSPACE"/deploy/rabbitmq \
             "$GITHUB_WORKSPACE"/deploy/gateway \
             "$GITHUB_WORKSPACE"/deploy/vault \
+            "$GITHUB_WORKSPACE"/deploy/fluent-bit \
             "$STACK_DIR"/
           echo "📦 Syncing otel collector config to dev stack (preserves any otel/certs)..."
           mkdir -p "$STACK_DIR"/otel
@@ -215,6 +216,7 @@ jobs:
             deploy/rabbitmq \
             deploy/gateway \
             deploy/vault \
+            deploy/fluent-bit \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
             echo "❌ Failed to copy deployment files"
             exit 1
