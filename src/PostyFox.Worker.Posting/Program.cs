@@ -25,7 +25,9 @@ builder.Services.AddOpenTelemetry()
         o =>
         {
             o.IncludeFormattedMessage = true;
-            o.IncludeScopes = true;
+            // Off — ASP.NET scopes emit duplicate keys that Data Prepper/OpenSearch reject. Trace
+            // correlation is unaffected (span context, not scopes). See TelemetryExtensions.cs.
+            o.IncludeScopes = false;
         });
 
 var app = builder.Build();

@@ -32,7 +32,12 @@ public static class TelemetryExtensions
                 o =>
                 {
                     o.IncludeFormattedMessage = true;
-                    o.IncludeScopes = true;
+                    // IncludeScopes stays OFF: ASP.NET Core emits the same key across nested scopes
+                    // (e.g. HttpMethod/ConnectionId from the Kestrel + hosting scopes), which the OTLP
+                    // exporter sends as duplicate log attributes — Data Prepper/OpenSearch then reject
+                    // the whole record ("Duplicate key log.attributes.HttpMethod"). Trace↔log
+                    // correlation is unaffected (it comes from the span context, not scopes).
+                    o.IncludeScopes = false;
                 });
         return services;
     }
