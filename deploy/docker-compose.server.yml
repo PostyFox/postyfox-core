@@ -256,8 +256,8 @@ services:
       retries: 20
     restart: unless-stopped
 
-  # Tails nginx (gateway) access/error logs and forwards them to the local otel-collector (Fluent
-  # Forward), which routes them to Data Prepper → ss4o_logs-nginx for the nginx integration. Holds
+  # Tails nginx (gateway) access/error logs and sends them to the local otel-collector via OTLP/HTTP
+  # (:4319), which routes them to Data Prepper → ss4o_logs-nginx for the nginx integration. Holds
   # NO OpenSearch creds — this host only talks to the collector.
   fluent-bit:
     image: cr.fluentbit.io/fluent/fluent-bit:latest

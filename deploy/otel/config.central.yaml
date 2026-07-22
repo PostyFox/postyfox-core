@@ -26,11 +26,14 @@ receivers:
           scrape_interval: 30s
           static_configs: [{ targets: ["oauth2-proxy:44180"] }]
 
-  # nginx access/error logs arrive here from the Fluent Bit sidecar (Fluent Forward protocol). Kept
-  # on a SEPARATE receiver/pipeline so they can be routed to their own Data Prepper port + index
-  # (ss4o_logs-nginx) rather than mixed into the app OTLP logs (otel-logs).
-  fluent_forward:
-    endpoint: 0.0.0.0:24224
+  # nginx access/error logs arrive here from the Fluent Bit sidecar as OTLP/HTTP (Fluent Bit's
+  # `opentelemetry` output). A DEDICATED receiver on its own port keeps them on a separate pipeline
+  # so they route to their own Data Prepper port + index (ss4o_logs-nginx) rather than being mixed
+  # into the app OTLP logs (otel-logs). (Was Fluent Forward on :24224 — the OTel fluentforward
+  # receiver didn't reliably ingest Fluent Bit's forward-protocol records; OTLP is proven end-to-end.)
+  otlp/nginx:
+    protocols:
+      http: { endpoint: 0.0.0.0:4319 }
 
 processors:
   # Guardrail: keep the collector from ballooning if telemetry spikes. Must run first.
@@ -119,4 +122,4 @@ service:
     traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp_grpc/traces] }
     metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, filter/health_metrics, batch], exporters: [otlp_grpc/metrics] }
     logs:    { receivers: [otlp], processors: [memory_limiter, resource/env, filter/health_logs, batch], exporters: [otlp_grpc/logs] }
-    logs/nginx: { receivers: [fluent_forward], processors: [memory_limiter, resource/env, resource/nginx, batch], exporters: [otlp_grpc/nginx] }
+    logs/nginx: { receivers: [otlp/nginx], processors: [memory_limiter, resource/env, resource/nginx, batch], exporters: [otlp_grpc/nginx] }
