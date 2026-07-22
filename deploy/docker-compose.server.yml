@@ -264,8 +264,12 @@ services:
     volumes:
       - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - gateway-logs:/var/log/gateway:ro
+      # Writable: persists the tail read-offset DB (gateway-logs is mounted read-only above).
+      - fluent-bit-db:/var/lib/fluent-bit
     depends_on:
-      gateway: { condition: service_started }
+      # Wait for nginx to be HEALTHY (up and writing to the log files) before tailing, not merely
+      # started — so the log files exist and fluent-bit attaches to the live inode from the start.
+      gateway: { condition: service_healthy }
       otel-collector: { condition: service_started }
     restart: unless-stopped
 
@@ -320,3 +324,4 @@ volumes:
   vaultdata:
   vaultkeys:
   gateway-logs:   # nginx access/error logs shared gateway → fluent-bit
+  fluent-bit-db:  # fluent-bit tail read-offset DB (persists across restarts)

@@ -29,7 +29,7 @@ receivers:
   # nginx access/error logs arrive here from the Fluent Bit sidecar (Fluent Forward protocol). Kept
   # on a SEPARATE receiver/pipeline so they can be routed to their own Data Prepper port + index
   # (ss4o_logs-nginx) rather than mixed into the app OTLP logs (otel-logs).
-  fluentforward:
+  fluent_forward:
     endpoint: 0.0.0.0:24224
 
 processors:
@@ -119,4 +119,4 @@ service:
     traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp_grpc/traces] }
     metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, filter/health_metrics, batch], exporters: [otlp_grpc/metrics] }
     logs:    { receivers: [otlp], processors: [memory_limiter, resource/env, filter/health_logs, batch], exporters: [otlp_grpc/logs] }
-    logs/nginx: { receivers: [fluentforward], processors: [memory_limiter, resource/env, resource/nginx, batch], exporters: [otlp_grpc/nginx] }
+    logs/nginx: { receivers: [fluent_forward], processors: [memory_limiter, resource/env, resource/nginx, batch], exporters: [otlp_grpc/nginx] }
