@@ -17,6 +17,7 @@ public static class TelemetryExtensions
         services.AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(serviceName))
             .WithTracing(t => t
+                .AddSource("PostyFox.Messaging")   // producer spans + trace context injected into RabbitMQ messages
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddOtlpExporter())

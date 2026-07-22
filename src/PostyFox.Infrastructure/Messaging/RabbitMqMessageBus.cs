@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
 using PostyFox.Application;
 using PostyFox.Application.Messaging;
@@ -20,6 +21,15 @@ public sealed class RabbitMqMessageBus(RabbitMqConnection connection) : IMessage
         var exchange = connection.Options.Exchange;
         var body = Encoding.UTF8.GetBytes(Json.Serialize(message));
 
+        // Producer span: parents the consumer span on the other side of the queue, so the whole
+        // publish→consume→handle chain is one trace. Injected into the message headers below.
+        using var activity = MessagingTelemetry.Source.StartActivity($"{queue} publish", ActivityKind.Producer);
+        activity?.SetTag("messaging.system", "rabbitmq");
+        activity?.SetTag("messaging.destination.name", queue);
+        activity?.SetTag("messaging.operation", "publish");
+        if (message is ITraceableMessage tm)
+            MessagingTelemetry.TagSpan(activity, tm.PostId, tm.TargetId);
+
         await _gate.WaitAsync(ct);
         try
         {
@@ -32,10 +42,12 @@ public sealed class RabbitMqMessageBus(RabbitMqConnection connection) : IMessage
             if (_declaredQueues.TryAdd(queue, true))
                 await Topology.DeclareQueueAsync(channel, exchange, queue, ct);
 
-            var props = new BasicProperties { Persistent = true };
+            var props = new BasicProperties { Persistent = true, Headers = new Dictionary<string, object?>() };
             var delayMs = delay is { TotalMilliseconds: > 0 } d ? (int)d.TotalMilliseconds : 0;
             if (delayMs > 0)
-                props.Headers = new Dictionary<string, object?> { ["x-delay"] = delayMs };
+                props.Headers["x-delay"] = delayMs;
+            // Carry the current trace context (traceparent/tracestate/baggage) with the message.
+            MessagingTelemetry.Inject(activity, props.Headers);
 
             await channel.BasicPublishAsync(exchange, routingKey: queue, mandatory: false,
                 basicProperties: props, body: body, cancellationToken: ct);

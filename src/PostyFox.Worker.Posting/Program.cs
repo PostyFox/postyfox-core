@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using PostyFox.Application;
 using PostyFox.Infrastructure;
+using PostyFox.Infrastructure.Messaging;
 using PostyFox.Infrastructure.Persistence;
+using PostyFox.Infrastructure.Telemetry;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,10 +21,13 @@ builder.Services.AddHealthChecks()
 
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("postyfox-posting-worker"))
-    .WithTracing(t => t.AddHttpClientInstrumentation().AddOtlpExporter())
+    .WithTracing(t => t
+        .AddSource(MessagingTelemetry.ActivitySourceName)   // consumer spans for RabbitMQ message processing
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter())
     .WithMetrics(m => m.AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddOtlpExporter())
     .WithLogging(
-        l => l.AddOtlpExporter(),
+        l => l.AddProcessor(new PostIdLogEnricher()).AddOtlpExporter(),
         o =>
         {
             o.IncludeFormattedMessage = true;

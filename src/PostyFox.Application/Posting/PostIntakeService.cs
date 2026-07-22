@@ -5,6 +5,7 @@ using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Messaging;
 using PostyFox.Application.Options;
+using PostyFox.Application.Telemetry;
 using PostyFox.Domain.Entities;
 using PostyFox.Domain.Enums;
 
@@ -65,6 +66,10 @@ public sealed class PostIntakeService(
                 UpdatedAt = now
             });
         }
+
+        // From here on, every log in this request carries the PostId (see PostIdLogEnricher), so a
+        // user can hand a dev the post id from the UI and the dev finds the intake telemetry too.
+        PostTelemetry.SetBusinessBaggage(post.Id);
 
         db.Posts.Add(post);
         await db.SaveChangesAsync(ct);
