@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import type {
   Connector,
@@ -174,7 +175,7 @@ export class TumblrConnector implements Connector {
       await client.userInfo();
       return { isAuthenticated: true };
     } catch (err) {
-      return { isAuthenticated: false, detail: errorMessage(err) };
+      return { isAuthenticated: false, detail: describeError(err) };
     }
   }
 
@@ -233,11 +234,8 @@ export class TumblrConnector implements Connector {
         typeof result.post_url === "string" ? result.post_url : undefined;
       return { success: true, externalId, externalUrl };
     } catch (err) {
-      return { success: false, error: errorMessage(err) };
+      return { success: false, error: describeError(err) };
     }
   }
 }
 
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}

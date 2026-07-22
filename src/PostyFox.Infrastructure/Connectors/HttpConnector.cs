@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PostyFox.Application;
 using PostyFox.Application.Connectors;
@@ -16,7 +17,8 @@ public sealed class HttpConnector(
     string platform,
     ConnectorDescriptor descriptor,
     IHttpClientFactory httpFactory,
-    IOptions<NodeConnectorsOptions> options) : IConnector, IOAuthConnector, ILimitsConnector
+    IOptions<NodeConnectorsOptions> options,
+    ILogger<HttpConnector> logger) : IConnector, IOAuthConnector, ILimitsConnector
 {
     private readonly NodeConnectorsOptions _opts = options.Value;
 
@@ -25,7 +27,9 @@ public sealed class HttpConnector(
     public async Task<ConnectorLimits?> GetLimitsAsync(ConnectorContext context, CancellationToken ct = default)
     {
         // Platforms whose Node connector has no limits support respond 4xx → PostAsync returns null.
-        var res = await PostAsync("limits", Ctx(context), ct);
+        // That non-2xx is expected here, so don't warn on it (it would be per-post noise for
+        // Bluesky/Tumblr); PostAsync still logs the body at Debug for diagnosis.
+        var res = await PostAsync("limits", Ctx(context), ct, warnOnFailure: false);
         if (res is null) return null;
         var r = res.Value;
         int? max = r.TryGetProperty("maxContentLength", out var m) && m.ValueKind == JsonValueKind.Number ? m.GetInt32() : null;
@@ -109,7 +113,7 @@ public sealed class HttpConnector(
         targetId = c.TargetId
     };
 
-    private async Task<JsonElement?> PostAsync(string op, object body, CancellationToken ct)
+    private async Task<JsonElement?> PostAsync(string op, object body, CancellationToken ct, bool warnOnFailure = true)
     {
         var client = httpFactory.CreateClient(nameof(HttpConnector));
         var req = new HttpRequestMessage(HttpMethod.Post, $"{_opts.BaseUrl.TrimEnd('/')}/connectors/{platform}/{op}")
@@ -120,9 +124,36 @@ public sealed class HttpConnector(
             req.Headers.Add("X-Internal-Token", _opts.InternalToken);
 
         var resp = await client.SendAsync(req, ct);
-        if (!resp.IsSuccessStatusCode) return null;
+        if (!resp.IsSuccessStatusCode)
+        {
+            // Capture the Node service's response body so a failure isn't reduced to a bare status
+            // code. Callers collapse a null to a generic message ("connectors-node unavailable"),
+            // which otherwise hides the actual cause (auth, unknown platform, a connector throw, …).
+            var errorBody = await ReadBodySafeAsync(resp, ct);
+            if (warnOnFailure)
+                logger.LogWarning(
+                    "connectors-node {Operation} for {Platform} returned {StatusCode}: {Body}",
+                    op, platform, (int)resp.StatusCode, errorBody);
+            else
+                logger.LogDebug(
+                    "connectors-node {Operation} for {Platform} returned {StatusCode}: {Body}",
+                    op, platform, (int)resp.StatusCode, errorBody);
+            return null;
+        }
         var stream = await resp.Content.ReadAsStreamAsync(ct);
         using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
         return doc.RootElement.Clone();
+    }
+
+    private static async Task<string> ReadBodySafeAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        try
+        {
+            return await resp.Content.ReadAsStringAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            return $"<unreadable response body: {ex.Message}>";
+        }
     }
 }

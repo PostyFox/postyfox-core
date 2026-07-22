@@ -4,6 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import generator, { detector } from "megalodon";
+import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import type {
   Connector,
@@ -228,7 +229,7 @@ export class MegalodonConnector implements Connector {
       await client.verifyAccountCredentials();
       return { isAuthenticated: true };
     } catch (err) {
-      return { isAuthenticated: false, detail: errorMessage(err) };
+      return { isAuthenticated: false, detail: describeError(err) };
     }
   }
 
@@ -317,7 +318,7 @@ export class MegalodonConnector implements Connector {
       const externalUrl = result.data.url ?? result.data.uri ?? undefined;
       return { success: true, externalId, externalUrl };
     } catch (err) {
-      return { success: false, error: errorMessage(err) };
+      return { success: false, error: describeError(err) };
     }
   }
 
@@ -409,6 +410,3 @@ function appendQueryParam(url: string, key: string, value: string): string {
   return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
 
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
