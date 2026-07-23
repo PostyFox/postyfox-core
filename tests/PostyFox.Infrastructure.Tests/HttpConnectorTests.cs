@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using PostyFox.Application.Connectors;
 using PostyFox.Infrastructure.Connectors;
@@ -13,7 +14,8 @@ public class HttpConnectorTests
         "BlueSky",
         new ConnectorDescriptor("BlueSky", "Bluesky", false, true, true, 300),
         new StubHttpClientFactory(handler),
-        Options.Create(new NodeConnectorsOptions { BaseUrl = "http://node:8090", InternalToken = "tok" }));
+        Options.Create(new NodeConnectorsOptions { BaseUrl = "http://node:8090", InternalToken = "tok" }),
+        NullLogger<HttpConnector>.Instance);
 
     private static ConnectorContext Ctx() => new(Guid.NewGuid(), "u1", "{\"Handle\":\"a.bsky\"}", "{\"AppPassword\":\"p\"}", null);
     private static RenderedPost Post(IReadOnlyList<MediaRef>? media = null) => new(null, "hello", [], media ?? []);

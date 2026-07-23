@@ -39,6 +39,7 @@ The **interactive API contract** is served by each API at `/swagger` (UI) and `/
 |--------|------|---------|
 | GET | `/healthz`, `/readyz`, `/swagger`, `/openapi/v1.json` | Ops / docs |
 | POST | `/api/posts` | Create a post (202 + id) |
+| GET | `/api/posts` | List the user's posts (newest-first summaries), bounded by the retention window; `?filter=active` for in-flight only, `?limit=` (1..200, default 50) |
 | GET | `/api/posts/{id}` | Aggregated post + per-target status |
 | POST | `/api/webhooks/{sourceType}` | Inbound signed trigger webhook (anonymous; signature-verified) |
 

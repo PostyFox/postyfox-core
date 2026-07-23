@@ -328,6 +328,15 @@ Root rollup: all delivered → `Delivered`; mixed terminal → `PartiallyFailed`
 `Failed`; otherwise `Delivering`/`Generating`/`Queued`. Retry count and base backoff are configured
 via `Pipeline:MaxDeliveryAttempts` / `Pipeline:RetryBaseSeconds`.
 
+**History & activity.** `GET /api/posts` lists a user's posts newest-first (id, title, aggregated
+status, per-target counts + platforms), always bounded by the retention window; `?filter=active`
+narrows to the in-flight posts (`Queued`/`Generating`/`Delivering`) so a client can show "what's
+processing now" even after the user navigates away from the compose screen. Posts are retained for a
+configurable window (`Retention:PostRetentionDays`, default 30 days); a background
+`PostRetentionSweeper` hosted in the posting-worker hard-deletes older posts (targets cascade) along
+with their stored payloads and referenced media (`Retention:Enabled`, `SweepIntervalHours`,
+`SweepBatchSize`).
+
 ---
 
 ## 8. External-trigger framework
