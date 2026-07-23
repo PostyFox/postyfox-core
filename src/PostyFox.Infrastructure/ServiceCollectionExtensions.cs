@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
         services.Configure<S3Options>(config.GetSection(S3Options.SectionName));
         services.Configure<RabbitMqOptions>(config.GetSection(RabbitMqOptions.SectionName));
         services.Configure<PipelineOptions>(config.GetSection(PipelineOptions.SectionName));
+        services.Configure<RetentionOptions>(config.GetSection(RetentionOptions.SectionName));
 
         var conn = config.GetConnectionString("Postgres")
                    ?? "Host=localhost;Port=5432;Database=postyfox;Username=postyfox;Password=postyfox";
@@ -136,6 +137,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddHostedService<RabbitMqSubscriber<GenerateTargetCommand>>();
         services.AddHostedService<RabbitMqSubscriber<DeliverTargetCommand>>();
+        services.AddHostedService<PostRetentionSweeper>();
         return services;
     }
 }

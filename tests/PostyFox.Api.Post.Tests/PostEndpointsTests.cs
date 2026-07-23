@@ -50,4 +50,19 @@ public class PostEndpointsTests(CustomWebApplicationFactory factory) : IClassFix
         var resp = await _client.GetAsync($"/api/posts/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
+
+    [Fact]
+    public async Task List_returns_created_post_and_active_filter_reflects_status()
+    {
+        var body = new { targets = new[] { factory.SeededConnectorId }, title = "Listed", description = "x" };
+        var create = await _client.PostAsJsonAsync("/api/posts", body);
+        var created = await create.Content.ReadFromJsonAsync<CreatePostResponse>();
+
+        var all = await _client.GetFromJsonAsync<List<PostSummaryDto>>("/api/posts");
+        Assert.Contains(all!, p => p.PostId == created!.PostId && p.Title == "Listed");
+
+        // A freshly-created post is Queued (active), so it appears under filter=active too.
+        var active = await _client.GetFromJsonAsync<List<PostSummaryDto>>("/api/posts?filter=active");
+        Assert.Contains(active!, p => p.PostId == created!.PostId);
+    }
 }

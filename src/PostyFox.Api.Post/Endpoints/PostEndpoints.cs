@@ -28,6 +28,12 @@ public static class PostEndpoints
         .Produces<CreatePostResponse>(StatusCodes.Status202Accepted)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        group.MapGet("", async (ClaimsPrincipal user, PostStatusService svc, CancellationToken ct, string? filter = null, int limit = 50) =>
+            Results.Ok(await svc.ListAsync(user.UserId()!, string.Equals(filter, "active", StringComparison.OrdinalIgnoreCase), limit, ct)))
+        .WithSummary("List posts")
+        .WithDescription("Returns the user's posts newest-first (id, title, aggregated status, target counts), bounded by the retention window. Pass `filter=active` for only the posts still being processed. `limit` is clamped to 1..200 (default 50).")
+        .Produces<IReadOnlyList<PostSummaryDto>>();
+
         group.MapGet("{id:guid}", async (Guid id, ClaimsPrincipal user, PostStatusService svc, CancellationToken ct) =>
             await svc.GetAsync(user.UserId()!, id, ct) is { } dto ? Results.Ok(dto) : Results.NotFound())
         .WithSummary("Get post status")

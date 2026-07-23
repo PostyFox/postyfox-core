@@ -33,3 +33,6 @@ terraform/terraform.tfstate.backup
 **/.idea/**/*.iml
 **/.idea/**/contentModel.xml
 **/.idea/**/modules.xml
+
+# Just because rider bugs me
+.idea

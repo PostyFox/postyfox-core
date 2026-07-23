@@ -50,6 +50,19 @@ public sealed record CreatePostResponse(Guid PostId, PostRootStatus RootStatus);
 public sealed record PostTargetStatusDto(Guid TargetId, string Platform, TargetStatus Status, string? ExternalId, string? ExternalUrl, string? Error, int Attempts);
 public sealed record PostStatusDto(Guid PostId, PostRootStatus RootStatus, IReadOnlyList<PostTargetStatusDto> Targets);
 
+/// <summary>Lightweight row for the post list / activity view (no per-target detail).</summary>
+public sealed record PostSummaryDto(
+    Guid PostId,
+    PostRootStatus RootStatus,
+    string Title,
+    IReadOnlyList<string> Platforms,
+    int TargetCount,
+    int DeliveredCount,
+    int FailedCount,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? PostAt);
+
 public sealed record TriggerRegistrationRequest(
     string SourceType,
     string ExternalAccount,
