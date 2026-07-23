@@ -16,5 +16,8 @@ RUN apt-get update \
 COPY --from=build /app .
 ARG ASSEMBLY
 ENV ASSEMBLY=$ASSEMBLY
+# Human-readable build version, surfaced by the /api/version endpoint.
+ARG VERSION=0.0.0-dev
+ENV POSTYFOX_VERSION=$VERSION
 # Shell form so $ASSEMBLY expands at runtime.
 ENTRYPOINT ["sh", "-c", "exec dotnet \"$ASSEMBLY\""]

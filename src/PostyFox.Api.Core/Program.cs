@@ -51,6 +51,12 @@ app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).AllowAnonymous()
 app.MapGet("/readyz", async (AppDbContext db) =>
     await db.Database.CanConnectAsync() ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503)).AllowAnonymous();
 
+// Version is baked into the image at build time (POSTYFOX_VERSION, from the Dockerfile VERSION arg);
+// falls back to a dev marker for local runs. Anonymous so the frontend footer can show it.
+var coreVersion = Environment.GetEnvironmentVariable("POSTYFOX_VERSION") ?? "0.0.0-dev";
+app.MapGet("/api/version",
+    () => Results.Ok(new { service = "postyfox-core-api", version = coreVersion })).AllowAnonymous();
+
 app.MapProfileEndpoints();
 app.MapServiceEndpoints();
 app.MapTemplateEndpoints();

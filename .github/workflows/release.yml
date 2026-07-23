@@ -1,0 +1,327 @@
+name: release
+
+# Production release pipeline (semver, Conventional Commits).
+#
+# Manually dispatched, two modes:
+#   • `version` blank  → NEW release: compute the next semver from commit messages, build
+#                        version-stamped images, deploy to DEV, then (after production approval)
+#                        tag the repo (vX.Y.Z + GitHub Release) and deploy PROD.
+#   • `version` set    → REDEPLOY: skip build + tagging and (re)deploy that EXISTING tag's already
+#                        built images. Deploys DEV first, then PROD after approval. Use for rollback
+#                        or re-shipping a known-good version.
+#
+# Everyday pushes to main still auto-deploy DEV via platform-ci + deploy.yml; only this workflow
+# touches production.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing tag/version to (re)deploy, e.g. 1.4.1 (the leading v is optional). Leave BLANK to cut a new release from the latest commits."
+        required: false
+        type: string
+
+permissions:
+  contents: write   # push the release tag + create the GitHub Release
+  packages: write   # push images to GHCR
+
+env:
+  REGISTRY: ghcr.io
+  DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+  DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+  DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+  DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+
+jobs:
+  compute-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}   # bare semver, no leading v
+      ref: ${{ steps.resolve.outputs.ref }}           # git ref the deploy jobs check out
+      is_new: ${{ steps.resolve.outputs.is_new }}     # 'true' = new release (build + tag); 'false' = redeploy
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Compute next version (Conventional Commits)
+        id: semver
+        if: inputs.version == ''
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "v"
+          # Conventional Commits: `type!:` or BREAKING CHANGE → major; `feat:` → minor; else patch.
+          major_pattern: '/^\w+(\(.+\))?!:|BREAKING CHANGE/'
+          minor_pattern: '/^feat(\(.+\))?:/'
+          version_format: '${major}.${minor}.${patch}'
+          search_commit_body: true
+      - name: Resolve version + mode
+        id: resolve
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            V="${INPUT_VERSION#v}"                       # accept 1.4.1 or v1.4.1
+            if ! git rev-parse -q --verify "refs/tags/v${V}" >/dev/null; then
+              echo "❌ Tag v${V} not found — cannot redeploy a version that was never released."; exit 1
+            fi
+            echo "version=${V}" >> "$GITHUB_OUTPUT"
+            echo "ref=v${V}" >> "$GITHUB_OUTPUT"
+            echo "is_new=false" >> "$GITHUB_OUTPUT"
+            echo "🔁 Redeploying existing release v${V}"
+          else
+            echo "version=${{ steps.semver.outputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "is_new=true" >> "$GITHUB_OUTPUT"
+            echo "🆕 New release version ${{ steps.semver.outputs.version }}"
+          fi
+
+  build:
+    # New releases build fresh images; a redeploy reuses the already-published tag.
+    needs: compute-version
+    if: needs.compute-version.outputs.is_new == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - service: core-api
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Api.Core/PostyFox.Api.Core.csproj
+            assembly: PostyFox.Api.Core.dll
+          - service: post-api
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Api.Post/PostyFox.Api.Post.csproj
+            assembly: PostyFox.Api.Post.dll
+          - service: worker
+            context: .
+            dockerfile: Dockerfile
+            project: src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj
+            assembly: PostyFox.Worker.Posting.dll
+          - service: connectors-node
+            context: src/connectors-node
+            dockerfile: src/connectors-node/Dockerfile
+            project: ""
+            assembly: ""
+    steps:
+      - uses: actions/checkout@v7
+      - name: Normalize image repository name
+        run: echo "IMAGE_REPOSITORY=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          # Tag with the semver AND the commit SHA for traceability.
+          tags: |
+            ghcr.io/${{ env.IMAGE_REPOSITORY }}-${{ matrix.service }}:${{ needs.compute-version.outputs.version }}
+            ghcr.io/${{ env.IMAGE_REPOSITORY }}-${{ matrix.service }}:${{ github.sha }}
+          build-args: |
+            PROJECT=${{ matrix.project }}
+            ASSEMBLY=${{ matrix.assembly }}
+            VERSION=${{ needs.compute-version.outputs.version }}
+
+  deploy-dev:
+    # Release artifacts MUST prove out on dev before prod. Runs whether we built fresh images
+    # (new release) or are redeploying an existing tag (build job skipped).
+    needs: [compute-version, build]
+    if: |
+      always() &&
+      needs.compute-version.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: [self-hosted]
+    environment: development
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.compute-version.outputs.ref }}
+
+      - name: Resolve image repository
+        id: image
+        run: echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine stack dir
+        id: stack
+        run: echo "dir=/opt/postyfox/dev" >> "$GITHUB_OUTPUT"
+
+      - name: Copy deployment files
+        env:
+          STACK_DIR: ${{ steps.stack.outputs.dir }}
+        run: |
+          echo "🧹 Removing stale gateway config, preserving any frontend-deployed overrides..."
+          cd "$STACK_DIR"
+          rm -rf .gwbak
+          mkdir -p .gwbak/routes .gwbak/upstreams
+          cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true
+          cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true
+          rm -rf gateway
+          echo "📦 Copying deployment files to dev stack..."
+          cp -a "$GITHUB_WORKSPACE"/deploy/docker-compose.server.yml \
+            "$GITHUB_WORKSPACE"/deploy/docker-compose.dev.yml \
+            "$GITHUB_WORKSPACE"/deploy/rabbitmq \
+            "$GITHUB_WORKSPACE"/deploy/gateway \
+            "$GITHUB_WORKSPACE"/deploy/vault \
+            "$GITHUB_WORKSPACE"/deploy/fluent-bit \
+            "$STACK_DIR"/
+          echo "📦 Syncing otel collector config to dev stack..."
+          mkdir -p "$STACK_DIR"/otel
+          cp -a "$GITHUB_WORKSPACE"/deploy/otel/config.yaml \
+            "$GITHUB_WORKSPACE"/deploy/otel/config.central.yaml \
+            "$STACK_DIR"/otel/
+          echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
+          [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true
+          [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true
+          rm -rf .gwbak
+
+      - name: Deploy dev stack
+        env:
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
+          IMAGE_TAG: ${{ needs.compute-version.outputs.version }}
+          STACK_DIR: ${{ steps.stack.outputs.dir }}
+        run: |
+          echo "🚀 Deploying release ${IMAGE_TAG} to dev stack..."
+          cd "$STACK_DIR"
+          [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }
+          WF_IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"; WF_IMAGE_TAG="${IMAGE_TAG}"
+          source .env 2>/dev/null || true
+          export IMAGE_REPOSITORY="${WF_IMAGE_REPOSITORY}"
+          export IMAGE_TAG="${WF_IMAGE_TAG}"
+          export COMPOSE_PROJECT_NAME=postyfox-dev
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d --build || { echo '❌ Failed to start services'; exit 1; }
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }
+          echo '✅ Dev stack updated to release build'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps
+
+      - name: Health check
+        env:
+          STACK_DIR: ${{ steps.stack.outputs.dir }}
+        run: |
+          sleep 10
+          cd "$STACK_DIR"
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || {
+            echo '⚠️ Warning: Some services may not be healthy yet'
+          }
+          true
+
+  deploy-prod:
+    # Approval-gated via the `production` GitHub environment.
+    needs: [compute-version, deploy-dev]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.compute-version.outputs.ref }}
+
+      - name: Resolve image repository
+        id: image
+        run: echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Tag release + publish GitHub Release
+        # New releases only — a redeploy targets an existing tag, so there's nothing to tag.
+        # Runs post-approval (this whole job is gated by the `production` environment) but BEFORE
+        # the deploy, so the tag exists the moment we ship to prod.
+        if: needs.compute-version.outputs.is_new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.compute-version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes
+          echo "🏷️ Tagged and released v${VERSION}"
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copy deployment files
+        run: |
+          echo "🧹 Removing stale gateway config, preserving any frontend-deployed overrides..."
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "set -e; cd /opt/postyfox/prod; \
+             rm -rf .gwbak; mkdir -p .gwbak/routes .gwbak/upstreams; \
+             cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true; \
+             cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true; \
+             rm -rf gateway" || { echo "❌ Failed to clean stale gateway config"; exit 1; }
+          echo "📦 Copying deployment files to prod stack..."
+          scp -P ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            -r deploy/docker-compose.server.yml \
+            deploy/docker-compose.prod.yml \
+            deploy/rabbitmq \
+            deploy/gateway \
+            deploy/vault \
+            deploy/fluent-bit \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || { echo "❌ Failed to copy deployment files"; exit 1; }
+          echo "📦 Syncing otel collector config to prod stack..."
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "mkdir -p /opt/postyfox/prod/otel" || { echo "❌ Failed to ensure otel directory on prod stack"; exit 1; }
+          scp -P ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            deploy/otel/config.yaml \
+            deploy/otel/config.central.yaml \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/otel/ || { echo "❌ Failed to copy otel config"; exit 1; }
+          echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "set -e; cd /opt/postyfox/prod; \
+             [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true; \
+             [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true; \
+             rm -rf .gwbak" || { echo "❌ Failed to restore frontend gateway overrides"; exit 1; }
+
+      - name: Deploy prod stack
+        env:
+          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
+          IMAGE_TAG: ${{ needs.compute-version.outputs.version }}
+        run: |
+          echo "🚀 Deploying release ${IMAGE_TAG} to prod stack (⚠️ PRODUCTION)..."
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "set -e; \
+            cd /opt/postyfox/prod && \
+            [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }; \
+            source .env 2>/dev/null || true; \
+            export IMAGE_REPOSITORY=${{ env.IMAGE_REPOSITORY }} && \
+            export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
+            export COMPOSE_PROJECT_NAME=postyfox-prod && \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d --build || { echo '❌ Failed to start services'; exit 1; }; \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }; \
+            echo '✅ Prod stack deployed successfully' && \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps" || { echo "❌ Prod deployment failed"; exit 1; }
+
+      - name: Health check
+        run: |
+          sleep 15
+          ssh -p ${{ env.DEPLOY_PORT }} \
+            -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "cd /opt/postyfox/prod && \
+            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps | grep -E '(core-api|post-api|worker)' | grep -E '(Up|healthy)' || { \
+            echo '⚠️ Warning: Some services may not be healthy yet'; }; \
+            true"
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
