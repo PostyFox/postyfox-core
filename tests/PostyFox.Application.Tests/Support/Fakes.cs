@@ -27,13 +27,20 @@ public sealed class FakeBus : IMessageBus
 public sealed class FakeObjectStore : IObjectStore
 {
     public Dictionary<string, string> Text { get; } = new();
-    public Task PutAsync(string c, string k, Stream s, string ct, CancellationToken t = default) => Task.CompletedTask;
+    public Dictionary<string, byte[]> Blobs { get; } = new();
+    public async Task PutAsync(string c, string k, Stream s, string ct, CancellationToken t = default)
+    {
+        using var ms = new MemoryStream();
+        await s.CopyToAsync(ms, t);
+        Blobs[$"{c}/{k}"] = ms.ToArray();
+    }
     public Task PutTextAsync(string c, string k, string content, string ct = "text/plain", CancellationToken t = default)
     { Text[$"{c}/{k}"] = content; return Task.CompletedTask; }
-    public Task<Stream> GetAsync(string c, string k, CancellationToken t = default) => Task.FromResult<Stream>(new MemoryStream());
+    public Task<Stream> GetAsync(string c, string k, CancellationToken t = default) =>
+        Task.FromResult<Stream>(new MemoryStream(Blobs.GetValueOrDefault($"{c}/{k}", [])));
     public Task<string> GetTextAsync(string c, string k, CancellationToken t = default) => Task.FromResult(Text.GetValueOrDefault($"{c}/{k}", ""));
-    public Task<bool> ExistsAsync(string c, string k, CancellationToken t = default) => Task.FromResult(Text.ContainsKey($"{c}/{k}"));
-    public Task DeleteAsync(string c, string k, CancellationToken t = default) { Text.Remove($"{c}/{k}"); return Task.CompletedTask; }
+    public Task<bool> ExistsAsync(string c, string k, CancellationToken t = default) => Task.FromResult(Text.ContainsKey($"{c}/{k}") || Blobs.ContainsKey($"{c}/{k}"));
+    public Task DeleteAsync(string c, string k, CancellationToken t = default) { Text.Remove($"{c}/{k}"); Blobs.Remove($"{c}/{k}"); return Task.CompletedTask; }
 }
 
 public sealed class FakeConnector(string platform, Func<RenderedPost, DeliveryResult>? deliver = null) : IConnector

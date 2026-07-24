@@ -323,10 +323,23 @@ sequenceDiagram
     U->>P: GET /api/posts/{id} → aggregated status
 ```
 
-Target states: `Queued → Generating → Ready → Delivering → Delivered | Failed`.
-Root rollup: all delivered → `Delivered`; mixed terminal → `PartiallyFailed`; none delivered →
-`Failed`; otherwise `Delivering`/`Generating`/`Queued`. Retry count and base backoff are configured
-via `Pipeline:MaxDeliveryAttempts` / `Pipeline:RetryBaseSeconds`.
+Target states: `Queued → Generating → Ready → Delivering → Delivered | Failed`, plus `Cancelled`
+(user stopped it before it was sent). Root rollup: all delivered → `Delivered`; mixed terminal →
+`PartiallyFailed`; none delivered → `Failed`; all cancelled → `Cancelled`; otherwise
+`Delivering`/`Generating`/`Queued`. Retry count and base backoff are configured via
+`Pipeline:MaxDeliveryAttempts` / `Pipeline:RetryBaseSeconds`.
+
+**Cancel & delete.** `POST /api/posts/{id}/cancel` moves every not-yet-sent target
+(`Queued`/`Generating`/`Ready`) to `Cancelled`; already-delivered or in-flight (`Delivering`) targets
+are left as-is, so a partially-sent post keeps what went out. Cancellation is status-based, not a
+queue purge: a delayed generate/deliver message for a cancelled target no-ops when it fires (the
+handlers skip `Cancelled`). `DELETE /api/posts/{id}` hard-deletes a single post (row + cascade
+targets + stored payload/media via the shared `PostPayloadCleaner`) — for history entries and for
+stale/orphaned queued rows; removing the row means any pending queue message for it finds no target
+and no-ops. `POST /api/posts/{id}/duplicate` returns the authored content so the compose form can
+recreate a past post ("post again") — its media is copied to fresh, user-owned blobs (via
+`MediaCopier`) so the recreated post is fully self-contained and deleting/expiring the original never
+pulls a blob out from under the copy.
 
 **History & activity.** `GET /api/posts` lists a user's posts newest-first (id, title, aggregated
 status, per-target counts + platforms), always bounded by the retention window; `?filter=active`

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PostyFox.Application.Abstractions;
+using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Options;
 using PostyFox.Domain.Enums;
@@ -28,6 +29,31 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             .ToList();
 
         return new PostStatusDto(post.Id, post.RootStatus, targets);
+    }
+
+    /// <summary>
+    /// Returns a post's authored content (everything the compose form needs to recreate it), or null
+    /// if the post isn't the user's. Read straight from the row — the object-store copies are just a
+    /// mirror of these columns.
+    /// </summary>
+    public async Task<PostContentDto?> GetContentAsync(string userId, Guid postId, CancellationToken ct = default)
+    {
+        var post = await db.Posts
+            .AsNoTracking()
+            .Include(p => p.Targets)
+            .FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
+        if (post is null) return null;
+
+        return new PostContentDto(
+            string.IsNullOrEmpty(post.Title) ? null : post.Title,
+            string.IsNullOrEmpty(post.Description) ? null : post.Description,
+            string.IsNullOrEmpty(post.HtmlDescription) ? null : post.HtmlDescription,
+            Json.Deserialize<List<string>>(post.TagsJson) ?? [],
+            Json.Deserialize<List<MediaRef>>(post.MediaManifestJson) ?? [],
+            post.TemplateId,
+            Json.Deserialize<Dictionary<string, string>>(post.VariablesJson) ?? new(),
+            post.Targets.Where(t => t.ConnectorId.HasValue).Select(t => t.ConnectorId!.Value).Distinct().ToList(),
+            post.PostAt);
     }
 
     /// <summary>

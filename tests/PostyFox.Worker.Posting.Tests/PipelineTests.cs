@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
+using PostyFox.Application.Messaging;
 using PostyFox.Application.Posting;
+using PostyFox.Domain.Entities;
 using PostyFox.Domain.Enums;
 using PostyFox.Infrastructure.Persistence;
 using PostyFox.Worker.Posting.Tests.Support;
@@ -88,6 +90,48 @@ public class PipelineTests
 
         var post = await h.InScopeAsync(db => db.Posts.FirstAsync());
         Assert.Equal(PostRootStatus.PartiallyFailed, post.RootStatus);
+    }
+
+    [Fact]
+    public async Task Cancelled_target_is_skipped_when_its_queued_message_fires()
+    {
+        // A post cancelled while its generate/deliver message sat on the delayed queue: when the
+        // message finally fires, the handlers must no-op rather than resurrect the delivery.
+        var connector = new ProgrammableConnector("DiscordWH", succeed: true);
+        using var h = new PipelineHarness(connector);
+        var cid = await h.SeedConnectorAsync("u1", "DiscordWH");
+
+        Guid postId = Guid.NewGuid(), targetId = Guid.NewGuid();
+        await h.InScopeAsync(async db =>
+        {
+            db.Posts.Add(new Post
+            {
+                Id = postId, UserId = "u1", Title = "t", RootStatus = PostRootStatus.Cancelled,
+                Targets =
+                {
+                    new PostTarget
+                    {
+                        Id = targetId, PostId = postId, ConnectorId = cid, Platform = "DiscordWH",
+                        Status = TargetStatus.Cancelled,
+                        // Rendered already, so a non-skipping deliver handler *would* call the connector.
+                        RenderedContentJson = "{\"Title\":null,\"Body\":\"x\",\"Media\":[]}"
+                    }
+                }
+            });
+            return await db.SaveChangesAsync();
+        });
+
+        using (var scope = h.Services.CreateScope())
+        {
+            var generate = scope.ServiceProvider.GetRequiredService<IMessageHandler<GenerateTargetCommand>>();
+            await generate.HandleAsync(new GenerateTargetCommand { PostId = postId, TargetId = targetId }, default);
+            var deliver = scope.ServiceProvider.GetRequiredService<IMessageHandler<DeliverTargetCommand>>();
+            await deliver.HandleAsync(new DeliverTargetCommand { PostId = postId, TargetId = targetId }, default);
+        }
+
+        Assert.Equal(0, connector.Calls);
+        var target = await h.InScopeAsync(db => db.PostTargets.FirstAsync());
+        Assert.Equal(TargetStatus.Cancelled, target.Status);
     }
 
     [Fact]

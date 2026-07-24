@@ -28,4 +28,13 @@ public class RootStatusCalculatorTests
 
     [Fact] public void Queued_when_all_queued() =>
         Assert.Equal(PostRootStatus.Queued, RootStatusCalculator.Compute([T(TargetStatus.Queued)]));
+
+    [Fact] public void All_cancelled_is_cancelled() =>
+        Assert.Equal(PostRootStatus.Cancelled, RootStatusCalculator.Compute([T(TargetStatus.Cancelled), T(TargetStatus.Cancelled)]));
+
+    [Fact] public void Delivered_plus_cancelled_is_partial() =>
+        Assert.Equal(PostRootStatus.PartiallyFailed, RootStatusCalculator.Compute([T(TargetStatus.Delivered), T(TargetStatus.Cancelled)]));
+
+    [Fact] public void Failed_plus_cancelled_is_failed() =>
+        Assert.Equal(PostRootStatus.Failed, RootStatusCalculator.Compute([T(TargetStatus.Failed), T(TargetStatus.Cancelled)]));
 }

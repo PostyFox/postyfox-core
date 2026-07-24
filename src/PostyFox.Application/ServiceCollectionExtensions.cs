@@ -26,6 +26,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ConnectorOperationsService>();
         services.AddScoped<PostIntakeService>();
         services.AddScoped<PostStatusService>();
+        services.AddScoped<PostLifecycleService>();
+        services.AddScoped<PostDuplicationService>();
+        services.AddScoped<MediaCopier>();
+        services.AddScoped<PostPayloadCleaner>();
         services.AddScoped<PostRetentionService>();
 
         services.AddSingleton<Triggers.ITriggerSource, Triggers.GenericHmacTriggerSource>();

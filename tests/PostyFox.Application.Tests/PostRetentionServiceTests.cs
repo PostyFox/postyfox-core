@@ -14,8 +14,7 @@ public class PostRetentionServiceTests
     private static readonly DateTimeOffset Now = new(2026, 7, 23, 0, 0, 0, TimeSpan.Zero);
 
     private static PostRetentionService New(TestDbContext db, FakeObjectStore store, int retentionDays = 30, int batch = 500) =>
-        new(db, store, new FixedClock(Now),
-            Microsoft.Extensions.Options.Options.Create(new PipelineOptions { PostContainer = "post" }),
+        new(db, TestFactories.PayloadCleaner(store), new FixedClock(Now),
             Microsoft.Extensions.Options.Options.Create(new RetentionOptions { PostRetentionDays = retentionDays, SweepBatchSize = batch }),
             NullLogger<PostRetentionService>.Instance);
 

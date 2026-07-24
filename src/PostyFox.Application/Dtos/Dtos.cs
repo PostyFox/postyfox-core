@@ -50,6 +50,18 @@ public sealed record CreatePostResponse(Guid PostId, PostRootStatus RootStatus);
 public sealed record PostTargetStatusDto(Guid TargetId, string Platform, TargetStatus Status, string? ExternalId, string? ExternalUrl, string? Error, int Attempts);
 public sealed record PostStatusDto(Guid PostId, PostRootStatus RootStatus, IReadOnlyList<PostTargetStatusDto> Targets);
 
+/// <summary>The user-authored content of a post, shaped to re-seed the compose form ("post again").</summary>
+public sealed record PostContentDto(
+    string? Title,
+    string? Description,
+    string? HtmlDescription,
+    IReadOnlyList<string> Tags,
+    IReadOnlyList<MediaRef> Media,
+    Guid? TemplateId,
+    IReadOnlyDictionary<string, string> Variables,
+    IReadOnlyList<Guid> ConnectorIds,
+    DateTimeOffset? PostAt);
+
 /// <summary>Lightweight row for the post list / activity view (no per-target detail).</summary>
 public sealed record PostSummaryDto(
     Guid PostId,

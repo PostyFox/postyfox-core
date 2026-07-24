@@ -26,6 +26,11 @@ public sealed class GenerateTargetHandler(
         }
         if (target.Status is TargetStatus.Ready or TargetStatus.Delivering or TargetStatus.Delivered)
             return; // idempotent: already generated
+        if (target.Status == TargetStatus.Cancelled)
+        {
+            logger.LogInformation("Generate: target {TargetId} was cancelled; skipping", message.TargetId);
+            return; // user cancelled while this was sitting on the delayed queue
+        }
 
         var post = target.Post;
 

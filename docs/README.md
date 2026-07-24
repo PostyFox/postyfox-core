@@ -41,6 +41,9 @@ The **interactive API contract** is served by each API at `/swagger` (UI) and `/
 | POST | `/api/posts` | Create a post (202 + id) |
 | GET | `/api/posts` | List the user's posts (newest-first summaries), bounded by the retention window; `?filter=active` for in-flight only, `?limit=` (1..200, default 50) |
 | GET | `/api/posts/{id}` | Aggregated post + per-target status |
+| POST | `/api/posts/{id}/duplicate` | Content of a post for "post again" (media copied to fresh blobs); does not create a post |
+| POST | `/api/posts/{id}/cancel` | Cancel not-yet-sent targets (204; 409 if nothing left to cancel) |
+| DELETE | `/api/posts/{id}` | Permanently delete a post + its stored payload/media (204) |
 | POST | `/api/webhooks/{sourceType}` | Inbound signed trigger webhook (anonymous; signature-verified) |
 
 ### connectors-node (internal, `X-Internal-Token`)

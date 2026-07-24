@@ -12,12 +12,17 @@ public static class RootStatusCalculator
 
         var anyDelivered = targets.Any(t => t.Status == TargetStatus.Delivered);
         var anyFailed = targets.Any(t => t.Status == TargetStatus.Failed);
-        var allTerminal = targets.All(t => t.Status is TargetStatus.Delivered or TargetStatus.Failed);
+        var anyCancelled = targets.Any(t => t.Status == TargetStatus.Cancelled);
+        var allTerminal = targets.All(t => t.Status is TargetStatus.Delivered or TargetStatus.Failed or TargetStatus.Cancelled);
 
         if (allTerminal)
         {
-            if (anyDelivered && anyFailed) return PostRootStatus.PartiallyFailed;
-            return anyDelivered ? PostRootStatus.Delivered : PostRootStatus.Failed;
+            // A user-cancelled target counts against a clean "Delivered" just like a failure does,
+            // so a mix of delivered + cancelled surfaces as PartiallyFailed (something didn't go out).
+            if (anyDelivered && (anyFailed || anyCancelled)) return PostRootStatus.PartiallyFailed;
+            if (anyDelivered) return PostRootStatus.Delivered;
+            if (anyFailed) return PostRootStatus.Failed;
+            return PostRootStatus.Cancelled; // every target was cancelled
         }
 
         // Still in progress: once any target has entered delivery (or reached a terminal

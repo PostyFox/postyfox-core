@@ -8,7 +8,9 @@ public enum TargetStatus
     Ready = 2,
     Delivering = 3,
     Delivered = 4,
-    Failed = 5
+    Failed = 5,
+    /// <summary>Cancelled by the user before it was delivered. Terminal; handlers skip it.</summary>
+    Cancelled = 6
 }
 
 /// <summary>Aggregated status of a root post across all its targets.</summary>
@@ -19,5 +21,7 @@ public enum PostRootStatus
     Delivering = 2,
     Delivered = 3,
     PartiallyFailed = 4,
-    Failed = 5
+    Failed = 5,
+    /// <summary>Every remaining target was cancelled by the user. Terminal.</summary>
+    Cancelled = 6
 }

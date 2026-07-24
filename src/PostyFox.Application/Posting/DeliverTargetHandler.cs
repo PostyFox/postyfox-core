@@ -38,6 +38,11 @@ public sealed class DeliverTargetHandler(
             return;
         }
         if (target.Status == TargetStatus.Delivered) return; // idempotent
+        if (target.Status == TargetStatus.Cancelled)
+        {
+            logger.LogInformation("Deliver: target {TargetId} was cancelled; skipping", message.TargetId);
+            return; // user cancelled while this was sitting on the (retry/delayed) queue
+        }
         if (target.RenderedContentJson is null)
         {
             await FailAsync(target, "Target has not been generated", ct);
