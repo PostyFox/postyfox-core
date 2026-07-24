@@ -9,9 +9,10 @@ RUN dotnet publish "$PROJECT" -c Release -o /app --no-restore /p:UseAppHost=fals
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
-# curl is required by the container healthcheck (not present in the aspnet base image).
+# curl is required by the container healthcheck; ffmpeg by media normalization (FFMpegCore shells
+# out to it) in the posting worker. Neither is present in the aspnet base image.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends curl ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app .
 ARG ASSEMBLY

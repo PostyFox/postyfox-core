@@ -75,6 +75,26 @@ public sealed record PostSummaryDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? PostAt);
 
+/// <summary>Request body for the media-check endpoint.</summary>
+public sealed record MediaCheckRequest(
+    IReadOnlyList<Guid> ConnectorIds,
+    long FileSize,
+    string MimeType);
+
+/// <summary>
+/// Per-connector result of a media pre-flight check. <see cref="WillResize"/> is true when the
+/// file exceeds the connector's size limit and the backend will resize/transcode it before delivery.
+/// <see cref="ImageSizeLimit"/> and <see cref="VideoSizeLimit"/> are in bytes; null means the
+/// connector reports no cap for that media type.
+/// </summary>
+public sealed record MediaCheckResultItem(
+    Guid ConnectorId,
+    string Platform,
+    string DisplayName,
+    bool WillResize,
+    long? ImageSizeLimit,
+    long? VideoSizeLimit);
+
 public sealed record TriggerRegistrationRequest(
     string SourceType,
     string ExternalAccount,

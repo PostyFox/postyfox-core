@@ -111,9 +111,23 @@ Body:
 
 > **Media:** each `post.media` item is an object-store reference. The service
 > fetches the bytes from `OBJECT_STORE_BUCKET` at key `` `${container}/${key}` ``,
-> uploads them to the platform, and applies `alt` as the image's alt text.
-> Bluesky attaches up to 4 images as an `app.bsky.embed.images` embed; Tumblr
-> creates an NPF photo post. Text-only posts are unaffected.
+> **normalizes them to the platform's limits** (see below), uploads them, and
+> applies `alt` as the image's alt text. Bluesky attaches up to 4 images as an
+> `app.bsky.embed.images` embed; Tumblr creates an NPF photo post. Text-only posts
+> are unaffected.
+
+### Media normalization (mandatory core step)
+
+Every connector **must** route fetched bytes through `normalizeMedia()` from
+`src/media/` before uploading — this is a core building block, not per-connector
+glue. It resizes/re-encodes still images (`sharp`) and transcodes video and
+animated GIFs (`fluent-ffmpeg`) to the platform's `MediaSpec` (`src/media/specs.ts`):
+max dimensions / bytes / duration, accepted formats and attachment count. Sources
+in an unaccepted format are converted; media that can't be brought within the limits
+fails that delivery cleanly. Fediverse connectors merge the instance's live limits
+(`mergeLiveLimits`) over the static spec. Adding a new connector means calling
+`normalizeMedia(bytes, contentType, spec)` right after `mediaStore.fetch` — never
+upload raw bytes. The runtime image installs the `ffmpeg` binary for the video path.
 
 ## Connector credential shapes
 

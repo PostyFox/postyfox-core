@@ -83,9 +83,15 @@ public static class ServiceEndpoints
 
         connectors.MapGet("{id:guid}/limits", async (Guid id, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
             await svc.GetLimitsAsync(user.UserId()!, id, ct) is { } limits ? Results.Ok(limits) : Results.NotFound())
-        .WithSummary("Report a connector's limits (character/attachment caps; live per-instance where supported)")
+        .WithSummary("Report a connector's limits (character/attachment caps, image/video size caps; live per-instance where supported)")
         .Produces<ConnectorLimits>()
         .Produces(StatusCodes.Status404NotFound);
+
+        connectors.MapPost("media-check", async (MediaCheckRequest body, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
+            Results.Ok(await svc.CheckMediaAsync(user.UserId()!, body.ConnectorIds ?? [], body.FileSize, body.MimeType ?? "", ct)))
+        .WithSummary("Check media file compatibility across connectors")
+        .WithDescription("Given a file's size and MIME type, returns per-connector analysis: whether the file exceeds the platform's size cap and will be resized/transcoded before delivery. Use this to surface 'file too large — will be resized' warnings in the compose UI before submitting a post.")
+        .Produces<IReadOnlyList<MediaCheckResultItem>>();
 
         connectors.MapPost("{id:guid}/telegram/login", async (Guid id, TelegramLoginBody body, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
             await svc.TelegramLoginAsync(user.UserId()!, id, body?.Value, ct) is { } step ? Results.Ok(step) : Results.NotFound())

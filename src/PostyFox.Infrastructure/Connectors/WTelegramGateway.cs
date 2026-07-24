@@ -19,6 +19,7 @@ namespace PostyFox.Infrastructure.Connectors;
 /// </summary>
 public sealed class WTelegramGateway(
     IObjectStore objectStore,
+    IMediaResolver mediaResolver,
     IServiceScopeFactory scopeFactory,
     ILogger<WTelegramGateway> logger) : ITelegramGateway
 {
@@ -80,7 +81,7 @@ public sealed class WTelegramGateway(
         return result;
     }
 
-    public async Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, IReadOnlyList<MediaRef> media, CancellationToken ct = default)
+    public async Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, IReadOnlyList<MediaRef> media, MediaSpec mediaSpec, CancellationToken ct = default)
     {
         try
         {
@@ -103,7 +104,7 @@ public sealed class WTelegramGateway(
                 return DeliveryResult.Ok(message.id.ToString());
             }
 
-            var content = await MediaFetcher.FetchAsync(objectStore, media, ct);
+            var content = await mediaResolver.ResolveAsync(media, mediaSpec, ct);
 
             if (content.Count == 1)
             {

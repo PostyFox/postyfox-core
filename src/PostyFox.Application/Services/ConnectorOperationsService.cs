@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
+using PostyFox.Application.Dtos;
 
 namespace PostyFox.Application.Services;
 
@@ -37,8 +38,9 @@ public sealed class ConnectorOperationsService(
     }
 
     /// <summary>
-    /// Reports a connector's limits (character + attachment caps). Uses live per-instance values when
-    /// the connector supports it (Fediverse), otherwise falls back to the static descriptor limit.
+    /// Reports a connector's limits (character + attachment caps, image/video size caps). Uses live
+    /// per-instance values when the connector supports it (Fediverse), otherwise falls back to the
+    /// static descriptor values including any <see cref="MediaSpec"/> declared on the connector.
     /// Returns null only when the connector doesn't exist.
     /// </summary>
     public async Task<ConnectorLimits?> GetLimitsAsync(string userId, Guid connectorId, CancellationToken ct = default)
@@ -52,8 +54,52 @@ public sealed class ConnectorOperationsService(
             && await limitsConnector.GetLimitsAsync(context, ct) is { } live)
             return live;
 
+        // In-process connectors (Discord, Telegram) don't implement ILimitsConnector but declare a
+        // MediaSpec on their descriptor. Expose its byte caps so the frontend can surface resize
+        // warnings before the user submits a post.
         var descriptor = connector.Describe();
-        return new ConnectorLimits(descriptor.MaxContentLength, null);
+        return new ConnectorLimits(
+            descriptor.MaxContentLength,
+            descriptor.MediaSpec?.MaxAttachments,
+            descriptor.MediaSpec?.Image.AllowedMimeTypes,
+            descriptor.MediaSpec?.Image.MaxBytes,
+            descriptor.MediaSpec?.Video.MaxBytes);
+    }
+
+    /// <summary>
+    /// For a given file (size and MIME type), reports per-connector whether the file exceeds the
+    /// platform's size limit and will therefore be resized before delivery. Used by the frontend
+    /// to surface resize / "file too large" warnings before a post is submitted.
+    /// </summary>
+    public async Task<IReadOnlyList<MediaCheckResultItem>> CheckMediaAsync(
+        string userId, IReadOnlyList<Guid> connectorIds, long fileSize, string mimeType, CancellationToken ct = default)
+    {
+        var result = new List<MediaCheckResultItem>(connectorIds.Count);
+        foreach (var connectorId in connectorIds)
+        {
+            var uc = await db.UserConnectors.Include(c => c.ServiceDefinition)
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.Id == connectorId, ct);
+            if (uc?.ServiceDefinition is null) continue;
+
+            var limits = await GetLimitsAsync(userId, connectorId, ct);
+            if (limits is null) continue;
+
+            var isImage = mimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+            var isVideo = mimeType.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
+
+            var willResize =
+                (isImage && limits.ImageSizeLimit is { } imgLimit && fileSize > imgLimit) ||
+                (isVideo && limits.VideoSizeLimit is { } vidLimit && fileSize > vidLimit);
+
+            result.Add(new MediaCheckResultItem(
+                connectorId,
+                uc.ServiceDefinition.Platform,
+                uc.DisplayName,
+                willResize,
+                limits.ImageSizeLimit,
+                limits.VideoSizeLimit));
+        }
+        return result;
     }
 
     /// <summary>Advances the Telegram interactive login for the connector's configured phone number.</summary>

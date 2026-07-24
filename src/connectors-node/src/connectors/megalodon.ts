@@ -6,6 +6,8 @@ import { basename, join } from "node:path";
 import generator, { detector } from "megalodon";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
+import { normalizeMedia } from "../media/normalize.js";
+import { FEDIVERSE_SPEC, mergeLiveLimits } from "../media/specs.js";
 import type {
   Connector,
   ConnectorContext,
@@ -382,16 +384,23 @@ export class MegalodonConnector implements Connector {
     }
   }
 
-  /** Fetches each item's bytes and checks it against the instance's media limits (fails clearly). */
+  /**
+   * Fetches each item, resizes/transcodes it to the instance's limits, then validates the result as
+   * a final safety net. Resizing (rather than rejecting) means an oversized image is delivered
+   * shrunk instead of failing the whole post; anything still outside the limits after normalization
+   * (e.g. an animated GIF over the instance's size cap) still fails clearly.
+   */
   private async resolveMedia(
     media: PostMedia[],
     limits: ConnectorLimits,
   ): Promise<{ item: PostMedia; bytes: Buffer }[]> {
+    const spec = mergeLiveLimits(FEDIVERSE_SPEC, limits);
     const resolved: { item: PostMedia; bytes: Buffer }[] = [];
     for (const item of media) {
-      const bytes = await this.mediaStore.fetch(item.container, item.key);
-      assertMediaAllowed(item, bytes, limits);
-      resolved.push({ item, bytes });
+      const raw = await this.mediaStore.fetch(item.container, item.key);
+      const normalized = await normalizeMedia(raw, item.contentType, spec);
+      assertMediaAllowed(item, normalized.bytes, normalized.contentType, limits);
+      resolved.push({ item, bytes: normalized.bytes });
     }
     return resolved;
   }
@@ -428,9 +437,8 @@ export class MegalodonConnector implements Connector {
   }
 }
 
-/** Fails clearly when a media item violates the instance's MIME-type or file-size limits. */
-function assertMediaAllowed(item: PostMedia, bytes: Buffer, limits: ConnectorLimits): void {
-  const type = item.contentType;
+/** Fails clearly when a (normalized) media item still violates the instance's MIME-type or size limits. */
+function assertMediaAllowed(item: PostMedia, bytes: Buffer, type: string, limits: ConnectorLimits): void {
   if (limits.supportedMimeTypes && limits.supportedMimeTypes.length > 0
     && !limits.supportedMimeTypes.includes(type)) {
     throw new Error(`media type ${type} is not supported by this instance`);

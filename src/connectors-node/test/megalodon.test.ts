@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import sharp from "sharp";
 import {
   MegalodonConnector,
   type MegalodonClientLike,
@@ -158,6 +159,51 @@ test("megalodon deliver uploads media and attaches ids", async () => {
   assert.equal(uploadCount, 1);
   assert.deepEqual(receivedMediaIds, ["media-1"]);
   assert.deepEqual(store.calls, [{ container: "media", key: "u1/a/pic.jpg" }]);
+});
+
+test("megalodon deliver resizes an oversized image under the instance limit instead of rejecting", async () => {
+  // A real image that starts well above the instance's tiny image_size_limit.
+  const raw = Buffer.alloc(1500 * 1500 * 3);
+  for (let i = 0; i < raw.length; i++) raw[i] = (i * 37) & 0xff;
+  const big = await sharp(raw, { raw: { width: 1500, height: 1500, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+  assert.ok(big.length > 60_000, "fixture should exceed the instance limit before resizing");
+
+  let uploadCount = 0;
+  const connector = build(
+    fakeClient({
+      async getInstance() {
+        return {
+          data: {
+            configuration: {
+              statuses: { max_characters: 5000, max_media_attachments: 4 },
+              media_attachments: {
+                supported_mime_types: ["image/jpeg", "image/png"],
+                image_size_limit: 60_000,
+                video_size_limit: 41_943_040,
+              },
+            },
+          },
+        };
+      },
+      async uploadMedia() {
+        uploadCount++;
+        return { data: { id: `media-${uploadCount}` } };
+      },
+    }),
+    fakeMediaStore(big),
+  );
+
+  const mediaPost: Post = {
+    title: null,
+    body: "big pic",
+    tags: [],
+    media: [{ container: "media", key: "u1/a/big.jpg", contentType: "image/jpeg", alt: null }],
+  };
+
+  const result = await connector.deliver(ctx, mediaPost);
+  // Previously this would have thrown in assertMediaAllowed (bytes > limit); now it is resized + delivered.
+  assert.equal(result.success, true);
+  assert.equal(uploadCount, 1);
 });
 
 test("megalodon deliver sets alt text via setMediaComment where the driver drops it (firefish)", async () => {

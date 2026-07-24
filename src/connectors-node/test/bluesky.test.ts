@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import sharp from "sharp";
 import { BlueskyConnector, type BlueskyAgentLike } from "../src/connectors/bluesky.js";
 import type { MediaStore } from "../src/media-store.js";
 import type { ConnectorContext, Post } from "../src/types.js";
@@ -163,6 +164,41 @@ test("bluesky deliver caps media at 4 images", async () => {
   assert.equal(uploadCount, 4);
   const embed = postedRecord?.embed as { images: unknown[] };
   assert.equal(embed.images.length, 4);
+});
+
+test("bluesky deliver resizes an oversized image before uploading the blob", async () => {
+  const big = await sharp({ create: { width: 4000, height: 4000, channels: 3, background: "#3366aa" } })
+    .png()
+    .toBuffer();
+  let uploaded: Uint8Array | undefined;
+  let encoding: string | undefined;
+  const connector = new BlueskyConnector(
+    () =>
+      fakeAgent({
+        async uploadBlob(bytes, opts) {
+          uploaded = bytes;
+          encoding = opts.encoding;
+          return { data: { blob: { $type: "blob", ref: "blob-ref" } } };
+        },
+      }),
+    fakeMediaStore(big),
+  );
+
+  const mediaPost: Post = {
+    title: null,
+    body: "big",
+    tags: [],
+    media: [{ container: "media", key: "big.png", contentType: "image/png", alt: null }],
+  };
+
+  const result = await connector.deliver(ctx, mediaPost);
+  assert.equal(result.success, true);
+  assert.ok(uploaded);
+  // Bluesky rejects blobs over ~976 KB; the resized blob must fit.
+  assert.ok(uploaded!.length <= 976_560, `blob is ${uploaded!.length} bytes`);
+  const meta = await sharp(Buffer.from(uploaded!)).metadata();
+  assert.ok((meta.width ?? 0) <= 2000 && (meta.height ?? 0) <= 2000, `got ${meta.width}x${meta.height}`);
+  assert.ok(encoding === "image/png" || encoding === "image/jpeg" || encoding === "image/webp");
 });
 
 test("bluesky deliver failure when login throws", async () => {

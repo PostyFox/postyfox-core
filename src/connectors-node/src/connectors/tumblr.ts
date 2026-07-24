@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
+import { normalizeMedia } from "../media/normalize.js";
+import { TUMBLR_SPEC } from "../media/specs.js";
 import type {
   Connector,
   ConnectorContext,
@@ -71,6 +73,23 @@ interface TumblrConfig {
 interface TumblrSecret {
   OAuthToken?: string;
   OAuthTokenSecret?: string;
+}
+
+/** Rewrites a filename's extension to match the (possibly converted) MIME type. */
+function renameExtension(fileName: string, mime: string): string {
+  const ext: Record<string, string> = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+  };
+  const target = ext[mime.toLowerCase()];
+  if (!target) return fileName;
+  const dot = fileName.lastIndexOf(".");
+  const stem = dot >= 0 ? fileName.slice(0, dot) : fileName;
+  return stem + target;
 }
 
 const defaultClientFactory: TumblrClientFactory = (creds) => {
@@ -201,17 +220,19 @@ export class TumblrConnector implements Connector {
       const { username, creds } = this.parseCredentials(ctx);
       const client = this.clientFactory(creds);
 
-      const media = post.media ?? [];
+      const cap = TUMBLR_SPEC.maxAttachments ?? Number.MAX_SAFE_INTEGER;
+      const media = (post.media ?? []).slice(0, cap);
       let result;
       if (media.length > 0) {
         const resolved: TumblrMedia[] = [];
         for (const item of media) {
-          const bytes = await this.mediaStore.fetch(item.container, item.key);
+          const raw = await this.mediaStore.fetch(item.container, item.key);
+          const normalized = await normalizeMedia(raw, item.contentType, TUMBLR_SPEC);
           resolved.push({
-            fileName: basename(item.key) || item.key,
-            contentType: item.contentType,
+            fileName: renameExtension(basename(item.key) || item.key, normalized.contentType),
+            contentType: normalized.contentType,
             alt: item.alt ?? "",
-            bytes,
+            bytes: normalized.bytes,
           });
         }
         result = await client.createPhotoPost(username, {

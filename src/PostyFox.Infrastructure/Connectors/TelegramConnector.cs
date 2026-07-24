@@ -1,4 +1,5 @@
 using PostyFox.Application.Connectors;
+using PostyFox.Infrastructure.Media;
 
 namespace PostyFox.Infrastructure.Connectors;
 
@@ -13,7 +14,8 @@ public sealed class TelegramConnector(ITelegramGateway gateway) : IConnector
     public const string PlatformKey = "Telegram";
 
     public ConnectorDescriptor Describe() =>
-        new(PlatformKey, "Telegram", SupportsTitle: true, SupportsMedia: false, SupportsThreads: false, 4096);
+        new(PlatformKey, "Telegram", SupportsTitle: true, SupportsMedia: false, SupportsThreads: false, 4096,
+            MediaSpec: PlatformMediaSpecs.Telegram);
 
     public async Task<AuthState> IsAuthenticatedAsync(ConnectorContext context, CancellationToken ct = default)
     {
@@ -37,6 +39,7 @@ public sealed class TelegramConnector(ITelegramGateway gateway) : IConnector
         if (string.IsNullOrWhiteSpace(chatId)) return DeliveryResult.Fail("No target chat configured");
 
         var body = string.IsNullOrEmpty(post.Title) ? post.Body : $"<b>{post.Title}</b>\n{post.Body}";
-        return await gateway.SendAsync(context.UserId, phone!, chatId!, body, post.Media, ct);
+        var mediaSpec = Describe().MediaSpec ?? MediaSpec.Unconstrained;
+        return await gateway.SendAsync(context.UserId, phone!, chatId!, body, post.Media, mediaSpec, ct);
     }
 }

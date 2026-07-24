@@ -49,5 +49,7 @@ public class TelegramConnectorTests
         var media = new List<MediaRef> { new("media", "k1", "image/jpeg"), new("media", "k2", "image/png") };
         await new TelegramConnector(gw).DeliverAsync(Ctx("{\"PhoneNumber\":\"+1\",\"DefaultPostingTarget\":\"5\"}"), Post(media));
         Assert.Equal(2, gw.LastMediaCount);
+        // The connector must hand the gateway Telegram's declared media spec, so bytes get normalized.
+        Assert.Same(PostyFox.Infrastructure.Media.PlatformMediaSpecs.Telegram, gw.LastMediaSpec);
     }
 }

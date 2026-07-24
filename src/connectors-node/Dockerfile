@@ -18,6 +18,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8090
 
+# ffmpeg is required by media normalization (fluent-ffmpeg shells out to it for video/animated GIF).
+# sharp's prebuilt libvips binary ships in node_modules (copied below) and needs no system package.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
 # Object store (S3-compatible) configuration for media fetch. Provide the
 # secrets/endpoint at runtime (`docker run -e ...`); defaults shown here.
 #   OBJECT_STORE_SERVICE_URL   - S3 endpoint, e.g. http://minio:9000
