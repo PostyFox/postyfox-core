@@ -54,6 +54,16 @@ public sealed class FakeConnector(string platform, Func<RenderedPost, DeliveryRe
     { DeliverCount++; return Task.FromResult(deliver?.Invoke(post) ?? DeliveryResult.Ok("ext-1", "http://x/1")); }
 }
 
+public sealed class FakeConnectorWithMediaSpec(string platform, MediaSpec mediaSpec) : IConnector
+{
+    public ConnectorDescriptor Describe() => new(platform, platform, true, true, false, null, MediaSpec: mediaSpec);
+    public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
+    public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
+        => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
+    public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
+        => Task.FromResult(DeliveryResult.Ok("ext-1"));
+}
+
 public sealed class FakeRegistry(params IConnector[] connectors) : IConnectorRegistry
 {
     private readonly ConnectorRegistry _inner = new(connectors);

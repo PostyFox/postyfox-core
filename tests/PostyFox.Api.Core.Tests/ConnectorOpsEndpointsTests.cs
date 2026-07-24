@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using PostyFox.Api.Core.Tests.Support;
 using PostyFox.Application.Connectors;
@@ -22,5 +23,67 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
 
         var targets = await _client.GetFromJsonAsync<List<ConnectorTarget>>($"/api/connectors/{dto.Id}/targets");
         Assert.Single(targets!);
+    }
+
+    [Fact]
+    public async Task Limits_exposes_image_size_cap_from_discord_media_spec()
+    {
+        var dto = await (await _client.PutAsJsonAsync("/api/connectors", new UserConnectorUpsertRequest(
+            null, "DiscordWH", "Disc", "{\"Webhook\":\"http://x/wh\"}", null, true)))
+            .Content.ReadFromJsonAsync<UserConnectorDto>();
+
+        var limits = await _client.GetFromJsonAsync<ConnectorLimits>($"/api/connectors/{dto!.Id}/limits");
+
+        Assert.NotNull(limits);
+        // Discord's PlatformMediaSpecs.Discord declares MaxBytes = 10 MB for images.
+        Assert.Equal(10_485_760, limits!.ImageSizeLimit);
+        Assert.Equal(10_485_760, limits.VideoSizeLimit);
+        Assert.Equal(10, limits.MaxMediaAttachments);
+    }
+
+    [Fact]
+    public async Task MediaCheck_returns_will_resize_true_when_image_exceeds_discord_cap()
+    {
+        var dto = await (await _client.PutAsJsonAsync("/api/connectors", new UserConnectorUpsertRequest(
+            null, "DiscordWH", "My Discord", "{\"Webhook\":\"http://x/wh\"}", null, true)))
+            .Content.ReadFromJsonAsync<UserConnectorDto>();
+
+        // Discord image cap is 10 MB; send 15 MB.
+        var resp = await _client.PostAsJsonAsync("/api/connectors/media-check", new MediaCheckRequest(
+            [dto!.Id], FileSize: 15_728_640, MimeType: "image/png"));
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var results = await resp.Content.ReadFromJsonAsync<List<MediaCheckResultItem>>();
+        Assert.Single(results!);
+        Assert.True(results![0].WillResize);
+        Assert.Equal("My Discord", results[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task MediaCheck_returns_will_resize_false_when_image_within_discord_cap()
+    {
+        var dto = await (await _client.PutAsJsonAsync("/api/connectors", new UserConnectorUpsertRequest(
+            null, "DiscordWH", "Disc", "{\"Webhook\":\"http://x/wh\"}", null, true)))
+            .Content.ReadFromJsonAsync<UserConnectorDto>();
+
+        // Discord image cap is 10 MB; send 1 MB.
+        var resp = await _client.PostAsJsonAsync("/api/connectors/media-check", new MediaCheckRequest(
+            [dto!.Id], FileSize: 1_048_576, MimeType: "image/jpeg"));
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var results = await resp.Content.ReadFromJsonAsync<List<MediaCheckResultItem>>();
+        Assert.Single(results!);
+        Assert.False(results![0].WillResize);
+    }
+
+    [Fact]
+    public async Task MediaCheck_with_empty_list_returns_empty_array()
+    {
+        var resp = await _client.PostAsJsonAsync("/api/connectors/media-check", new MediaCheckRequest(
+            [], FileSize: 1_000_000, MimeType: "image/jpeg"));
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var results = await resp.Content.ReadFromJsonAsync<List<MediaCheckResultItem>>();
+        Assert.Empty(results!);
     }
 }
