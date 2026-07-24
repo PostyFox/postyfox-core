@@ -9,7 +9,13 @@ public sealed record ConnectorDescriptor(
     bool SupportsThreads,
     int? MaxContentLength,
     /// <summary>True when the connector exposes an interactive OAuth "connect" flow (see <see cref="IOAuthConnector"/>).</summary>
-    bool SupportsOAuth = false);
+    bool SupportsOAuth = false,
+    /// <summary>
+    /// The platform's media constraints. Connectors that normalize media in-process (Discord,
+    /// Telegram) declare one so images/video are resized to fit before upload; connectors delegated
+    /// to the Node service normalize there and leave this null.
+    /// </summary>
+    MediaSpec? MediaSpec = null);
 
 /// <summary>Result of beginning an OAuth authorization for a connector.</summary>
 public sealed record OAuthStart(string AuthorizeUrl, string RequestToken, string RequestTokenSecret);

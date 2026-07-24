@@ -12,6 +12,7 @@ using PostyFox.Application.Connectors;
 using PostyFox.Application.Messaging;
 using PostyFox.Application.Options;
 using PostyFox.Infrastructure.Connectors;
+using PostyFox.Infrastructure.Media;
 using PostyFox.Infrastructure.Messaging;
 using PostyFox.Infrastructure.Persistence;
 using PostyFox.Infrastructure.Storage;
@@ -38,6 +39,14 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<RabbitMqConnection>();
         services.AddSingleton<IMessageBus, RabbitMqMessageBus>();
+
+        // --- Media normalization (core, shared by every in-process connector) ---
+        // Images/video are resized/transcoded to each platform's limits before upload, so nothing is
+        // ever sent at the wrong size/format. Node-delivered platforms normalize in connectors-node.
+        services.AddSingleton<ImageSharpImageProcessor>();
+        services.AddSingleton<FfmpegVideoProcessor>();
+        services.AddSingleton<IMediaProcessor, MediaProcessor>();
+        services.AddSingleton<IMediaResolver, MediaResolver>();
 
         // --- Connectors ---
         // Discord webhook (in-process HTTP)

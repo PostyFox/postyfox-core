@@ -1,9 +1,15 @@
 # Follow-ups & deferred work
 
 Residual media follow-ups (smaller):
-- **Video / documents** — only images are exercised end-to-end; verify/tune non-image media per
-  platform (content-type handling, Telegram document vs photo).
-- **Per-platform limits** — enforce type/size/count limits from each connector's descriptor.
+- **Media normalization** — ✅ done. Images **and** video are resized/transcoded/format-converted to
+  each platform's limits before upload, as a core shared component in both stacks (C#
+  `IMediaProcessor`/`IMediaResolver` with ImageSharp + FFMpegCore; connectors-node `src/media/` with
+  `sharp` + `fluent-ffmpeg`). Per-platform type/size/count limits are enforced from each connector's
+  `MediaSpec` (Fediverse merges the instance's live limits); media that can't be brought within limits
+  fails only its own target. Residuals: **documents** still pass through untouched; tune the
+  Telegram document-vs-photo branch for non-image types; optionally **cache** normalized variants in
+  the object store keyed by `(mediaKey, spec-hash)` to avoid recompute on retries / across the
+  multi-target fan-out.
 - **Pre-signed upload** — direct-to-object-store uploads (pre-signed URLs) instead of proxying
   bytes through `POST /api/media`, for large files.
 

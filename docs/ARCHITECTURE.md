@@ -269,6 +269,18 @@ passing the resolved config + secret in the request body. All internal calls car
 Node service fetches the bytes from the shared object store itself (its own S3 client), so no media
 bytes cross the internal hop. The Node service holds no session state.
 
+**Media normalization is a core, shared step every connector runs before upload.** Because one
+uploaded asset fans out to many targets with different caps, and the object store keeps the canonical
+original, normalization happens **per-target at delivery time** against each platform's `MediaSpec`
+(max dimensions / bytes / duration, accepted formats, attachment count). Still images are downscaled
+and re-encoded; video and animated GIFs are transcoded; formats the target doesn't accept are
+converted; media that can't be brought within limits fails only its own target. There is exactly one
+building block per stack, reused by every connector: in C#, `IMediaResolver` (fetch + cap + normalize)
+over `IMediaProcessor` (ImageSharp for stills, FFMpegCore for video); in connectors-node, `src/media/`
+(`sharp` for stills, `fluent-ffmpeg` for video). Connectors that report live limits (Fediverse) merge
+the instance's reported caps over the static spec. The `ffmpeg` binary is installed in the
+posting-worker and connectors-node runtime images.
+
 ```mermaid
 sequenceDiagram
     participant W as posting-worker
@@ -426,7 +438,8 @@ posts get the same rendering, delivery, retry and status behaviour.
 
 See [FOLLOWUPS.md](./FOLLOWUPS.md) for the full list. Headlines:
 
-- Media delivery is broadly implemented, but omissions are around video/documents, per-platform limits, 
+- Media delivery is fully implemented, including per-platform resize/transcode normalization for images
+  and video. Remaining omissions are around documents (pass-through), a normalized-variant cache, and
   pre-signed uploads — see [FOLLOWUPS.md](./FOLLOWUPS.md).
 - Telegram MTProto is stateful (single-writer routing) and not integration-tested (needs live creds).
 - No admin endpoint yet for platform-level secrets (Telegram api id/hash, trigger signing secrets).

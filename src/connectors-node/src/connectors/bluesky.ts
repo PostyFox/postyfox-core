@@ -1,6 +1,8 @@
 import { AtpAgent, RichText } from "@atproto/api";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
+import { normalizeMedia } from "../media/normalize.js";
+import { BLUESKY_SPEC } from "../media/specs.js";
 import type {
   Connector,
   ConnectorContext,
@@ -111,15 +113,18 @@ export class BlueskyConnector implements Connector {
       }
 
       // Upload any image media and attach it as an app.bsky.embed.images embed.
-      // Bluesky permits at most 4 images; extras are ignored.
+      // Bluesky permits at most 4 images; extras are ignored. Each item is resized/transcoded to
+      // Bluesky's limits (≤2000px, ≤~976 KB blob) before upload.
       let embed: unknown | undefined;
-      const media = (post.media ?? []).slice(0, MAX_IMAGES);
+      const cap = BLUESKY_SPEC.maxAttachments ?? MAX_IMAGES;
+      const media = (post.media ?? []).slice(0, cap);
       if (media.length > 0) {
         const images: { image: BlueskyBlobRef; alt: string }[] = [];
         for (const item of media) {
-          const bytes = await this.mediaStore.fetch(item.container, item.key);
-          const uploaded = await agent.uploadBlob(bytes, {
-            encoding: item.contentType,
+          const raw = await this.mediaStore.fetch(item.container, item.key);
+          const normalized = await normalizeMedia(raw, item.contentType, BLUESKY_SPEC);
+          const uploaded = await agent.uploadBlob(normalized.bytes, {
+            encoding: normalized.contentType,
           });
           images.push({ image: uploaded.data.blob, alt: item.alt ?? "" });
         }
