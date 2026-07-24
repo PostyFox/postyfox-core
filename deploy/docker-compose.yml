@@ -214,6 +214,11 @@ services:
     volumes:
       - "./gateway/nginx.conf:/etc/nginx/nginx.conf:ro"
       - "./gateway/conf.d:/etc/nginx/conf.d:ro"
+      # Maintenance page + flag (see conf.d/routes/05-maintenance.conf). `touch`/`rm`
+      # ./gateway/maintenance/maintenance.flag on the host to force it on/off manually.
+      - "./gateway/maintenance:/etc/nginx/maintenance:ro"
+      # nginx.conf's error_log/access_log write here; must exist or nginx fails to start.
+      - "gateway-logs:/var/log/gateway"
     depends_on:
       core-api: { condition: service_healthy }
       post-api: { condition: service_healthy }
@@ -221,7 +226,11 @@ services:
   oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:latest
     command: ["--config=/etc/oauth2-proxy.cfg"]
-    volumes: ["./oauth2-proxy/oauth2-proxy.cfg:/etc/oauth2-proxy.cfg:ro"]
+    volumes:
+      - "./oauth2-proxy/oauth2-proxy.cfg:/etc/oauth2-proxy.cfg:ro"
+      # Custom error.html (see oauth2-proxy.cfg's custom_templates_dir) — shown when the gateway
+      # itself is unreachable/restarting.
+      - "./oauth2-proxy/templates:/etc/oauth2-proxy/templates:ro"
     ports: ["4180:4180"]
     # oauth2-proxy performs OIDC discovery at startup and exits if the issuer isn't reachable, so
     # wait for Keycloak to be healthy; restart is a safety net for the brief realm-readiness window.
@@ -233,3 +242,4 @@ services:
 volumes:
   pgdata:
   rustfsdata:
+  gateway-logs:

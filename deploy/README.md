@@ -102,6 +102,32 @@ ssh deploy@server "cd /opt/postyfox/dev && \
   docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d"
 ```
 
+## Maintenance Mode
+
+The stack shows a maintenance page instead of a raw error in three situations. The first is a
+manual toggle for planned deploys; the other two are automatic and need no action:
+
+- **Planned maintenance (manual)** — the `gateway` service checks for
+  `deploy/gateway/maintenance/maintenance.flag` on every request (no reload needed). Create it
+  before a deploy and remove it after:
+  ```bash
+  # Turn maintenance mode ON (put this before stopping/redeploying services)
+  ssh deploy@server "touch /opt/postyfox/dev/gateway/maintenance/maintenance.flag"
+
+  # Turn maintenance mode OFF (once the new version is up and healthy)
+  ssh deploy@server "rm /opt/postyfox/dev/gateway/maintenance/maintenance.flag"
+  ```
+  Swap `dev` for `prod` (or whichever stack dir) as needed. This returns a `503` with the
+  maintenance page for all traffic, regardless of backend health.
+- **Backend outage (automatic)** — if core-api/post-api are unreachable (e.g. mid-restart), the
+  `gateway` service's `error_page` directive serves the same maintenance page for the resulting
+  `502`/`503`/`504`, with the original status code preserved.
+- **Gateway outage (automatic)** — if `gateway` itself is unreachable, oauth2-proxy's own custom
+  `error.html` (`deploy/oauth2-proxy/templates/`) renders the same maintenance branding.
+
+The maintenance page content lives at `deploy/gateway/maintenance/maintenance.html` — edit it to
+change the wording/branding shown to users.
+
 ## Ports
 
 Only the OIDC edge (oauth2-proxy) publishes a host port — the APIs, gateway, and connectors-node stay

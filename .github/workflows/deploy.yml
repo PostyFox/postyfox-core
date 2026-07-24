@@ -90,6 +90,7 @@ jobs:
             "$GITHUB_WORKSPACE"/deploy/docker-compose.dev.yml \
             "$GITHUB_WORKSPACE"/deploy/rabbitmq \
             "$GITHUB_WORKSPACE"/deploy/gateway \
+            "$GITHUB_WORKSPACE"/deploy/oauth2-proxy \
             "$GITHUB_WORKSPACE"/deploy/vault \
             "$GITHUB_WORKSPACE"/deploy/fluent-bit \
             "$STACK_DIR"/
@@ -125,8 +126,8 @@ jobs:
           docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }
           echo '⬆️ Updating services...'
           docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d --build || { echo '❌ Failed to start services'; exit 1; }
-          echo '🔄 Reloading gateway (nginx.conf + conf.d are bind-mounted; up -d alone does not pick up content changes)...'
-          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway || { echo '❌ Failed to restart gateway'; exit 1; }
+          echo '🔄 Reloading gateway + oauth2-proxy (their conf.d/templates are bind-mounted; up -d alone does not pick up content changes)...'
+          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway oauth2-proxy || { echo '❌ Failed to restart gateway/oauth2-proxy'; exit 1; }
           echo '✅ Dev stack deployed successfully'
           docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps
 

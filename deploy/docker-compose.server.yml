@@ -241,9 +241,30 @@ services:
   # else to core-api, preserving the full request path. Never publishes a host port.
   gateway:
     image: nginx:alpine
+    # Before starting nginx, derive its DNS `resolver` from the container's /etc/resolv.conf and
+    # write it to the http-context include (nginx.conf pulls in /etc/nginx/resolver.d/*.conf). nginx
+    # can't read resolv.conf itself and needs a literal IP, which is runtime-specific: Docker's
+    # embedded DNS at 127.0.0.11 vs podman/netavark Aardvark at a per-network address (e.g. 10.89.x.1).
+    # This is what lets the frontend SPA route's variable proxy_pass resolve `frontend` lazily, so
+    # the gateway starts even when the SPA is down. Done inline (not a /docker-entrypoint.d script)
+    # to avoid the image's executable-bit requirement, which scp/cp don't reliably preserve.
+    # $$ escapes compose interpolation so the shell sees a single $.
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /etc/nginx/resolver.d
+        ns=$$(awk '/^nameserver/ { printf "%s ", $$2 }' /etc/resolv.conf 2>/dev/null)
+        [ -n "$$ns" ] || ns="127.0.0.11 "
+        printf 'resolver %sipv6=off valid=10s;\n' "$$ns" > /etc/nginx/resolver.d/dns.conf
+        echo "gateway: DNS resolver -> $${ns}(ipv6=off valid=10s)"
+        exec nginx -g 'daemon off;'
     volumes:
       - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./gateway/conf.d:/etc/nginx/conf.d:ro
+      # Maintenance page + flag (see conf.d/routes/05-maintenance.conf). `touch`/`rm`
+      # ./gateway/maintenance/maintenance.flag on the host to force it on/off manually.
+      - ./gateway/maintenance:/etc/nginx/maintenance:ro
       # nginx writes access/error logs here; the fluent-bit sidecar tails them (see below).
       - gateway-logs:/var/log/gateway
     depends_on:
@@ -315,6 +336,12 @@ services:
       # cookies (set EDGE_COOKIE_SECURE=false only if you expose the edge over plain HTTP).
       OAUTH2_PROXY_REVERSE_PROXY: "true"
       OAUTH2_PROXY_COOKIE_SECURE: "${EDGE_COOKIE_SECURE:-true}"
+      # Custom error.html — shown when the `gateway` upstream itself is unreachable/restarting (in
+      # addition to oauth2-proxy's other error cases). Only error.html is overridden; sign_in.html
+      # etc. still fall back to oauth2-proxy's embedded defaults. See ./oauth2-proxy/templates.
+      OAUTH2_PROXY_CUSTOM_TEMPLATES_DIR: "/etc/oauth2-proxy/templates"
+    volumes:
+      - ./oauth2-proxy/templates:/etc/oauth2-proxy/templates:ro
     depends_on:
       gateway: { condition: service_healthy }
       core-api: { condition: service_healthy }
