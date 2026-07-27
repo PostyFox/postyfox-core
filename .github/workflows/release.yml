@@ -46,7 +46,7 @@ jobs:
       - name: Compute next version (Conventional Commits)
         id: semver
         if: inputs.version == ''
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           tag_prefix: "v"
           # Conventional Commits: `type!:` or BREAKING CHANGE → major; `feat:` → minor; else patch.
