@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using PostyFox.Application.Connectors;
 using PostyFox.Infrastructure.Connectors;
 using PostyFox.Infrastructure.Tests.Support;
+using PostyFox.Domain.Enums;
 using Xunit;
 
 namespace PostyFox.Infrastructure.Tests;
@@ -43,6 +44,15 @@ public class HttpConnectorTests
         Assert.Contains("\"key\":\"u1/x/pic.png\"", handler.LastBody);
         Assert.Contains("\"alt\":\"a cat\"", handler.LastBody);
         Assert.DoesNotContain("dataBase64", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task Deliver_sends_content_rating_as_a_stable_string()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":true}");
+        await New(handler).DeliverAsync(Ctx(), Post() with { Rating = ContentRating.Extreme });
+
+        Assert.Contains("\"rating\":\"extreme\"", handler.LastBody);
     }
 
     [Fact]

@@ -5,6 +5,7 @@ using PostyFox.Application.Options;
 using PostyFox.Application.Posting;
 using PostyFox.Application.Tests.Support;
 using PostyFox.Domain.Entities;
+using PostyFox.Domain.Enums;
 using Xunit;
 
 namespace PostyFox.Application.Tests;
@@ -35,11 +36,13 @@ public class PostIntakeServiceTests
         var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
 
         var result = await svc.CreateAsync("u1", new CreatePostRequest(
-            [connectorId], "Title", "Body", "<p>Body</p>", ["tag"], null, null, null, null));
+            [connectorId], "Title", "Body", "<p>Body</p>", ["tag"], null, null, null, null,
+            ContentRating.Mature));
 
         Assert.NotNull(result);
         var post = Assert.Single(db.Posts);
         Assert.Single(db.PostTargets);
+        Assert.Equal(ContentRating.Mature, post.Rating);
         var cmd = Assert.Single(bus.Of<GenerateTargetCommand>());
         Assert.Equal(post.Id, cmd.PostId);
     }

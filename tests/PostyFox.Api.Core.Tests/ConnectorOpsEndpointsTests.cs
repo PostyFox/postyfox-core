@@ -3,6 +3,10 @@ using System.Net.Http.Json;
 using PostyFox.Api.Core.Tests.Support;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
+using PostyFox.Application.Services;
+using PostyFox.Domain.Entities;
+using PostyFox.Infrastructure.Persistence;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace PostyFox.Api.Core.Tests;
@@ -85,5 +89,74 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var results = await resp.Content.ReadFromJsonAsync<List<MediaCheckResultItem>>();
         Assert.Empty(results!);
+    }
+
+    [Fact]
+    public async Task Cookie_pairing_connects_furaffinity_and_is_one_use()
+    {
+        var dto = await (await _client.PutAsJsonAsync("/api/connectors", new UserConnectorUpsertRequest(
+            null, "FurAffinity", "FA", "{}", null, true)))
+            .Content.ReadFromJsonAsync<UserConnectorDto>();
+
+        var startResponse = await _client.PostAsync(
+            $"/api/connectors/{dto!.Id}/cookie-pairing/start",
+            content: null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+        var start = await startResponse.Content.ReadFromJsonAsync<ConnectorCookiePairingStart>();
+        Assert.NotNull(start);
+
+        var payload = new
+        {
+            pairingToken = start!.PairingToken,
+            cookies = new Dictionary<string, string>
+            {
+                ["a"] = "session-a",
+                ["b"] = "session-b"
+            }
+        };
+        var complete = await _client.PostAsJsonAsync("/api/connectors/cookie-pairing/complete", payload);
+        Assert.Equal(HttpStatusCode.NoContent, complete.StatusCode);
+
+        var replay = await _client.PostAsJsonAsync("/api/connectors/cookie-pairing/complete", payload);
+        Assert.Equal(HttpStatusCode.BadRequest, replay.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cookie_pairing_completion_is_anonymous()
+    {
+        using var unauthenticatedFactory = new CustomWebApplicationFactory { DevMode = false };
+        using var client = unauthenticatedFactory.CreateClient();
+
+        ConnectorCookiePairingStart start;
+        using (var scope = unauthenticatedFactory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var connectorId = Guid.NewGuid();
+            db.UserConnectors.Add(new UserConnector
+            {
+                Id = connectorId,
+                UserId = "owner",
+                ServiceDefinitionId = "FurAffinity",
+                DisplayName = "FA",
+                ConfigJson = "{}",
+                Enabled = true
+            });
+            await db.SaveChangesAsync();
+            start = (await scope.ServiceProvider
+                .GetRequiredService<ConnectorCookiePairingService>()
+                .StartAsync("owner", connectorId))!;
+        }
+
+        var response = await client.PostAsJsonAsync("/api/connectors/cookie-pairing/complete", new
+        {
+            pairingToken = start.PairingToken,
+            cookies = new Dictionary<string, string>
+            {
+                ["a"] = "session-a",
+                ["b"] = "session-b"
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 }

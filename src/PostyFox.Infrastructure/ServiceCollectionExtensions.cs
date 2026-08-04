@@ -62,13 +62,35 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient(nameof(HttpConnector));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "BlueSky",
-            new ConnectorDescriptor("BlueSky", "Bluesky", SupportsTitle: false, SupportsMedia: true, SupportsThreads: true, MaxContentLength: 300),
+            new ConnectorDescriptor(
+                "BlueSky",
+                "Bluesky",
+                SupportsTitle: false,
+                SupportsMedia: true,
+                SupportsThreads: true,
+                MaxContentLength: 300,
+                SupportsRating: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "Tumblr",
             new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "FurAffinity",
+            new ConnectorDescriptor(
+                "FurAffinity",
+                "FurAffinity",
+                SupportsTitle: true,
+                SupportsMedia: true,
+                SupportsThreads: false,
+                MaxContentLength: null,
+                SupportsCookiePairing: true,
+                SupportsRating: true,
+                RequiresRating: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));

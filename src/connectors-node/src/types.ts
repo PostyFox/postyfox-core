@@ -27,6 +27,8 @@ export interface Post {
   body: string;
   tags: string[];
   media: PostMedia[];
+  /** Author-supplied classification. Scraped sites may require this field. */
+  rating?: "general" | "mature" | "adult" | "extreme" | null;
 }
 
 export interface IsAuthenticatedResult {

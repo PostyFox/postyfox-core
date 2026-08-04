@@ -1,4 +1,5 @@
 using PostyFox.Application.Connectors;
+using PostyFox.Domain.Enums;
 
 namespace PostyFox.Application.Abstractions;
 
@@ -9,7 +10,8 @@ public sealed record RenderRequest(
     string MarkdownBody,
     IReadOnlyDictionary<string, string> Variables,
     IReadOnlyList<string> Tags,
-    IReadOnlyList<MediaRef> Media);
+    IReadOnlyList<MediaRef> Media,
+    ContentRating? Rating = null);
 
 /// <summary>
 /// Renders template bodies: variable substitution, conditionals, and per-platform formatting.

@@ -69,6 +69,46 @@ test("bluesky deliver success returns uri + url", async () => {
   );
 });
 
+test("bluesky maps content ratings to AT Protocol self-labels", async () => {
+  const cases = [
+    [undefined, undefined],
+    ["general", undefined],
+    ["mature", "sexual"],
+    ["adult", "porn"],
+    ["extreme", "graphic-media"],
+  ] as const;
+
+  for (const [rating, expected] of cases) {
+    let postedRecord:
+      | {
+          labels?: {
+            $type: string;
+            values: { val: string }[];
+          };
+        }
+      | undefined;
+    const connector = new BlueskyConnector(() =>
+      fakeAgent({
+        async post(record) {
+          postedRecord = record;
+          return { uri: "at://did:plc:abc/app.bsky.feed.post/xyz123", cid: "cid1" };
+        },
+      }),
+    );
+
+    const result = await connector.deliver(ctx, { ...post, rating });
+    assert.equal(result.success, true);
+    if (expected === undefined) {
+      assert.equal(postedRecord?.labels, undefined);
+    } else {
+      assert.deepEqual(postedRecord?.labels, {
+        $type: "com.atproto.label.defs#selfLabels",
+        values: [{ val: expected }],
+      });
+    }
+  }
+});
+
 test("bluesky deliver with media fetches, uploads blob and attaches images embed", async () => {
   const rawBytes = Buffer.from("fake-png-bytes");
   let uploadedBytes: Uint8Array | undefined;

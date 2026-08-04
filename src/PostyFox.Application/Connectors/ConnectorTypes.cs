@@ -1,3 +1,5 @@
+using PostyFox.Domain.Enums;
+
 namespace PostyFox.Application.Connectors;
 
 /// <summary>Describes a connector's capabilities and identity.</summary>
@@ -15,7 +17,13 @@ public sealed record ConnectorDescriptor(
     /// Telegram) declare one so images/video are resized to fit before upload; connectors delegated
     /// to the Node service normalize there and leave this null.
     /// </summary>
-    MediaSpec? MediaSpec = null);
+    MediaSpec? MediaSpec = null,
+    /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
+    bool SupportsCookiePairing = false,
+    /// <summary>True when authored content ratings can be represented by the platform.</summary>
+    bool SupportsRating = false,
+    /// <summary>True when delivery must include an explicit author-supplied content rating.</summary>
+    bool RequiresRating = false);
 
 /// <summary>Result of beginning an OAuth authorization for a connector.</summary>
 public sealed record OAuthStart(string AuthorizeUrl, string RequestToken, string RequestTokenSecret);
@@ -71,7 +79,8 @@ public sealed record RenderedPost(
     string? Title,
     string Body,
     IReadOnlyList<string> Tags,
-    IReadOnlyList<MediaRef> Media);
+    IReadOnlyList<MediaRef> Media,
+    ContentRating? Rating = null);
 
 /// <summary>
 /// Reference to a stored media object (carried on the post / in the manifest and passed to

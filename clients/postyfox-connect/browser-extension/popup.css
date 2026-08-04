@@ -1,0 +1,83 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 340px;
+}
+
+main {
+  padding: 16px;
+}
+
+h1 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+.hint,
+.privacy {
+  color: #777;
+  font-size: 12px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+input {
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 8px;
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+button {
+  cursor: pointer;
+  flex: 1;
+  padding: 8px;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+#status {
+  font-size: 13px;
+  min-height: 20px;
+}
+
+#status.error {
+  color: #c33;
+}
+
+#status.success {
+  color: #198754;
+}
+
+dl {
+  display: grid;
+  font-size: 12px;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 8px;
+}
+
+dt {
+  font-weight: 600;
+}
+
+dd {
+  margin: 0;
+}

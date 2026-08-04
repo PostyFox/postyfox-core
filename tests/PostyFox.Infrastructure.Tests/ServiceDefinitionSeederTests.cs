@@ -15,6 +15,8 @@ public class ServiceDefinitionSeederTests
         var firstCount = db.Context.ServiceDefinitions.Count();
         Assert.Equal(ServiceDefinitionSeeder.Definitions.Length, firstCount);
         Assert.Contains(db.Context.ServiceDefinitions, s => s.Id == "DiscordWH");
+        Assert.Contains(db.Context.ServiceDefinitions, s =>
+            s.Id == "FurAffinity" && s.SecureConfigSchema == null);
 
         await ServiceDefinitionSeeder.SeedAsync(db.Context); // run again
         Assert.Equal(firstCount, db.Context.ServiceDefinitions.Count());

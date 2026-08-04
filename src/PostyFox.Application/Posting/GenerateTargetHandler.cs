@@ -54,7 +54,8 @@ public sealed class GenerateTargetHandler(
             body,
             variables,
             tags,
-            media));
+            media,
+            post.Rating));
 
         target.RenderedContentJson = Json.Serialize(rendered);
         target.Status = TargetStatus.Ready;

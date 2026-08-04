@@ -13,6 +13,7 @@ public interface IAppDbContext
     DbSet<ApiKey> ApiKeys { get; }
     DbSet<ServiceDefinition> ServiceDefinitions { get; }
     DbSet<UserConnector> UserConnectors { get; }
+    DbSet<ConnectorCookiePairing> ConnectorCookiePairings { get; }
     DbSet<Template> Templates { get; }
     DbSet<ExternalTrigger> ExternalTriggers { get; }
     DbSet<ExternalInterest> ExternalInterests { get; }

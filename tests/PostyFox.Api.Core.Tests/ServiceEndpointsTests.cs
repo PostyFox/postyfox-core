@@ -27,6 +27,16 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.True(discord.SupportsMedia);
         Assert.False(discord.SupportsThreads);
         Assert.Equal(2000, discord.MaxContentLength);
+
+        var bluesky = Assert.Single(defs!, d => d.Id == "BlueSky");
+        Assert.True(bluesky.SupportsRating);
+        Assert.False(bluesky.RequiresRating);
+
+        var furAffinity = Assert.Single(defs!, d => d.Id == "FurAffinity");
+        Assert.True(furAffinity.SupportsCookiePairing);
+        Assert.True(furAffinity.SupportsRating);
+        Assert.True(furAffinity.RequiresRating);
+        Assert.Null(furAffinity.SecureConfigSchema);
     }
 
     [Fact]

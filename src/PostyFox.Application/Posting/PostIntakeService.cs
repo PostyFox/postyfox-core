@@ -46,6 +46,7 @@ public sealed class PostIntakeService(
             TagsJson = Json.Serialize(request.Tags ?? []),
             MediaManifestJson = Json.Serialize(request.Media ?? []),
             VariablesJson = Json.Serialize(request.Variables ?? new Dictionary<string, string>()),
+            Rating = request.Rating,
             TemplateId = request.TemplateId,
             PostAt = request.PostAt,
             RootStatus = PostRootStatus.Queued,

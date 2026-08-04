@@ -65,6 +65,7 @@ services:
   worker:
     replicas: 1
   connectorsNode:
+    # Keep at one replica: FurAffinity's per-account flood limiter is currently process-local.
     replicas: 1
 
 resources:

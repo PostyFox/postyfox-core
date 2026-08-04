@@ -41,7 +41,7 @@ public sealed partial class TemplateEngine : ITemplateEngine
         var title = string.IsNullOrEmpty(request.Title) ? null : Substitute(request.Title, request.Variables);
         var substitutedBody = Substitute(request.MarkdownBody, request.Variables);
         var body = FormatForPlatform(request.Platform, substitutedBody);
-        return new RenderedPost(title, body, request.Tags, request.Media);
+        return new RenderedPost(title, body, request.Tags, request.Media, request.Rating);
     }
 
     private static string FormatForPlatform(string platform, string markdown) => platform.ToLowerInvariant() switch

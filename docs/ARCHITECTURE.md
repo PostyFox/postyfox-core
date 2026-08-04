@@ -24,8 +24,8 @@ event arrives. This repo is the backend + infrastructure only (the control-panel
   is decoupled through a message bus so it scales on queue depth and survives restarts.
 - **Uniform extensibility** — adding a platform means implementing one connector contract; adding an
   event source means implementing one trigger-source contract.
-- **Two language stacks by fit** — C# for the bulk; Node/TypeScript only where its libraries are
-  materially better (Bluesky, Tumblr), behind the same connector contract.
+- **Two language stacks by fit** — C# for the bulk; Node/TypeScript where its libraries or web-form
+  tooling are materially better (Bluesky, Tumblr, FurAffinity), behind the same connector contract.
 
 ---
 
@@ -40,7 +40,7 @@ flowchart TB
         core["core-api (C#)<br/>profile/keys, services,<br/>connectors, templates, triggers"]
         post["post-api (C#)<br/>post intake + status,<br/>webhook callbacks"]
         worker["posting-worker (C#)<br/>generate → deliver pipeline"]
-        node["connectors-node (TS)<br/>Bluesky, Tumblr"]
+        node["connectors-node (TS)<br/>Bluesky, Tumblr, FurAffinity"]
     end
 
     subgraph backing["Backing services"]
@@ -51,14 +51,14 @@ flowchart TB
         otel["OTel Collector"]
     end
 
-    ext["External platforms<br/>Discord · Telegram · Bluesky · Tumblr"]
+    ext["External platforms<br/>Discord · Telegram · Bluesky · Tumblr · FurAffinity"]
     src["External event sources<br/>(signed webhooks)"]
 
     client --> edge --> core & post
     client -->|X-API-Key| core & post
 
     core --> pg & sec
-    core -->|Bluesky/Tumblr auth,targets| node
+    core -->|Node connector auth,targets| node
     post --> pg & s3
     post -->|publish generate| mq
     src -->|POST /api/webhooks/:source| post
@@ -66,7 +66,7 @@ flowchart TB
     mq -->|consume generate/deliver| worker
     worker --> pg & s3 & sec
     worker -->|Discord, Telegram MTProto| ext
-    worker -->|deliver Bluesky/Tumblr| node --> ext
+    worker -->|Node connector delivery| node --> ext
     node -->|fetch media| s3
 
     core & post & worker & node -.OTLP.-> otel
@@ -79,7 +79,7 @@ flowchart TB
 | **core-api** | ASP.NET Core (.NET 10) | Identity/API keys, service catalogue, connector CRUD + auth/target ops, templates, trigger registration. Applies EF migrations + seeds catalogue on boot. |
 | **post-api** | ASP.NET Core (.NET 10) | Post intake + status; inbound external-trigger webhook callbacks. Publishes pipeline commands. |
 | **posting-worker** | .NET Worker | Consumes `generate`/`deliver` queues; renders + delivers each target; owns retries/backoff/DLQ + status rollup. |
-| **connectors-node** | Node 24 / Fastify | Bluesky (`@atproto/api`) + Tumblr (`tumblr.js`) behind an `IConnector`-shaped HTTP contract; internal-token auth; stateless. |
+| **connectors-node** | Node 24 / Fastify | Bluesky (`@atproto/api`), Tumblr (`tumblr.js`), FurAffinity (authenticated HTML forms), and Fediverse connectors behind an `IConnector`-shaped HTTP contract; internal-token auth; stateless. |
 | PostgreSQL | — | System of record. |
 | S3 / MinIO | — | Media, post payloads, Telegram MTProto sessions. |
 | RabbitMQ | — | Pipeline queues; delayed-message exchange for scheduling + retry backoff. |
@@ -261,8 +261,9 @@ the connector-ops endpoints never hard-code a platform.
 | Telegram | C# in-process | **MTProto user account** via `WTelegramClient`, behind `ITelegramGateway` |
 | Bluesky | connectors-node | `@atproto/api` |
 | Tumblr | connectors-node | `tumblr.js` |
+| FurAffinity | connectors-node | Cookie-authenticated HTML form workflow |
 
-The C# **`HttpConnector`** adapter fulfils `IConnector` for Bluesky/Tumblr by forwarding to
+The C# **`HttpConnector`** adapter fulfils `IConnector` for Node-hosted platforms by forwarding to
 connectors-node over HTTP (`POST /connectors/{platform}/{is-authenticated|list-targets|deliver}`),
 passing the resolved config + secret in the request body. All internal calls carry a shared
 `X-Internal-Token`. **Media is passed by reference** (`{container, key, contentType, alt}`) — the

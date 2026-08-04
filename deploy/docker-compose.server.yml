@@ -321,7 +321,7 @@ services:
       # Single root upstream → the internal nginx gateway (which does the path routing).
       OAUTH2_PROXY_UPSTREAMS: "http://gateway:80/"
       # Anonymous, HMAC-signed inbound webhook — external senders can't do an OIDC login.
-      OAUTH2_PROXY_SKIP_AUTH_ROUTES: "POST=^/api/webhooks/"
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: "POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$"
       # Forward the validated ID token to upstreams as `Authorization: Bearer` (APIs re-validate it).
       OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"

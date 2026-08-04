@@ -112,6 +112,19 @@ public static class ServiceEndpoints
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        connectors.MapPost("{id:guid}/cookie-pairing/start", async (
+            Guid id,
+            ClaimsPrincipal user,
+            ConnectorCookiePairingService svc,
+            CancellationToken ct) =>
+            await svc.StartAsync(user.UserId()!, id, ct) is { } pairing
+                ? Results.Ok(pairing)
+                : Results.BadRequest(new { error = "Cookie pairing is not available for this connector" }))
+        .WithSummary("Create a one-use browser-extension pairing token")
+        .WithDescription("The token expires after five minutes and can connect only the selected scraper-backed connector.")
+        .Produces<ConnectorCookiePairingStart>()
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
         // Provider redirect target. The user still carries the oauth2-proxy session, so this is an
         // authenticated request; correlation to the connector is via the stashed request token.
         connectors.MapGet("oauth/callback", async (
@@ -134,6 +147,42 @@ public static class ServiceEndpoints
             return Results.Content(OAuthCallbackHtml(ok), "text/html");
         })
         .WithSummary("OAuth provider callback — completes the connect flow and closes the popup");
+
+        app.MapPost("/api/connectors/cookie-pairing/complete", async (
+            CookiePairingCompleteBody body,
+            ConnectorCookiePairingService svc,
+            HttpResponse response,
+            CancellationToken ct) =>
+        {
+            response.Headers.AccessControlAllowOrigin = "*";
+            return
+            await svc.CompleteAsync(body.PairingToken ?? "", body.Cookies, ct) switch
+            {
+                ConnectorCookiePairingOutcome.Completed => Results.NoContent(),
+                ConnectorCookiePairingOutcome.InvalidCookies =>
+                    Results.BadRequest(new { error = "Required website session cookies were not supplied" }),
+                _ => Results.BadRequest(new { error = "Pairing token is invalid or expired" })
+            };
+        })
+        .AllowAnonymous()
+        .WithTags("connectors")
+        .WithSummary("Complete a browser-extension cookie pairing")
+        .WithDescription("Consumes a short-lived one-use token and stores only the required website session cookies.")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        app.MapMethods(
+            "/api/connectors/cookie-pairing/complete",
+            ["OPTIONS"],
+            (HttpResponse response) =>
+            {
+                response.Headers.AccessControlAllowOrigin = "*";
+                response.Headers.AccessControlAllowMethods = "POST, OPTIONS";
+                response.Headers.AccessControlAllowHeaders = "Content-Type";
+                return Results.NoContent();
+            })
+        .AllowAnonymous()
+        .ExcludeFromDescription();
     }
 
     private static string? FirstNonEmpty(params string?[] values) =>
@@ -167,4 +216,7 @@ public static class ServiceEndpoints
     }
 
     public sealed record TelegramLoginBody(string? Value);
+    public sealed record CookiePairingCompleteBody(
+        string? PairingToken,
+        IReadOnlyDictionary<string, string>? Cookies);
 }

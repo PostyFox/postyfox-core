@@ -19,7 +19,10 @@ public sealed record ServiceDefinitionDto(
     bool SupportsMedia,
     bool SupportsThreads,
     int? MaxContentLength,
-    bool SupportsOAuth);
+    bool SupportsOAuth,
+    bool SupportsCookiePairing,
+    bool SupportsRating,
+    bool RequiresRating);
 
 public sealed record UserConnectorDto(Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled);
 
@@ -43,7 +46,8 @@ public sealed record CreatePostRequest(
     IReadOnlyList<MediaRef>? Media,
     Guid? TemplateId,
     IReadOnlyDictionary<string, string>? Variables,
-    DateTimeOffset? PostAt);
+    DateTimeOffset? PostAt,
+    ContentRating? Rating = null);
 
 public sealed record CreatePostResponse(Guid PostId, PostRootStatus RootStatus);
 
@@ -60,7 +64,8 @@ public sealed record PostContentDto(
     Guid? TemplateId,
     IReadOnlyDictionary<string, string> Variables,
     IReadOnlyList<Guid> ConnectorIds,
-    DateTimeOffset? PostAt);
+    DateTimeOffset? PostAt,
+    ContentRating? Rating);
 
 /// <summary>Lightweight row for the post list / activity view (no per-target detail).</summary>
 public sealed record PostSummaryDto(

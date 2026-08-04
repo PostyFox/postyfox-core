@@ -65,6 +65,44 @@ public static class ServiceDefinitionSeeder
         } }
         """;
 
+    private const string FurAffinityConfigSchema = """
+        { "Category": {
+            "label": "Category ID",
+            "placeholder": "1",
+            "help": "Optional FurAffinity category ID. Defaults to Visual Art (1).",
+            "pattern": "^[0-9]+$",
+            "message": "Category ID must contain digits only."
+          },
+          "Theme": {
+            "label": "Theme ID",
+            "placeholder": "1",
+            "help": "Optional FurAffinity theme ID. Defaults to All (1).",
+            "pattern": "^[0-9]+$",
+            "message": "Theme ID must contain digits only."
+          },
+          "Species": {
+            "label": "Species ID",
+            "placeholder": "1",
+            "help": "Optional FurAffinity species ID. Defaults to Unspecified (1).",
+            "pattern": "^[0-9]+$",
+            "message": "Species ID must contain digits only."
+          },
+          "Gender": {
+            "label": "Gender ID",
+            "placeholder": "0",
+            "help": "Optional FurAffinity gender ID. Defaults to Any (0).",
+            "pattern": "^[0-9]+$",
+            "message": "Gender ID must contain digits only."
+          },
+          "FolderIds": {
+            "label": "Folder IDs",
+            "placeholder": "123,456",
+            "help": "Optional comma-separated FurAffinity folder IDs to assign new submissions to.",
+            "pattern": "^[0-9]+( *, *[0-9]+)*$",
+            "message": "Folder IDs must be comma-separated numbers."
+        } }
+        """;
+
     // Shared by every Fediverse platform (Mastodon, Pleroma, Pixelfed, …). The connect (OAuth/MiAuth)
     // flow yields the access token, so there is no user-facing secure schema. https:// is added
     // automatically when the scheme is omitted.
@@ -88,6 +126,8 @@ public static class ServiceDefinitionSeeder
         // by hand — so there is no user-facing secure config schema.
         new() { Id = "Tumblr", Name = "Tumblr", Platform = "Tumblr", Enabled = true,
                 ConfigSchema = TumblrSchema, SecureConfigSchema = null },
+        new() { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true,
+                ConfigSchema = FurAffinityConfigSchema, SecureConfigSchema = null },
         // Fediverse platforms — credentials come from the OAuth/MiAuth "connect" flow (SupportsOAuth),
         // not entered by hand, so there is no user-facing secure config schema. All share one config
         // schema (just the instance URL); the connector auto-detects the server software at connect.

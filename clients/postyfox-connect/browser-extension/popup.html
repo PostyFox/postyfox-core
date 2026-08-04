@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PostyFox Connect</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <h1>PostyFox Connect</h1>
+      <p class="hint">Log into FurAffinity in this browser, then create a pairing token in PostyFox.</p>
+
+      <label for="api-base">PostyFox URL</label>
+      <input id="api-base" type="url" placeholder="https://postyfox.example" autocomplete="url">
+
+      <label for="pairing-token">One-time pairing token</label>
+      <input id="pairing-token" type="password" autocomplete="off" spellcheck="false">
+
+      <div class="actions">
+        <button id="inspect" type="button" class="secondary">Check session</button>
+        <button id="connect" type="button">Connect</button>
+      </div>
+
+      <p id="status" role="status" aria-live="polite"></p>
+      <dl id="diagnostics" hidden>
+        <dt>Cookie names found</dt>
+        <dd id="cookie-names"></dd>
+        <dt>HttpOnly flags</dt>
+        <dd id="cookie-flags"></dd>
+      </dl>
+
+      <p class="privacy">Cookie values are sent only to the PostyFox URL above and are never displayed or saved by this extension.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
