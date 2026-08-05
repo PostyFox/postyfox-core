@@ -26,6 +26,21 @@ public sealed record ServiceDefinitionDto(
 
 public sealed record UserConnectorDto(Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled);
 
+/// <summary>
+/// A site the signed-in user can hand a browser session to. One entry per cookie-pairing platform:
+/// <see cref="ConnectorId"/> names the connector to update, or is null when the user has none yet
+/// (pairing then creates one). The cookie details let a browser client read the right cookies and
+/// point the user at the right login page without hard-coding either.
+/// </summary>
+public sealed record CookiePairingTargetDto(
+    Guid? ConnectorId,
+    string ServiceDefinitionId,
+    string Platform,
+    string DisplayName,
+    string SiteUrl,
+    string LoginUrl,
+    IReadOnlyList<string> CookieNames);
+
 public sealed record UserConnectorUpsertRequest(
     Guid? Id,
     string ServiceDefinitionId,

@@ -2,6 +2,17 @@ using PostyFox.Domain.Enums;
 
 namespace PostyFox.Application.Connectors;
 
+/// <summary>
+/// Everything a PostyFox Connect browser client needs to hand a website session to a connector:
+/// where the cookies live, where to send the user to log in, and which cookie names are required.
+/// Declaring this server-side (rather than a bare capability flag) keeps site-specific knowledge out
+/// of the extension, so a newly supported site needs no extension release.
+/// </summary>
+public sealed record CookiePairingSpec(
+    string SiteUrl,
+    string LoginUrl,
+    IReadOnlyList<string> CookieNames);
+
 /// <summary>Describes a connector's capabilities and identity.</summary>
 public sealed record ConnectorDescriptor(
     string Platform,
@@ -18,12 +29,19 @@ public sealed record ConnectorDescriptor(
     /// to the Node service normalize there and leave this null.
     /// </summary>
     MediaSpec? MediaSpec = null,
-    /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
-    bool SupportsCookiePairing = false,
+    /// <summary>
+    /// Set when authentication is handed off from PostyFox Connect browser clients; carries the site
+    /// and cookie names the client needs. Null for connectors that authenticate some other way.
+    /// </summary>
+    CookiePairingSpec? CookiePairing = null,
     /// <summary>True when authored content ratings can be represented by the platform.</summary>
     bool SupportsRating = false,
     /// <summary>True when delivery must include an explicit author-supplied content rating.</summary>
-    bool RequiresRating = false);
+    bool RequiresRating = false)
+{
+    /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
+    public bool SupportsCookiePairing => CookiePairing is not null;
+}
 
 /// <summary>Result of beginning an OAuth authorization for a connector.</summary>
 public sealed record OAuthStart(string AuthorizeUrl, string RequestToken, string RequestTokenSecret);

@@ -159,4 +159,94 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
+
+    // The extension's whole flow: one GET to learn what to collect, one POST to hand it over. Each
+    // test gets its own factory so connector counts are not affected by the class fixture's data.
+    [Fact]
+    public async Task Cookie_pairing_targets_describe_what_a_browser_client_should_collect()
+    {
+        using var isolated = new CustomWebApplicationFactory();
+        using var client = isolated.CreateClient();
+
+        var targets = await client.GetFromJsonAsync<List<CookiePairingTargetDto>>(
+            "/api/connectors/cookie-pairing/targets");
+
+        var target = Assert.Single(targets!);
+        Assert.Equal("FurAffinity", target.Platform);
+        Assert.Null(target.ConnectorId); // nothing configured yet — pairing will create it
+        Assert.Equal(["a", "b"], target.CookieNames);
+        Assert.Equal("https://www.furaffinity.net/", target.SiteUrl);
+        Assert.Equal("https://www.furaffinity.net/login", target.LoginUrl);
+    }
+
+    [Fact]
+    public async Task Cookie_pairing_by_platform_creates_the_connector_and_connects_it()
+    {
+        using var isolated = new CustomWebApplicationFactory();
+        using var client = isolated.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/connectors/cookie-pairing/pair", new
+        {
+            platform = "FurAffinity",
+            cookies = new Dictionary<string, string> { ["a"] = "session-a", ["b"] = "session-b" }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var connectors = await client.GetFromJsonAsync<List<UserConnectorDto>>("/api/connectors");
+        var created = Assert.Single(connectors!);
+        Assert.Equal("FurAffinity", created.Platform);
+
+        var targets = await client.GetFromJsonAsync<List<CookiePairingTargetDto>>(
+            "/api/connectors/cookie-pairing/targets");
+        Assert.Equal(created.Id, Assert.Single(targets!).ConnectorId);
+    }
+
+    [Fact]
+    public async Task Cookie_pairing_rejects_an_incomplete_cookie_set()
+    {
+        using var isolated = new CustomWebApplicationFactory();
+        using var client = isolated.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/connectors/cookie-pairing/pair", new
+        {
+            platform = "FurAffinity",
+            cookies = new Dictionary<string, string> { ["a"] = "session-a" }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty((await client.GetFromJsonAsync<List<UserConnectorDto>>("/api/connectors"))!);
+    }
+
+    [Fact]
+    public async Task Cookie_pairing_requires_a_signed_in_user()
+    {
+        using var isolated = new CustomWebApplicationFactory { DevMode = false };
+        using var client = isolated.CreateClient();
+
+        var targets = await client.GetAsync("/api/connectors/cookie-pairing/targets");
+        var pair = await client.PostAsJsonAsync("/api/connectors/cookie-pairing/pair", new
+        {
+            platform = "FurAffinity",
+            cookies = new Dictionary<string, string> { ["a"] = "session-a", ["b"] = "session-b" }
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, targets.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, pair.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cookie_pairing_site_metadata_is_anonymous()
+    {
+        using var isolated = new CustomWebApplicationFactory { DevMode = false };
+        using var client = isolated.CreateClient();
+
+        var response = await client.GetAsync("/api/connectors/cookie-pairing/sites");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var sites = await response.Content.ReadFromJsonAsync<List<CookiePairingTargetDto>>();
+        var site = Assert.Single(sites!);
+        Assert.Equal("FurAffinity", site.Platform);
+        Assert.Equal(["a", "b"], site.CookieNames);
+        Assert.Null(site.ConnectorId);
+    }
 }

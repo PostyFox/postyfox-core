@@ -5,6 +5,11 @@
     <ProjectReference Include="..\PostyFox.Domain\PostyFox.Domain.csproj" />
   </ItemGroup>
 
+  <!-- Config schemas too large to stay readable as C# string literals (see Persistence/Schemas). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Persistence\Schemas\*.schema.json" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="aneillans.adapters-secrets.Core" Version="1.2.31" />
     <PackageReference Include="aneillans.adapters-secrets.AzureKeyVault" Version="1.2.31" />

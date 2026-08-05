@@ -58,4 +58,55 @@ public class ConfigSchemaValidatorTests
         const string schema = """{ "F": { "label": "F", "pattern": "(" } }""";
         Assert.Null(ConfigSchemaValidator.Validate(schema, "{\"F\":\"anything\"}"));
     }
+
+    // Fields with a fixed set of choices (FurAffinity's category/species/…) declare `options`; the
+    // client renders them as a dropdown, and this is the gate for anything bypassing the client.
+    private const string ChoiceSchema = """
+        { "Category": { "label": "Category", "options": [
+            { "value": "1", "label": "All", "group": "Visual Art" },
+            { "value": "13", "label": "Story", "group": "Readable Art" } ] } }
+        """;
+
+    [Fact]
+    public void A_declared_option_is_accepted() =>
+        Assert.Null(ConfigSchemaValidator.Validate(ChoiceSchema, """{"Category":"13"}"""));
+
+    [Fact]
+    public void A_value_outside_the_options_is_rejected() =>
+        Assert.Equal(
+            "Category is not one of the available choices.",
+            ConfigSchemaValidator.Validate(ChoiceSchema, """{"Category":"999"}"""));
+
+    [Fact]
+    public void An_option_field_left_blank_is_still_optional() =>
+        Assert.Null(ConfigSchemaValidator.Validate(ChoiceSchema, """{"Category":""}"""));
+
+    [Fact]
+    public void A_required_option_field_still_demands_a_choice()
+    {
+        const string schema = """
+            { "C": { "label": "C", "required": true, "options": [ { "value": "1", "label": "One" } ] } }
+            """;
+        Assert.Equal("C is required.", ConfigSchemaValidator.Validate(schema, "{}"));
+    }
+
+    [Fact]
+    public void An_options_field_can_override_the_rejection_message()
+    {
+        const string schema = """
+            { "C": { "label": "C", "message": "Pick a real category.",
+                     "options": [ { "value": "1", "label": "One" } ] } }
+            """;
+        Assert.Equal("Pick a real category.", ConfigSchemaValidator.Validate(schema, """{"C":"2"}"""));
+    }
+
+    [Fact]
+    public void An_empty_options_array_imposes_no_choice_rule() =>
+        Assert.Null(ConfigSchemaValidator.Validate(
+            """{ "C": { "label": "C", "options": [] } }""", """{"C":"anything"}"""));
+
+    [Fact]
+    public void Dollar_prefixed_keys_are_schema_metadata_not_fields() =>
+        Assert.Null(ConfigSchemaValidator.Validate(
+            """{ "$comment": { "required": true }, "F": { "label": "F" } }""", "{}"));
 }

@@ -45,6 +45,7 @@ jobs:
           node-version: "24"
       - run: node clients/postyfox-connect/scripts/validate.mjs
       - run: node --check clients/postyfox-connect/browser-extension/popup.js
+      - run: node clients/postyfox-connect/scripts/smoke.mjs
 
   iac:
     runs-on: ubuntu-latest

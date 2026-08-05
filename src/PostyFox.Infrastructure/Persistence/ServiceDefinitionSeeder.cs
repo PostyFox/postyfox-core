@@ -1,3 +1,5 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PostyFox.Domain.Entities;
 
@@ -65,43 +67,12 @@ public static class ServiceDefinitionSeeder
         } }
         """;
 
-    private const string FurAffinityConfigSchema = """
-        { "Category": {
-            "label": "Category ID",
-            "placeholder": "1",
-            "help": "Optional FurAffinity category ID. Defaults to Visual Art (1).",
-            "pattern": "^[0-9]+$",
-            "message": "Category ID must contain digits only."
-          },
-          "Theme": {
-            "label": "Theme ID",
-            "placeholder": "1",
-            "help": "Optional FurAffinity theme ID. Defaults to All (1).",
-            "pattern": "^[0-9]+$",
-            "message": "Theme ID must contain digits only."
-          },
-          "Species": {
-            "label": "Species ID",
-            "placeholder": "1",
-            "help": "Optional FurAffinity species ID. Defaults to Unspecified (1).",
-            "pattern": "^[0-9]+$",
-            "message": "Species ID must contain digits only."
-          },
-          "Gender": {
-            "label": "Gender ID",
-            "placeholder": "0",
-            "help": "Optional FurAffinity gender ID. Defaults to Any (0).",
-            "pattern": "^[0-9]+$",
-            "message": "Gender ID must contain digits only."
-          },
-          "FolderIds": {
-            "label": "Folder IDs",
-            "placeholder": "123,456",
-            "help": "Optional comma-separated FurAffinity folder IDs to assign new submissions to.",
-            "pattern": "^[0-9]+( *, *[0-9]+)*$",
-            "message": "Folder IDs must be comma-separated numbers."
-        } }
-        """;
+    // FurAffinity's category/theme/species/gender fields are numeric IDs chosen from fixed lists on
+    // its submission form. Presenting them as `options` on the descriptors turns five "enter an ID"
+    // boxes into five named dropdowns. The lists run to ~500 entries, so they live in an embedded
+    // JSON file rather than a literal here — see Persistence/Schemas/README.md for provenance and
+    // how to regenerate them when FurAffinity changes its form.
+    private static readonly string FurAffinityConfigSchema = Minified("furaffinity.schema.json");
 
     // Shared by every Fediverse platform (Mastodon, Pleroma, Pixelfed, …). The connect (OAuth/MiAuth)
     // flow yields the access token, so there is no user-facing secure schema. https:// is added
@@ -150,6 +121,22 @@ public static class ServiceDefinitionSeeder
         new() { Id = "Pixelfed", Name = "Pixelfed", Platform = "Pixelfed", Enabled = true,
                 ConfigSchema = FediverseSchema, SecureConfigSchema = null },
     ];
+
+    /// <summary>
+    /// Reads an embedded schema and drops its formatting. The file on disk is pretty-printed so it can
+    /// be reviewed and diffed; the copy stored in the database and served to clients has no need for
+    /// 20 KB of indentation. Parsing here also fails the boot if a schema is ever left malformed.
+    /// </summary>
+    private static string Minified(string fileName)
+    {
+        var name = $"PostyFox.Infrastructure.Persistence.Schemas.{fileName}";
+        using var stream = typeof(ServiceDefinitionSeeder).Assembly.GetManifestResourceStream(name)
+            ?? throw new InvalidOperationException($"Embedded config schema '{name}' is missing.");
+        using var doc = JsonDocument.Parse(stream);
+        return JsonSerializer.Serialize(
+            doc.RootElement,
+            new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+    }
 
     public static async Task SeedAsync(AppDbContext db, CancellationToken ct = default)
     {

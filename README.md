@@ -56,10 +56,14 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 
 `connectors-node` exposes an `IConnector`-shaped HTTP contract (`/connectors/:platform/{is-authenticated,list-targets,limits,deliver}`); the C# `HttpConnector` forwards to it, passing the resolved config + secret in the request so the Node side stays stateless. Connector auth/target operations are exposed at `GET /api/connectors/{id}/authenticated`, `GET /api/connectors/{id}/targets`, and the Telegram login flow at `POST /api/connectors/{id}/telegram/login`.
 
-Scraper-backed login uses a five-minute, one-use pairing token: PostyFox Connect reads only the
-required cookies after the user logs in normally, then sends them to
-`POST /api/connectors/cookie-pairing/complete`. See
-[`clients/postyfox-connect`](./clients/postyfox-connect/README.md).
+Scraper-backed login is a one-click hand-off from the PostyFox Connect browser extension. Because the
+extension carries the user's own PostyFox session, it takes two calls and no user input:
+`GET /api/connectors/cookie-pairing/targets` (which connector, which cookies, which login page) then
+`POST /api/connectors/cookie-pairing/pair`. Only the cookie names the platform's `CookiePairingSpec`
+declares are read or stored, and the connector is created on the spot if the user has none. The
+five-minute one-use pairing token (`/cookie-pairing/start` → `/cookie-pairing/complete`, with public
+site metadata at `/cookie-pairing/sites`) remains as a fallback for a browser that cannot present a
+PostyFox session. See [`clients/postyfox-connect`](./clients/postyfox-connect/README.md).
 
 **Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }` — sizes in bytes) — fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 

@@ -88,7 +88,12 @@ public static class ServiceCollectionExtensions
                 SupportsMedia: true,
                 SupportsThreads: false,
                 MaxContentLength: null,
-                SupportsCookiePairing: true,
+                // FurAffinity has no API — delivery reuses the user's browser session, handed over by
+                // the PostyFox Connect extension. `a`/`b` are its session cookie pair.
+                CookiePairing: new CookiePairingSpec(
+                    SiteUrl: "https://www.furaffinity.net/",
+                    LoginUrl: "https://www.furaffinity.net/login",
+                    CookieNames: ["a", "b"]),
                 SupportsRating: true,
                 RequiresRating: true),
             sp.GetRequiredService<IHttpClientFactory>(),
