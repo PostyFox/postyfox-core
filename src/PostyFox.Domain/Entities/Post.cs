@@ -13,6 +13,7 @@ public class Post
     public string TagsJson { get; set; } = "[]";
     public string MediaManifestJson { get; set; } = "[]";
     public string VariablesJson { get; set; } = "{}";
+    public ContentRating? Rating { get; set; }
     public Guid? TemplateId { get; set; }
     public DateTimeOffset? PostAt { get; set; }
     public PostRootStatus RootStatus { get; set; } = PostRootStatus.Queued;

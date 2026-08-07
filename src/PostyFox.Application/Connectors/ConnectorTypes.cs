@@ -1,4 +1,17 @@
+using PostyFox.Domain.Enums;
+
 namespace PostyFox.Application.Connectors;
+
+/// <summary>
+/// Everything a PostyFox Connect browser client needs to hand a website session to a connector:
+/// where the cookies live, where to send the user to log in, and which cookie names are required.
+/// Declaring this server-side (rather than a bare capability flag) keeps site-specific knowledge out
+/// of the extension, so a newly supported site needs no extension release.
+/// </summary>
+public sealed record CookiePairingSpec(
+    string SiteUrl,
+    string LoginUrl,
+    IReadOnlyList<string> CookieNames);
 
 /// <summary>Describes a connector's capabilities and identity.</summary>
 public sealed record ConnectorDescriptor(
@@ -15,7 +28,28 @@ public sealed record ConnectorDescriptor(
     /// Telegram) declare one so images/video are resized to fit before upload; connectors delegated
     /// to the Node service normalize there and leave this null.
     /// </summary>
-    MediaSpec? MediaSpec = null);
+    MediaSpec? MediaSpec = null,
+    /// <summary>
+    /// Set when authentication is handed off from PostyFox Connect browser clients; carries the site
+    /// and cookie names the client needs. Null for connectors that authenticate some other way.
+    /// </summary>
+    CookiePairingSpec? CookiePairing = null,
+    /// <summary>True when authored content ratings can be represented by the platform.</summary>
+    bool SupportsRating = false,
+    /// <summary>True when delivery must include an explicit author-supplied content rating.</summary>
+    bool RequiresRating = false,
+    /// <summary>
+    /// Field-descriptor JSON (same format as <see cref="Domain.Entities.ServiceDefinition.ConfigSchema"/>)
+    /// for choices the platform takes <em>per submission</em> rather than per account — FurAffinity's
+    /// category, species, gender and gallery folders. The compose form renders these per selected
+    /// target; the values are stored on the <see cref="Domain.Entities.PostTarget"/> and applied over
+    /// the connector's config at delivery. Null when the platform has no per-submission choices.
+    /// </summary>
+    string? PostOptionsSchema = null)
+{
+    /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
+    public bool SupportsCookiePairing => CookiePairing is not null;
+}
 
 /// <summary>Result of beginning an OAuth authorization for a connector.</summary>
 public sealed record OAuthStart(string AuthorizeUrl, string RequestToken, string RequestTokenSecret);
@@ -71,7 +105,8 @@ public sealed record RenderedPost(
     string? Title,
     string Body,
     IReadOnlyList<string> Tags,
-    IReadOnlyList<MediaRef> Media);
+    IReadOnlyList<MediaRef> Media,
+    ContentRating? Rating = null);
 
 /// <summary>
 /// Reference to a stored media object (carried on the post / in the manifest and passed to

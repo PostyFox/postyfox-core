@@ -62,13 +62,44 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient(nameof(HttpConnector));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "BlueSky",
-            new ConnectorDescriptor("BlueSky", "Bluesky", SupportsTitle: false, SupportsMedia: true, SupportsThreads: true, MaxContentLength: 300),
+            new ConnectorDescriptor(
+                "BlueSky",
+                "Bluesky",
+                SupportsTitle: false,
+                SupportsMedia: true,
+                SupportsThreads: true,
+                MaxContentLength: 300,
+                SupportsRating: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "Tumblr",
             new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "FurAffinity",
+            new ConnectorDescriptor(
+                "FurAffinity",
+                "FurAffinity",
+                SupportsTitle: true,
+                SupportsMedia: true,
+                SupportsThreads: false,
+                MaxContentLength: null,
+                // FurAffinity has no API — delivery reuses the user's browser session, handed over by
+                // the PostyFox Connect extension. `a`/`b` are its session cookie pair.
+                CookiePairing: new CookiePairingSpec(
+                    SiteUrl: "https://www.furaffinity.net/",
+                    LoginUrl: "https://www.furaffinity.net/login",
+                    CookieNames: ["a", "b"]),
+                SupportsRating: true,
+                RequiresRating: true,
+                // Category/theme/species/gender/folders are chosen per submission on FurAffinity's own
+                // form, so they belong to the post rather than the account. The lists run to ~500
+                // entries — see Persistence/Schemas/README.md for provenance and regeneration.
+                PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json")),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));

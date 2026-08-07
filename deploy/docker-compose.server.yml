@@ -12,7 +12,7 @@ x-dotnet-env: &dotnet-env
   ObjectStore__ServiceUrl: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
   ObjectStore__AccessKey: "${RUSTFS_ACCESS_KEY}"
   ObjectStore__SecretKey: "${RUSTFS_SECRET_KEY}"
-  ObjectStore__Bucket: "postyfox"
+  ObjectStore__Bucket: "${RUSTFS_BUCKET:-postyfox}"
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "${RABBITMQ_USER}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
@@ -156,7 +156,7 @@ services:
       OBJECT_STORE_SERVICE_URL: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
       OBJECT_STORE_ACCESS_KEY: "${RUSTFS_ACCESS_KEY}"
       OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
-      OBJECT_STORE_BUCKET: "postyfox"
+      OBJECT_STORE_BUCKET: "${RUSTFS_BUCKET:-postyfox}"
       OBJECT_STORE_FORCE_PATH_STYLE: "true"
       # OpenTelemetry (auto-instrumentation via --import in the image). Node uses OTLP/HTTP → the
       # collector's :4318. deployment.environment/cluster are stamped by the collector.
@@ -321,7 +321,7 @@ services:
       # Single root upstream → the internal nginx gateway (which does the path routing).
       OAUTH2_PROXY_UPSTREAMS: "http://gateway:80/"
       # Anonymous, HMAC-signed inbound webhook — external senders can't do an OIDC login.
-      OAUTH2_PROXY_SKIP_AUTH_ROUTES: "POST=^/api/webhooks/"
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: "POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$"
       # Forward the validated ID token to upstreams as `Authorization: Bearer` (APIs re-validate it).
       OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"

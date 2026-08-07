@@ -11,6 +11,7 @@ public sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbC
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<ServiceDefinition> ServiceDefinitions => Set<ServiceDefinition>();
     public DbSet<UserConnector> UserConnectors => Set<UserConnector>();
+    public DbSet<ConnectorCookiePairing> ConnectorCookiePairings => Set<ConnectorCookiePairing>();
     public DbSet<Template> Templates => Set<Template>();
     public DbSet<ExternalTrigger> ExternalTriggers => Set<ExternalTrigger>();
     public DbSet<ExternalInterest> ExternalInterests => Set<ExternalInterest>();
@@ -23,6 +24,7 @@ public sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbC
         b.Entity<ExternalInterest>().HasKey(x => new { x.SourceType, x.ExternalAccount, x.UserId });
         b.Entity<WebhookDedupe>().HasKey(x => new { x.Source, x.MessageId });
         b.Entity<UserConnector>().HasOne(x => x.ServiceDefinition).WithMany().HasForeignKey(x => x.ServiceDefinitionId);
+        b.Entity<ConnectorCookiePairing>().HasKey(x => x.TokenHash);
     }
 
     public static TestDbContext Create()

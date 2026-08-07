@@ -25,3 +25,12 @@ public enum PostRootStatus
     /// <summary>Every remaining target was cancelled by the user. Terminal.</summary>
     Cancelled = 6
 }
+
+/// <summary>Audience/content classification supplied by the author for platforms that require it.</summary>
+public enum ContentRating
+{
+    General = 0,
+    Mature = 1,
+    Adult = 2,
+    Extreme = 3
+}

@@ -64,6 +64,21 @@ public sealed class FakeConnectorWithMediaSpec(string platform, MediaSpec mediaS
         => Task.FromResult(DeliveryResult.Ok("ext-1"));
 }
 
+/// <summary>A connector that authenticates from a handed-over website session (see FurAffinity).</summary>
+public sealed class FakeCookiePairingConnector(string platform, params string[] cookieNames) : IConnector
+{
+    public ConnectorDescriptor Describe() => new(platform, platform, true, true, false, null,
+        CookiePairing: new CookiePairingSpec(
+            $"https://{platform.ToLowerInvariant()}.test/",
+            $"https://{platform.ToLowerInvariant()}.test/login",
+            cookieNames));
+    public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
+    public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
+        => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
+    public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
+        => Task.FromResult(DeliveryResult.Ok("ext-1"));
+}
+
 public sealed class FakeRegistry(params IConnector[] connectors) : IConnectorRegistry
 {
     private readonly ConnectorRegistry _inner = new(connectors);

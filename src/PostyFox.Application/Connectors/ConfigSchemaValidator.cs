@@ -16,8 +16,14 @@ namespace PostyFox.Application.Connectors;
 ///   <item><c>pattern</c> (string) — .NET regex the value must match.</item>
 ///   <item><c>message</c> (string) — error shown when <c>pattern</c> fails (else a generic one).</item>
 ///   <item><c>minLength</c> / <c>maxLength</c> (int).</item>
+///   <item>
+///     <c>options</c> (array of <c>{ value, label, group? }</c>) — the value must be one of the
+///     declared <c>value</c>s. Fields with a fixed set of choices (FurAffinity's category, species,
+///     …) declare these so the client can render a named dropdown instead of an ID box.
+///   </item>
 /// </list>
 /// Presentation keys (label/help/placeholder/type/link) are ignored here — the client owns rendering.
+/// Field names starting with <c>$</c> are schema metadata (e.g. <c>$comment</c>), never fields.
 /// </summary>
 public static class ConfigSchemaValidator
 {
@@ -48,6 +54,7 @@ public static class ConfigSchemaValidator
         var values = ParseValues(valuesJson);
         foreach (var field in schema.EnumerateObject())
         {
+            if (field.Name.StartsWith('$')) continue; // schema metadata ($comment), not a field.
             if (field.Value.ValueKind != JsonValueKind.Object) continue; // legacy placeholder: no rules.
             var error = ValidateField(field.Name, field.Value, values.GetValueOrDefault(field.Name));
             if (error is not null) return error;
@@ -76,6 +83,11 @@ public static class ConfigSchemaValidator
             && trimmed.Length > maxLen)
             return $"{label} must be at most {maxLen} characters.";
 
+        if (descriptor.TryGetProperty("options", out var options)
+            && options.ValueKind == JsonValueKind.Array && options.GetArrayLength() > 0
+            && !options.EnumerateArray().Any(o => OptionValue(o) == trimmed))
+            return Message(descriptor, $"{label} is not one of the available choices.");
+
         if (descriptor.TryGetProperty("pattern", out var pat) && pat.ValueKind == JsonValueKind.String
             && pat.GetString() is { Length: > 0 } pattern)
         {
@@ -89,6 +101,12 @@ public static class ConfigSchemaValidator
         }
         return null;
     }
+
+    private static string? OptionValue(JsonElement option) =>
+        option.ValueKind == JsonValueKind.Object
+            && option.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String
+            ? v.GetString()
+            : null;
 
     private static string Message(JsonElement descriptor, string fallback) =>
         descriptor.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String

@@ -51,7 +51,7 @@ The **interactive API contract** is served by each API at `/swagger` (UI) and `/
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/health` | Liveness |
-| POST | `/connectors/{platform}/is-authenticated` | Auth check (Bluesky/Tumblr) |
+| POST | `/connectors/{platform}/is-authenticated` | Platform auth check |
 | POST | `/connectors/{platform}/list-targets` | List targets |
 | POST | `/connectors/{platform}/deliver` | Deliver a rendered post |
 

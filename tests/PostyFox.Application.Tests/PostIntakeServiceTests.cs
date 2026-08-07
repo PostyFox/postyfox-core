@@ -5,6 +5,7 @@ using PostyFox.Application.Options;
 using PostyFox.Application.Posting;
 using PostyFox.Application.Tests.Support;
 using PostyFox.Domain.Entities;
+using PostyFox.Domain.Enums;
 using Xunit;
 
 namespace PostyFox.Application.Tests;
@@ -24,7 +25,8 @@ public class PostIntakeServiceTests
     }
 
     private static PostIntakeService New(TestDbContext db, FakeBus bus, FixedClock clock) =>
-        new(db, new FakeObjectStore(), bus, clock, Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+        new(db, new FakeObjectStore(), bus, clock, new FakeRegistry(new FakeConnector("DiscordWH")),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
 
     [Fact]
     public async Task Create_persists_post_and_enqueues_generate_per_target()
@@ -35,11 +37,13 @@ public class PostIntakeServiceTests
         var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
 
         var result = await svc.CreateAsync("u1", new CreatePostRequest(
-            [connectorId], "Title", "Body", "<p>Body</p>", ["tag"], null, null, null, null));
+            [connectorId], "Title", "Body", "<p>Body</p>", ["tag"], null, null, null, null,
+            ContentRating.Mature));
 
         Assert.NotNull(result);
         var post = Assert.Single(db.Posts);
         Assert.Single(db.PostTargets);
+        Assert.Equal(ContentRating.Mature, post.Rating);
         var cmd = Assert.Single(bus.Of<GenerateTargetCommand>());
         Assert.Equal(post.Id, cmd.PostId);
     }

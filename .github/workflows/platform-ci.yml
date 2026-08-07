@@ -3,9 +3,9 @@ name: platform-ci
 on:
   push:
     branches: [main]
-    paths: ["src/**", "tests/**", "deploy/**", "Dockerfile", "PostyFox.Platform.slnx", ".github/workflows/platform-ci.yml"]
+    paths: ["src/**", "tests/**", "clients/**", "deploy/**", "Dockerfile", "PostyFox.Platform.slnx", ".github/workflows/platform-ci.yml"]
   pull_request:
-    paths: ["src/**", "tests/**", "deploy/**", "Dockerfile", "PostyFox.Platform.slnx", ".github/workflows/platform-ci.yml"]
+    paths: ["src/**", "tests/**", "clients/**", "deploy/**", "Dockerfile", "PostyFox.Platform.slnx", ".github/workflows/platform-ci.yml"]
 
 jobs:
   dotnet:
@@ -35,6 +35,17 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+
+  connect-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: node clients/postyfox-connect/scripts/validate.mjs
+      - run: node --check clients/postyfox-connect/browser-extension/popup.js
+      - run: node clients/postyfox-connect/scripts/smoke.mjs
 
   iac:
     runs-on: ubuntu-latest

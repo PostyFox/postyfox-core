@@ -16,6 +16,12 @@ export const TUMBLR_SPEC: MediaSpec = {
   maxAttachments: 10,
 };
 
+export const FURAFFINITY_SPEC: MediaSpec = {
+  image: { maxBytes: 10_485_760, allowedMimeTypes: ["image/jpeg", "image/png", "image/gif"] },
+  video: { maxBytes: 10_485_760, allowedMimeTypes: [] },
+  maxAttachments: 1,
+};
+
 /** Fallback used before an instance's live limits are known (or when it reports none). */
 export const FEDIVERSE_SPEC: MediaSpec = {
   image: { maxWidth: 2048, maxHeight: 2048, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] },
@@ -26,6 +32,7 @@ export const FEDIVERSE_SPEC: MediaSpec = {
 export const MEDIA_SPECS: Record<string, MediaSpec> = {
   bluesky: BLUESKY_SPEC,
   tumblr: TUMBLR_SPEC,
+  furaffinity: FURAFFINITY_SPEC,
 };
 
 /**

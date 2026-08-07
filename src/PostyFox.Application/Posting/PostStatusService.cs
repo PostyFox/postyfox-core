@@ -53,7 +53,17 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             post.TemplateId,
             Json.Deserialize<Dictionary<string, string>>(post.VariablesJson) ?? new(),
             post.Targets.Where(t => t.ConnectorId.HasValue).Select(t => t.ConnectorId!.Value).Distinct().ToList(),
-            post.PostAt);
+            post.PostAt,
+            post.Rating,
+            post.Targets
+                .Where(t => t.ConnectorId.HasValue)
+                .Select(t => (t.ConnectorId!.Value,
+                    Options: Json.Deserialize<Dictionary<string, string>>(t.OptionsJson)))
+                .Where(x => x.Options is { Count: > 0 })
+                .GroupBy(x => x.Item1)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (IReadOnlyDictionary<string, string>)g.First().Options!));
     }
 
     /// <summary>

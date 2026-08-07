@@ -4,6 +4,7 @@ import sharp from "sharp";
 import {
   MegalodonConnector,
   type MegalodonClientLike,
+  type MegalodonInstance,
   type MegalodonSns,
 } from "../src/connectors/megalodon.js";
 import type { MediaStore } from "../src/media-store.js";
@@ -78,8 +79,15 @@ function build(
   client: MegalodonClientLike,
   store?: MediaStore,
   detect: (url: string) => Promise<MegalodonSns> = async () => "firefish",
+  fetchPixelfedInstance?: (instanceUrl: string) => Promise<MegalodonInstance>,
 ): MegalodonConnector {
-  return new MegalodonConnector("firefish", store ?? fakeMediaStore(Buffer.from("")), () => client, detect);
+  return new MegalodonConnector(
+    "firefish",
+    store ?? fakeMediaStore(Buffer.from("")),
+    () => client,
+    detect,
+    fetchPixelfedInstance,
+  );
 }
 
 test("megalodon is-authenticated true when credentials verify", async () => {
@@ -311,6 +319,44 @@ test("megalodon getLimits returns nulls when the instance omits limits", async (
     supportedMimeTypes: null,
     imageSizeLimit: null,
     videoSizeLimit: null,
+  });
+});
+
+test("megalodon getLimits bypasses Pixelfed's null contact-account converter", async () => {
+  let requestedUrl: string | undefined;
+  const limits = await build(
+    fakeClient({
+      async getInstance() {
+        throw new TypeError("Cannot read properties of null (reading 'id')");
+      },
+    }),
+    undefined,
+    async () => "pixelfed",
+    async (instanceUrl) => {
+      requestedUrl = instanceUrl;
+      return {
+        configuration: {
+          statuses: { max_characters: 500, max_media_attachments: 10 },
+          media_attachments: {
+            supported_mime_types: ["image/jpeg", "image/png"],
+            image_size_limit: 15_000_000,
+            video_size_limit: 100_000_000,
+          },
+        },
+      };
+    },
+  ).getLimits({
+    ...ctx,
+    secretJson: JSON.stringify({ AccessToken: "tok", Sns: "pixelfed" }),
+  });
+
+  assert.equal(requestedUrl, "https://shrimp.example");
+  assert.deepEqual(limits, {
+    maxContentLength: 500,
+    maxMediaAttachments: 10,
+    supportedMimeTypes: ["image/jpeg", "image/png"],
+    imageSizeLimit: 15_000_000,
+    videoSizeLimit: 100_000_000,
   });
 });
 

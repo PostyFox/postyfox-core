@@ -90,6 +90,7 @@ public sealed class HttpConnector(
                 title = post.Title,
                 body = post.Body,
                 tags = post.Tags,
+                rating = post.Rating?.ToString().ToLowerInvariant(),
                 // Media is passed by reference; the Node service fetches the bytes from the object store.
                 media = post.Media.Select(m => new { container = m.Container, key = m.Key, contentType = m.ContentType, alt = m.Alt })
             }

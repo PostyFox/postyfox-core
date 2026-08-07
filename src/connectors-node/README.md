@@ -7,6 +7,7 @@ are Node-only:
 
 - **Bluesky** via [`@atproto/api`](https://www.npmjs.com/package/@atproto/api)
 - **Tumblr** via [`tumblr.js`](https://www.npmjs.com/package/tumblr.js)
+- **FurAffinity** via its authenticated HTML forms
 
 The service is intentionally small and holds no state — every request carries
 the credentials/config it needs.
@@ -47,7 +48,8 @@ If `INTERNAL_TOKEN` is not configured, all requests are allowed (dev only).
 
 ## HTTP contract
 
-`:platform` is `BlueSky` or `Tumblr` (case-insensitive). Unknown platforms
+`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, and the supported Fediverse platforms
+(case-insensitive). Unknown platforms
 return `404 { "error": "unknown platform" }`.
 
 The **context object** used by every endpoint:
@@ -147,6 +149,19 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   `{ "ConsumerKey": "", "ConsumerSecret": "", "OAuthToken": "", "OAuthTokenSecret": "" }`
 - `list-targets` returns the user's blogs as `{ id: blog.name, name: blog.title || blog.name }`.
 - `deliver` creates a text post and returns the post `id` and `post_url`.
+
+### FurAffinity
+
+- `secretJson` → `{ "CookieHeader": "a=…; b=…" }`. The cookie header must come from a currently
+  logged-in `furaffinity.net` browser session and is stored by core's configured secret provider.
+- Optional `configJson` fields: `Category`, `Theme`, `Species`, `Gender`, and comma-separated
+  `FolderIds`. Missing values use FurAffinity's general-purpose defaults.
+- Gallery delivery currently accepts exactly one JPEG, PNG, or GIF, requires an explicit post
+  `rating` plus at least three tags, and follows FurAffinity's upload/finalize forms.
+- Run a single connectors-node replica while FurAffinity is enabled; its required per-account
+  posting interval is coordinated in-process.
+- Automated login and Cloudflare challenge solving are intentionally not attempted. When a
+  challenge or expired login is detected, refresh the imported browser cookies.
 
 ## Running
 

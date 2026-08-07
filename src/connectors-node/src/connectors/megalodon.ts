@@ -70,17 +70,19 @@ export interface MegalodonClientLike {
     },
   ): Promise<{ data: { id?: string; url?: string | null; uri?: string | null } }>;
   getInstance(): Promise<{
-    data: {
-      configuration?: {
-        statuses?: { max_characters?: number; max_media_attachments?: number };
-        media_attachments?: {
-          supported_mime_types?: string[];
-          image_size_limit?: number;
-          video_size_limit?: number;
-        };
-      };
-    };
+    data: MegalodonInstance;
   }>;
+}
+
+export interface MegalodonInstance {
+  configuration?: {
+    statuses?: { max_characters?: number; max_media_attachments?: number };
+    media_attachments?: {
+      supported_mime_types?: string[];
+      image_size_limit?: number;
+      video_size_limit?: number;
+    };
+  };
 }
 
 /** Produces a megalodon client for an SNS + instance, optionally authenticated. */
@@ -177,6 +179,19 @@ const defaultClientFactory: MegalodonClientFactory = (sns, baseUrl, accessToken)
 
 const defaultDetector: SnsDetector = (url) => detector(url) as Promise<MegalodonSns>;
 
+type PixelfedInstanceFetcher = (instanceUrl: string) => Promise<MegalodonInstance>;
+
+const defaultPixelfedInstanceFetcher: PixelfedInstanceFetcher = async (instanceUrl) => {
+  const response = await fetch(`${instanceUrl}/api/v1/instance`);
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(
+      `Pixelfed instance limits request failed: HTTP ${response.status}${body ? `: ${body}` : ""}`,
+    );
+  }
+  return response.json() as Promise<MegalodonInstance>;
+};
+
 /**
  * Generic Fediverse connector backed by megalodon. One instance serves a single Fediverse platform
  * (e.g. Iceshrimp → the `firefish` driver); the SNS is auto-detected at connect time and cached in
@@ -197,6 +212,7 @@ export class MegalodonConnector implements Connector {
     private readonly mediaStore: MediaStore = mediaStoreFromEnv(),
     private readonly clientFactory: MegalodonClientFactory = defaultClientFactory,
     private readonly detect: SnsDetector = defaultDetector,
+    private readonly pixelfedInstanceFetcher: PixelfedInstanceFetcher = defaultPixelfedInstanceFetcher,
   ) {
     this.oauth = {
       startAuthorization: (input) => this.startAuthorization(input),
@@ -327,12 +343,21 @@ export class MegalodonConnector implements Connector {
         // Ignore an unparseable secret; the fallback SNS is fine for a public instance probe.
       }
     }
-    return this.fetchLimits(this.clientFactory(sns, instanceUrl));
+    return this.fetchLimits(this.clientFactory(sns, instanceUrl), sns, instanceUrl);
   }
 
-  private async fetchLimits(client: MegalodonClientLike): Promise<ConnectorLimits> {
-    const res = await client.getInstance();
-    const config = res.data?.configuration;
+  private async fetchLimits(
+    client: MegalodonClientLike,
+    sns: MegalodonSns,
+    instanceUrl: string,
+  ): Promise<ConnectorLimits> {
+    // Megalodon's Pixelfed converter assumes contact_account is non-null and crashes on valid
+    // responses where it is null. Reading the public JSON directly also preserves media limits
+    // that the converter currently omits.
+    const instance = sns === "pixelfed"
+      ? await this.pixelfedInstanceFetcher(instanceUrl)
+      : (await client.getInstance()).data;
+    const config = instance.configuration;
     const statuses = config?.statuses;
     const media = config?.media_attachments;
     return {
@@ -353,7 +378,7 @@ export class MegalodonConnector implements Connector {
       // posting — so nothing is silently truncated or dropped.
       const media = post.media ?? [];
       const status = composeStatus(post);
-      const limits = await this.fetchLimits(client);
+      const limits = await this.fetchLimits(client, sns, instanceUrl);
       const length = [...status].length;
       if (limits.maxContentLength !== null && length > limits.maxContentLength) {
         throw new Error(
@@ -481,4 +506,3 @@ function appendQueryParam(url: string, key: string, value: string): string {
   const sep = url.includes("?") ? "&" : "?";
   return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
-

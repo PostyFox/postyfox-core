@@ -112,6 +112,55 @@ public static class ServiceEndpoints
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        // --- PostyFox Connect (browser extension) ------------------------------------------------
+        // The extension presents the user's PostyFox session, so these two calls are all it needs:
+        // discover what can be paired, then post the cookies. No pairing token changes hands.
+        connectors.MapGet("cookie-pairing/targets", async (
+            ClaimsPrincipal user,
+            ConnectorCookiePairingService svc,
+            CancellationToken ct) =>
+            Results.Ok(await svc.ListTargetsAsync(user.UserId()!, ct)))
+        .WithSummary("List the sites a browser client can hand a session to")
+        .WithDescription("One entry per cookie-authenticated platform, carrying the connector to update (null when the user has none yet), the site's login URL, and the cookie names to collect.")
+        .Produces<IReadOnlyList<CookiePairingTargetDto>>();
+
+        connectors.MapPost("cookie-pairing/pair", async (
+            CookiePairingRequest body,
+            ClaimsPrincipal user,
+            ConnectorCookiePairingService svc,
+            CancellationToken ct) =>
+        {
+            var result = await svc.PairAsync(
+                user.UserId()!, body.Platform, body.ConnectorId, body.Cookies, ct);
+            return result.Outcome switch
+            {
+                ConnectorCookiePairOutcome.Connected =>
+                    Results.Ok(new { connectorId = result.ConnectorId, displayName = result.DisplayName }),
+                ConnectorCookiePairOutcome.AmbiguousConnector =>
+                    Results.BadRequest(new { error = "Several connectors match this site — specify connectorId" }),
+                ConnectorCookiePairOutcome.InvalidCookies =>
+                    Results.BadRequest(new { error = "Required website session cookies were not supplied" }),
+                _ => Results.BadRequest(new { error = "This platform does not connect with website cookies" })
+            };
+        })
+        .WithSummary("Connect a site session collected by a browser client")
+        .WithDescription("Stores only the cookie names the platform declares. Omit connectorId to use the user's sole connector for the platform, or to create one when they have none.")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        connectors.MapPost("{id:guid}/cookie-pairing/start", async (
+            Guid id,
+            ClaimsPrincipal user,
+            ConnectorCookiePairingService svc,
+            CancellationToken ct) =>
+            await svc.StartAsync(user.UserId()!, id, ct) is { } pairing
+                ? Results.Ok(pairing)
+                : Results.BadRequest(new { error = "Cookie pairing is not available for this connector" }))
+        .WithSummary("Create a one-use browser-extension pairing token")
+        .WithDescription("The token expires after five minutes and can connect only the selected scraper-backed connector.")
+        .Produces<ConnectorCookiePairingStart>()
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
         // Provider redirect target. The user still carries the oauth2-proxy session, so this is an
         // authenticated request; correlation to the connector is via the stashed request token.
         connectors.MapGet("oauth/callback", async (
@@ -134,6 +183,58 @@ public static class ServiceEndpoints
             return Results.Content(OAuthCallbackHtml(ok), "text/html");
         })
         .WithSummary("OAuth provider callback — completes the connect flow and closes the popup");
+
+        // Anonymous companion to the token handshake below: a browser client with no PostyFox session
+        // still needs to know which cookies to collect. Platform metadata only, no user context.
+        app.MapGet("/api/connectors/cookie-pairing/sites", async (
+            ConnectorCookiePairingService svc,
+            HttpResponse response,
+            CancellationToken ct) =>
+        {
+            response.Headers.AccessControlAllowOrigin = "*";
+            return Results.Ok(await svc.ListSitesAsync(ct));
+        })
+        .AllowAnonymous()
+        .WithTags("connectors")
+        .WithSummary("List the cookie-authenticated sites this deployment supports")
+        .WithDescription("Public platform metadata — the site URL, login URL, and cookie names a browser client should collect. Use /cookie-pairing/targets instead when the caller has a PostyFox session.")
+        .Produces<IReadOnlyList<CookiePairingTargetDto>>();
+
+        app.MapPost("/api/connectors/cookie-pairing/complete", async (
+            CookiePairingCompleteBody body,
+            ConnectorCookiePairingService svc,
+            HttpResponse response,
+            CancellationToken ct) =>
+        {
+            response.Headers.AccessControlAllowOrigin = "*";
+            return
+            await svc.CompleteAsync(body.PairingToken ?? "", body.Cookies, ct) switch
+            {
+                ConnectorCookiePairingOutcome.Completed => Results.NoContent(),
+                ConnectorCookiePairingOutcome.InvalidCookies =>
+                    Results.BadRequest(new { error = "Required website session cookies were not supplied" }),
+                _ => Results.BadRequest(new { error = "Pairing token is invalid or expired" })
+            };
+        })
+        .AllowAnonymous()
+        .WithTags("connectors")
+        .WithSummary("Complete a browser-extension cookie pairing")
+        .WithDescription("Consumes a short-lived one-use token and stores only the required website session cookies.")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        app.MapMethods(
+            "/api/connectors/cookie-pairing/complete",
+            ["OPTIONS"],
+            (HttpResponse response) =>
+            {
+                response.Headers.AccessControlAllowOrigin = "*";
+                response.Headers.AccessControlAllowMethods = "POST, OPTIONS";
+                response.Headers.AccessControlAllowHeaders = "Content-Type";
+                return Results.NoContent();
+            })
+        .AllowAnonymous()
+        .ExcludeFromDescription();
     }
 
     private static string? FirstNonEmpty(params string?[] values) =>
@@ -167,4 +268,17 @@ public static class ServiceEndpoints
     }
 
     public sealed record TelegramLoginBody(string? Value);
+    public sealed record CookiePairingCompleteBody(
+        string? PairingToken,
+        IReadOnlyDictionary<string, string>? Cookies);
+
+    /// <summary>
+    /// Direct pairing from a browser client holding the user's PostyFox session. Identify the target
+    /// by <paramref name="ConnectorId"/>, or by <paramref name="Platform"/> alone to let the server
+    /// resolve (or create) the connector.
+    /// </summary>
+    public sealed record CookiePairingRequest(
+        string? Platform,
+        Guid? ConnectorId,
+        IReadOnlyDictionary<string, string>? Cookies);
 }

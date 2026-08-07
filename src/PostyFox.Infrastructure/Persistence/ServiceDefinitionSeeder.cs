@@ -65,6 +65,12 @@ public static class ServiceDefinitionSeeder
         } }
         """;
 
+    // FurAffinity's connector holds nothing but the account itself — it authenticates from a browser
+    // session handed over by PostyFox Connect, and its category/species/gender/folder choices belong
+    // to an individual submission, not the account. Those live on the connector descriptor's
+    // PostOptionsSchema and are chosen in the compose form (see ConnectorDescriptor.PostOptionsSchema).
+    private const string FurAffinityConfigSchema = "{}";
+
     // Shared by every Fediverse platform (Mastodon, Pleroma, Pixelfed, …). The connect (OAuth/MiAuth)
     // flow yields the access token, so there is no user-facing secure schema. https:// is added
     // automatically when the scheme is omitted.
@@ -88,6 +94,8 @@ public static class ServiceDefinitionSeeder
         // by hand — so there is no user-facing secure config schema.
         new() { Id = "Tumblr", Name = "Tumblr", Platform = "Tumblr", Enabled = true,
                 ConfigSchema = TumblrSchema, SecureConfigSchema = null },
+        new() { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true,
+                ConfigSchema = FurAffinityConfigSchema, SecureConfigSchema = null },
         // Fediverse platforms — credentials come from the OAuth/MiAuth "connect" flow (SupportsOAuth),
         // not entered by hand, so there is no user-facing secure config schema. All share one config
         // schema (just the instance URL); the connector auto-detects the server software at connect.

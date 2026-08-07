@@ -87,6 +87,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 Id = "DiscordWH", Name = "Discord Web Hook", Platform = "DiscordWH", Enabled = true,
                 ConfigSchema = "{\"Webhook\":\"\"}"
             });
+            db.ServiceDefinitions.Add(new ServiceDefinition
+            {
+                Id = "BlueSky", Name = "BlueSky", Platform = "BlueSky", Enabled = true,
+                ConfigSchema = "{}"
+            });
+            db.ServiceDefinitions.Add(new ServiceDefinition
+            {
+                Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true,
+                ConfigSchema = "{}"
+            });
             db.SaveChanges();
         }
         return host;

@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "PostyFox Connect",
+  "version": "0.2.0",
+  "description": "Hands your logged-in website sessions to PostyFox in one click.",
+  "permissions": [
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://cp.postyfox.com/*",
+    "https://dev.postyfox.com/*",
+    "https://www.furaffinity.net/*",
+    "https://furaffinity.net/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "action": {
+    "default_title": "PostyFox Connect",
+    "default_popup": "popup.html"
+  }
+}

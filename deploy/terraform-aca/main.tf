@@ -114,7 +114,9 @@ resource "azurerm_container_app" "connectors_node" {
 
   template {
     min_replicas = 1
-    max_replicas = 3
+    # FurAffinity's mandatory 70-second per-account flood limit is coordinated in-process.
+    # Keep this service singleton until the connector gains a distributed rate limiter.
+    max_replicas = 1
     container {
       name   = "connectors-node"
       image  = "${var.image_registry}/${var.image_repository}-connectors-node:${var.image_tag}"

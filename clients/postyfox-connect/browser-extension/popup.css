@@ -1,0 +1,102 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+main {
+  padding: 16px;
+}
+
+header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.env {
+  align-items: center;
+  color: #777;
+  display: flex;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.env input {
+  margin: 0;
+}
+
+.hint,
+.privacy {
+  color: #777;
+  font-size: 12px;
+}
+
+#status {
+  font-size: 13px;
+  margin: 12px 0;
+  min-height: 20px;
+}
+
+#status.error {
+  color: #c33;
+}
+
+#status.success {
+  color: #198754;
+}
+
+#target-row {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+input,
+select {
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 8px;
+  width: 100%;
+}
+
+button {
+  cursor: pointer;
+  padding: 10px;
+  width: 100%;
+}
+
+button.secondary {
+  margin-top: 8px;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+details {
+  font-size: 12px;
+  margin-top: 16px;
+}
+
+summary {
+  color: #777;
+  cursor: pointer;
+}
+
+.privacy {
+  margin-bottom: 0;
+  margin-top: 16px;
+}

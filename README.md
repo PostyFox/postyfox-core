@@ -33,7 +33,9 @@ src/
   PostyFox.Api.Core         profile/keys, services catalogue, connector CRUD, template CRUD
   PostyFox.Api.Post         post intake + status, external-trigger webhook callback
   PostyFox.Worker.Posting   consumes generate/deliver queues; runs the pipeline
-  connectors-node/          Node/TS service: Bluesky (@atproto/api) + Tumblr (tumblr.js) + Fediverse (megalodon)
+  connectors-node/          Node/TS service: Bluesky + Tumblr + FurAffinity + Fediverse
+clients/
+  postyfox-connect/         Chrome/Edge extension + Safari iPhone/iPad/macOS conversion scaffold
 tests/                      one project per layer (xUnit) — 99 C# tests (+18 in connectors-node)
 ```
 
@@ -48,10 +50,30 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 | Telegram | .NET in-process | **MTProto user account** via WTelegramClient (blob-backed session; see §4.5 statefulness note) |
 | Bluesky | **Node** service | `@atproto/api` — via the `HttpConnector` adapter over internal HTTP (`X-Internal-Token`) |
 | Tumblr | **Node** service | `tumblr.js` — same adapter |
+| FurAffinity | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
 | Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon` — same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
 | ~~Twitch~~ | — | descoped |
 
 `connectors-node` exposes an `IConnector`-shaped HTTP contract (`/connectors/:platform/{is-authenticated,list-targets,limits,deliver}`); the C# `HttpConnector` forwards to it, passing the resolved config + secret in the request so the Node side stays stateless. Connector auth/target operations are exposed at `GET /api/connectors/{id}/authenticated`, `GET /api/connectors/{id}/targets`, and the Telegram login flow at `POST /api/connectors/{id}/telegram/login`.
+
+Scraper-backed login is a one-click hand-off from the PostyFox Connect browser extension. Because the
+extension carries the user's own PostyFox session, it takes two calls and no user input:
+`GET /api/connectors/cookie-pairing/targets` (which connector, which cookies, which login page) then
+`POST /api/connectors/cookie-pairing/pair`. Only the cookie names the platform's `CookiePairingSpec`
+declares are read or stored, and the connector is created on the spot if the user has none. The
+five-minute one-use pairing token (`/cookie-pairing/start` → `/cookie-pairing/complete`, with public
+site metadata at `/cookie-pairing/sites`) remains as a fallback for a browser that cannot present a
+PostyFox session. See [`clients/postyfox-connect`](./clients/postyfox-connect/README.md).
+
+**Per-submission platform options.** Some platforms take choices that describe the *submission* rather
+than the account — FurAffinity's category, theme, species, gender and gallery folders. A connector
+declares these as field descriptors on `ConnectorDescriptor.PostOptionsSchema` (surfaced as
+`postOptionsSchema` on `GET /api/services`); the compose form renders them once per selected target and
+sends them as `targetOptions` on `POST /api/posts`, keyed by connector id. They are validated against
+the same schema at intake, stored on the `PostTarget`, and applied over the connector's config when
+delivery builds its `ConnectorContext` — so connectors keep reading a single config object. Options
+lists too large for a C# literal live in
+[`Persistence/Schemas`](./src/PostyFox.Infrastructure/Persistence/Schemas/README.md).
 
 **Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }` — sizes in bytes) — fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 
@@ -82,7 +104,7 @@ docker compose up --build            # full stack incl. the OIDC edge (Keycloak 
 # Swagger UI: http://localhost:8080/swagger  and  http://localhost:8081/swagger
 # OpenAPI:    http://localhost:8080/openapi/v1.json  (and :8081)
 # RabbitMQ:  http://localhost:15672   MinIO console: http://localhost:9001
-# connectors-node (Bluesky/Tumblr): http://localhost:8090/health
+# connectors-node (Bluesky/Tumblr/FurAffinity/Fediverse): http://localhost:8090/health
 ```
 
 Auth is always the production-representative OIDC path — there is **no DevMode bypass**. oauth2-proxy

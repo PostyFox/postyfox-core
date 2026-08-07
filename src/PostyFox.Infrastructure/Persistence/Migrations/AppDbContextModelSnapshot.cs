@@ -62,6 +62,35 @@ namespace PostyFox.Infrastructure.Persistence.Migrations
                     b.ToTable("api_keys", (string)null);
                 });
 
+            modelBuilder.Entity("PostyFox.Domain.Entities.ConnectorCookiePairing", b =>
+                {
+                    b.Property<string>("TokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("ConnectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("TokenHash");
+
+                    b.HasIndex("ConnectorId")
+                        .IsUnique();
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.ToTable("connector_cookie_pairings", (string)null);
+                });
+
             modelBuilder.Entity("PostyFox.Domain.Entities.ExternalInterest", b =>
                 {
                     b.Property<string>("SourceType")
@@ -142,6 +171,10 @@ namespace PostyFox.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("PostAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Rating")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("RootStatus")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -199,6 +232,12 @@ namespace PostyFox.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("ExternalUrl")
                         .HasColumnType("text");
+
+                    b.Property<string>("OptionsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("{}");
 
                     b.Property<string>("Platform")
                         .IsRequired()
@@ -355,6 +394,17 @@ namespace PostyFox.Infrastructure.Persistence.Migrations
                     b.HasKey("Source", "MessageId");
 
                     b.ToTable("webhook_dedupe", (string)null);
+                });
+
+            modelBuilder.Entity("PostyFox.Domain.Entities.ConnectorCookiePairing", b =>
+                {
+                    b.HasOne("PostyFox.Domain.Entities.UserConnector", "Connector")
+                        .WithMany()
+                        .HasForeignKey("ConnectorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Connector");
                 });
 
             modelBuilder.Entity("PostyFox.Domain.Entities.PostTarget", b =>

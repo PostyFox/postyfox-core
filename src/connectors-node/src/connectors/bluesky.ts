@@ -28,6 +28,10 @@ export interface BlueskyAgentLike {
     text: string;
     facets?: unknown;
     embed?: unknown;
+    labels?: {
+      $type: "com.atproto.label.defs#selfLabels";
+      values: { val: string }[];
+    };
     createdAt?: string;
   }): Promise<{ uri: string; cid: string }>;
 }
@@ -135,6 +139,7 @@ export class BlueskyConnector implements Connector {
         text,
         facets,
         embed,
+        labels: this.labelsForRating(post.rating),
         createdAt: new Date().toISOString(),
       });
 
@@ -145,5 +150,32 @@ export class BlueskyConnector implements Connector {
       return { success: false, error: describeError(err) };
     }
   }
-}
 
+  private labelsForRating(
+    rating: Post["rating"],
+  ):
+    | {
+        $type: "com.atproto.label.defs#selfLabels";
+        values: { val: string }[];
+      }
+    | undefined {
+    let value: string | undefined;
+    switch (rating) {
+      case "mature":
+        value = "sexual";
+        break;
+      case "adult":
+        value = "porn";
+        break;
+      case "extreme":
+        value = "graphic-media";
+        break;
+    }
+    return value
+      ? {
+          $type: "com.atproto.label.defs#selfLabels",
+          values: [{ val: value }],
+        }
+      : undefined;
+  }
+}
