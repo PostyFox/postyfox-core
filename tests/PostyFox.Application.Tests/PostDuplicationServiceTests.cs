@@ -80,4 +80,44 @@ public class PostDuplicationServiceTests
 
         Assert.Null(await New(db, new FakeObjectStore()).DuplicateAsync("someone-else", post.Id));
     }
+
+    /// <summary>
+    /// Per-submission platform choices (FurAffinity's category/species/…) have to survive "post again",
+    /// or a duplicate silently reverts to the platform's defaults.
+    /// </summary>
+    [Fact]
+    public async Task Duplicate_carries_per_target_platform_options()
+    {
+        using var db = TestDbContext.Create();
+        var withOptions = Guid.NewGuid();
+        var withNone = Guid.NewGuid();
+        db.Posts.Add(new Post
+        {
+            Id = Guid.NewGuid(), UserId = "u1", Title = "T", RootStatus = PostRootStatus.Delivered,
+            CreatedAt = Now, UpdatedAt = Now,
+            Targets =
+            {
+                new PostTarget
+                {
+                    Id = Guid.NewGuid(), ConnectorId = withOptions, Platform = "FurAffinity",
+                    OptionsJson = """{"Category":"13","Species":"6016"}""", CreatedAt = Now
+                },
+                new PostTarget
+                {
+                    Id = Guid.NewGuid(), ConnectorId = withNone, Platform = "DiscordWH",
+                    OptionsJson = "{}", CreatedAt = Now
+                }
+            }
+        });
+        await db.SaveChangesAsync();
+        var postId = db.Posts.Single().Id;
+
+        var content = await New(db, new FakeObjectStore()).DuplicateAsync("u1", postId);
+
+        Assert.Equal(2, content!.ConnectorIds.Count);
+        var options = Assert.Single(content.TargetOptions); // the target with no choices is omitted
+        Assert.Equal(withOptions, options.Key);
+        Assert.Equal("13", options.Value["Category"]);
+        Assert.Equal("6016", options.Value["Species"]);
+    }
 }

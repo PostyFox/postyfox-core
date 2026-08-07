@@ -1,5 +1,3 @@
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PostyFox.Domain.Entities;
 
@@ -67,12 +65,11 @@ public static class ServiceDefinitionSeeder
         } }
         """;
 
-    // FurAffinity's category/theme/species/gender fields are numeric IDs chosen from fixed lists on
-    // its submission form. Presenting them as `options` on the descriptors turns five "enter an ID"
-    // boxes into five named dropdowns. The lists run to ~500 entries, so they live in an embedded
-    // JSON file rather than a literal here — see Persistence/Schemas/README.md for provenance and
-    // how to regenerate them when FurAffinity changes its form.
-    private static readonly string FurAffinityConfigSchema = Minified("furaffinity.schema.json");
+    // FurAffinity's connector holds nothing but the account itself — it authenticates from a browser
+    // session handed over by PostyFox Connect, and its category/species/gender/folder choices belong
+    // to an individual submission, not the account. Those live on the connector descriptor's
+    // PostOptionsSchema and are chosen in the compose form (see ConnectorDescriptor.PostOptionsSchema).
+    private const string FurAffinityConfigSchema = "{}";
 
     // Shared by every Fediverse platform (Mastodon, Pleroma, Pixelfed, …). The connect (OAuth/MiAuth)
     // flow yields the access token, so there is no user-facing secure schema. https:// is added
@@ -121,22 +118,6 @@ public static class ServiceDefinitionSeeder
         new() { Id = "Pixelfed", Name = "Pixelfed", Platform = "Pixelfed", Enabled = true,
                 ConfigSchema = FediverseSchema, SecureConfigSchema = null },
     ];
-
-    /// <summary>
-    /// Reads an embedded schema and drops its formatting. The file on disk is pretty-printed so it can
-    /// be reviewed and diffed; the copy stored in the database and served to clients has no need for
-    /// 20 KB of indentation. Parsing here also fails the boot if a schema is ever left malformed.
-    /// </summary>
-    private static string Minified(string fileName)
-    {
-        var name = $"PostyFox.Infrastructure.Persistence.Schemas.{fileName}";
-        using var stream = typeof(ServiceDefinitionSeeder).Assembly.GetManifestResourceStream(name)
-            ?? throw new InvalidOperationException($"Embedded config schema '{name}' is missing.");
-        using var doc = JsonDocument.Parse(stream);
-        return JsonSerializer.Serialize(
-            doc.RootElement,
-            new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-    }
 
     public static async Task SeedAsync(AppDbContext db, CancellationToken ct = default)
     {

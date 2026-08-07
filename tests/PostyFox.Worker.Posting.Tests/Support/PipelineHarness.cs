@@ -33,18 +33,22 @@ public sealed class FakeObjectStore : IObjectStore
     public Task DeleteAsync(string c, string k, CancellationToken t = default) => Task.CompletedTask;
 }
 
-public sealed class ProgrammableConnector(string platform, bool succeed) : IConnector
+public sealed class ProgrammableConnector(string platform, bool succeed, string? postOptionsSchema = null) : IConnector
 {
     public int Calls { get; private set; }
-    public ConnectorDescriptor Describe() => new(platform, platform, true, false, false, null);
+    public ConnectorDescriptor Describe() =>
+        new(platform, platform, true, false, false, null, PostOptionsSchema: postOptionsSchema);
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
     public int LastMediaCount { get; private set; }
+    /// <summary>The config the pipeline resolved for the last delivery (account config + post options).</summary>
+    public string? LastConfigJson { get; private set; }
     public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
     {
         Calls++;
         LastMediaCount = post.Media.Count;
+        LastConfigJson = c.ConfigJson;
         return Task.FromResult(succeed ? DeliveryResult.Ok($"ext-{Calls}", "http://x") : DeliveryResult.Fail("boom"));
     }
 }
@@ -76,7 +80,8 @@ public sealed class PipelineHarness : IDisposable
         scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
     }
 
-    public async Task<Guid> SeedConnectorAsync(string userId, string platform, bool enabled = true)
+    public async Task<Guid> SeedConnectorAsync(
+        string userId, string platform, bool enabled = true, string configJson = "{}")
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -86,7 +91,7 @@ public sealed class PipelineHarness : IDisposable
         db.UserConnectors.Add(new UserConnector
         {
             Id = id, UserId = userId, ServiceDefinitionId = platform, DisplayName = platform,
-            ConfigJson = "{}", Enabled = enabled
+            ConfigJson = configJson, Enabled = enabled
         });
         await db.SaveChangesAsync();
         return id;

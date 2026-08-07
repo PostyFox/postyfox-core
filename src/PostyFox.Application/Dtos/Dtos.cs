@@ -22,7 +22,14 @@ public sealed record ServiceDefinitionDto(
     bool SupportsOAuth,
     bool SupportsCookiePairing,
     bool SupportsRating,
-    bool RequiresRating);
+    bool RequiresRating,
+    /// <summary>
+    /// Field descriptors for choices this platform takes per submission rather than per account (see
+    /// <see cref="Connectors.ConnectorDescriptor.PostOptionsSchema"/>). Same format as
+    /// <see cref="ConfigSchema"/>; null when the platform has none. Rendered by the compose form once
+    /// per selected target, and submitted as <see cref="CreatePostRequest.TargetOptions"/>.
+    /// </summary>
+    string? PostOptionsSchema);
 
 public sealed record UserConnectorDto(Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled);
 
@@ -62,7 +69,14 @@ public sealed record CreatePostRequest(
     Guid? TemplateId,
     IReadOnlyDictionary<string, string>? Variables,
     DateTimeOffset? PostAt,
-    ContentRating? Rating = null);
+    ContentRating? Rating = null,
+    /// <summary>
+    /// Per-submission platform choices, keyed by target connector id — FurAffinity's category,
+    /// species, gender and folders. Validated against that platform's
+    /// <see cref="ServiceDefinitionDto.PostOptionsSchema"/>; anything it does not declare is dropped.
+    /// Entries for connectors outside <see cref="Targets"/> are ignored.
+    /// </summary>
+    IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? TargetOptions = null);
 
 public sealed record CreatePostResponse(Guid PostId, PostRootStatus RootStatus);
 
@@ -80,7 +94,12 @@ public sealed record PostContentDto(
     IReadOnlyDictionary<string, string> Variables,
     IReadOnlyList<Guid> ConnectorIds,
     DateTimeOffset? PostAt,
-    ContentRating? Rating);
+    ContentRating? Rating,
+    /// <summary>
+    /// The per-submission platform choices this post was created with, keyed by connector id, so
+    /// "post again" re-seeds them rather than silently reverting to platform defaults.
+    /// </summary>
+    IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>> TargetOptions);
 
 /// <summary>Lightweight row for the post list / activity view (no per-target detail).</summary>
 public sealed record PostSummaryDto(

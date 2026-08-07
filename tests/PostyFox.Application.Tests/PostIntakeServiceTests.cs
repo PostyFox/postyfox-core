@@ -25,7 +25,8 @@ public class PostIntakeServiceTests
     }
 
     private static PostIntakeService New(TestDbContext db, FakeBus bus, FixedClock clock) =>
-        new(db, new FakeObjectStore(), bus, clock, Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+        new(db, new FakeObjectStore(), bus, clock, new FakeRegistry(new FakeConnector("DiscordWH")),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
 
     [Fact]
     public async Task Create_persists_post_and_enqueues_generate_per_target()

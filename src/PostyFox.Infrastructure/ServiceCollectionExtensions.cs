@@ -95,7 +95,11 @@ public static class ServiceCollectionExtensions
                     LoginUrl: "https://www.furaffinity.net/login",
                     CookieNames: ["a", "b"]),
                 SupportsRating: true,
-                RequiresRating: true),
+                RequiresRating: true,
+                // Category/theme/species/gender/folders are chosen per submission on FurAffinity's own
+                // form, so they belong to the post rather than the account. The lists run to ~500
+                // entries — see Persistence/Schemas/README.md for provenance and regeneration.
+                PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json")),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));

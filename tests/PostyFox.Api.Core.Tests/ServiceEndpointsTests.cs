@@ -31,12 +31,18 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         var bluesky = Assert.Single(defs!, d => d.Id == "BlueSky");
         Assert.True(bluesky.SupportsRating);
         Assert.False(bluesky.RequiresRating);
+        Assert.Null(bluesky.PostOptionsSchema); // nothing to choose per submission
 
         var furAffinity = Assert.Single(defs!, d => d.Id == "FurAffinity");
         Assert.True(furAffinity.SupportsCookiePairing);
         Assert.True(furAffinity.SupportsRating);
         Assert.True(furAffinity.RequiresRating);
         Assert.Null(furAffinity.SecureConfigSchema);
+        // The FurAffinity account itself carries no settings: category/species/gender/folders are
+        // chosen per submission, so they reach the compose form as post options, not connector config.
+        Assert.Equal("{}", furAffinity.ConfigSchema);
+        Assert.NotNull(furAffinity.PostOptionsSchema);
+        Assert.Contains("\"Species\"", furAffinity.PostOptionsSchema);
     }
 
     [Fact]

@@ -37,7 +37,15 @@ public sealed record ConnectorDescriptor(
     /// <summary>True when authored content ratings can be represented by the platform.</summary>
     bool SupportsRating = false,
     /// <summary>True when delivery must include an explicit author-supplied content rating.</summary>
-    bool RequiresRating = false)
+    bool RequiresRating = false,
+    /// <summary>
+    /// Field-descriptor JSON (same format as <see cref="Domain.Entities.ServiceDefinition.ConfigSchema"/>)
+    /// for choices the platform takes <em>per submission</em> rather than per account — FurAffinity's
+    /// category, species, gender and gallery folders. The compose form renders these per selected
+    /// target; the values are stored on the <see cref="Domain.Entities.PostTarget"/> and applied over
+    /// the connector's config at delivery. Null when the platform has no per-submission choices.
+    /// </summary>
+    string? PostOptionsSchema = null)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;

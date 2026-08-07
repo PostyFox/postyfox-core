@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -66,7 +67,12 @@ public sealed class DeliverTargetHandler(
         }
 
         var rendered = Json.Deserialize<RenderedPost>(target.RenderedContentJson)!;
-        var context = new ConnectorContext(target.ConnectorId ?? Guid.Empty, userId, configJson, secretJson, null);
+        var context = new ConnectorContext(
+            target.ConnectorId ?? Guid.Empty,
+            userId,
+            EffectiveConfig(connector.Describe().PostOptionsSchema, configJson, target.OptionsJson),
+            secretJson,
+            null);
 
         target.Status = TargetStatus.Delivering;
         target.Attempts++;
@@ -113,6 +119,47 @@ public sealed class DeliverTargetHandler(
         target.UpdatedAt = clock.UtcNow;
         await UpdateRootStatusAsync(target.PostId, ct);
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// The config a connector actually sees: its stored account config, with every field the platform
+    /// declares as a per-submission choice taken from this post's target instead.
+    /// <para>
+    /// Those fields are stripped from the account config before the target's are applied, so a value
+    /// left behind by an older release — when FurAffinity's category/species/gender/folders were
+    /// connector settings — cannot silently override what the author chose (or leave a stale default
+    /// applying when they chose nothing). Merging into <c>ConfigJson</c> rather than adding a second
+    /// channel keeps connectors reading one object.
+    /// </para>
+    /// </summary>
+    private static string EffectiveConfig(string? postOptionsSchema, string configJson, string optionsJson)
+    {
+        if (postOptionsSchema is null) return configJson;
+
+        var config = ParseObject(configJson);
+        var options = ParseObject(optionsJson);
+        foreach (var field in ParseObject(postOptionsSchema).Keys)
+        {
+            if (field.StartsWith('$')) continue; // schema metadata, not a field
+            config.Remove(field);
+            if (options.TryGetValue(field, out var chosen)) config[field] = chosen;
+        }
+        return JsonSerializer.Serialize(config, Json.Options);
+    }
+
+    private static Dictionary<string, JsonElement> ParseObject(string? json)
+    {
+        var result = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(json)) return result;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return result;
+            foreach (var property in doc.RootElement.EnumerateObject())
+                result[property.Name] = property.Value.Clone();
+        }
+        catch (JsonException) { /* malformed stored JSON: treat as empty rather than failing delivery. */ }
+        return result;
     }
 
     private async Task FailAsync(PostTarget target, string error, CancellationToken ct)

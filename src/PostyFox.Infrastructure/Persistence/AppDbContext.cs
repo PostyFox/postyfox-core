@@ -98,6 +98,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.PostId);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.OptionsJson).HasDefaultValue("{}");
         });
 
         b.Entity<WebhookDedupe>(e =>

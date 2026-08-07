@@ -65,6 +65,16 @@ five-minute one-use pairing token (`/cookie-pairing/start` → `/cookie-pairing/
 site metadata at `/cookie-pairing/sites`) remains as a fallback for a browser that cannot present a
 PostyFox session. See [`clients/postyfox-connect`](./clients/postyfox-connect/README.md).
 
+**Per-submission platform options.** Some platforms take choices that describe the *submission* rather
+than the account — FurAffinity's category, theme, species, gender and gallery folders. A connector
+declares these as field descriptors on `ConnectorDescriptor.PostOptionsSchema` (surfaced as
+`postOptionsSchema` on `GET /api/services`); the compose form renders them once per selected target and
+sends them as `targetOptions` on `POST /api/posts`, keyed by connector id. They are validated against
+the same schema at intake, stored on the `PostTarget`, and applied over the connector's config when
+delivery builds its `ConnectorContext` — so connectors keep reading a single config object. Options
+lists too large for a C# literal live in
+[`Persistence/Schemas`](./src/PostyFox.Infrastructure/Persistence/Schemas/README.md).
+
 **Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }` — sizes in bytes) — fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 
 ### External triggers

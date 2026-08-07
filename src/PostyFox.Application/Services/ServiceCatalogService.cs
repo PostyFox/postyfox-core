@@ -29,6 +29,7 @@ public sealed class ServiceCatalogService(IAppDbContext db, IConnectorRegistry c
         bool supportsTitle = false, supportsMedia = false, supportsThreads = false, supportsOAuth = false,
             supportsCookiePairing = false, supportsRating = false, requiresRating = false;
         int? maxContentLength = null;
+        string? postOptionsSchema = null;
         if (connectors.TryGet(s.Platform, out var connector))
         {
             var d = connector.Describe();
@@ -40,11 +41,12 @@ public sealed class ServiceCatalogService(IAppDbContext db, IConnectorRegistry c
             supportsCookiePairing = d.SupportsCookiePairing;
             supportsRating = d.SupportsRating;
             requiresRating = d.RequiresRating;
+            postOptionsSchema = d.PostOptionsSchema;
         }
 
         return new ServiceDefinitionDto(
             s.Id, s.Name, s.Enabled, s.ConfigSchema, s.SecureConfigSchema, s.Platform,
             supportsTitle, supportsMedia, supportsThreads, maxContentLength, supportsOAuth,
-            supportsCookiePairing, supportsRating, requiresRating);
+            supportsCookiePairing, supportsRating, requiresRating, postOptionsSchema);
     }
 }

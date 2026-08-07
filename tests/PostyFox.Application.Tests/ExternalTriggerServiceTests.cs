@@ -26,6 +26,7 @@ public class ExternalTriggerServiceTests
         var secrets = new FakeSecretStore();
         secrets.Store["trigger-generic-signing"] = Secret;
         var intake = new PostIntakeService(db, new FakeObjectStore(), bus, clock,
+            new FakeRegistry(new FakeConnector("DiscordWH")),
             Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
         var sources = new TriggerSourceRegistry([new GenericHmacTriggerSource()]);
         return new Harness(db, new ExternalTriggerService(db, secrets, clock, sources, intake), bus, clock, secrets);

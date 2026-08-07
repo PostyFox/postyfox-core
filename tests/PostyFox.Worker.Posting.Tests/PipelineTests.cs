@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PostyFox.Application.Connectors;
@@ -150,6 +151,79 @@ public class PipelineTests
         }
 
         Assert.Equal(1, connector.LastMediaCount);
+    }
+
+    // Per-submission platform choices (FurAffinity's category/species/…) travel on the post, not the
+    // connector, but reach the connector through the same ConfigJson it already reads.
+    private const string ChoiceSchema = """
+        { "Category": { "label": "Category", "options": [
+            { "value": "1", "label": "All" }, { "value": "13", "label": "Story" } ] } }
+        """;
+
+    [Fact]
+    public async Task Post_options_reach_the_connector_and_supersede_stale_account_config()
+    {
+        var connector = new ProgrammableConnector("Gallery", succeed: true, postOptionsSchema: ChoiceSchema);
+        using var h = new PipelineHarness(connector);
+        // Category left behind by an older release, when it was a connector setting.
+        var cid = await h.SeedConnectorAsync(
+            "u1", "Gallery", configJson: """{"Category":"1","Account":"keep-me"}""");
+
+        using (var scope = h.Services.CreateScope())
+        {
+            var intake = scope.ServiceProvider.GetRequiredService<PostIntakeService>();
+            await intake.CreateAsync("u1", new CreatePostRequest(
+                [cid], "T", "body", null, null, null, null, null, null, null,
+                new Dictionary<Guid, IReadOnlyDictionary<string, string>>
+                {
+                    [cid] = new Dictionary<string, string> { ["Category"] = "13" }
+                }));
+        }
+
+        var config = JsonDocument.Parse(connector.LastConfigJson!).RootElement;
+        Assert.Equal("13", config.GetProperty("Category").GetString());
+        Assert.Equal("keep-me", config.GetProperty("Account").GetString()); // genuine account config survives
+
+        var target = await h.InScopeAsync(db => db.PostTargets.FirstAsync());
+        Assert.Equal("""{"Category":"13"}""", target.OptionsJson);
+    }
+
+    [Fact]
+    public async Task A_stale_account_value_is_dropped_when_the_author_chose_nothing()
+    {
+        var connector = new ProgrammableConnector("Gallery", succeed: true, postOptionsSchema: ChoiceSchema);
+        using var h = new PipelineHarness(connector);
+        var cid = await h.SeedConnectorAsync(
+            "u1", "Gallery", configJson: """{"Category":"1","Account":"keep-me"}""");
+
+        await CreatePostAsync(h, "u1", cid); // no target options at all
+
+        var config = JsonDocument.Parse(connector.LastConfigJson!).RootElement;
+        // Not "1" — the field moved to the post, so the platform's own default applies instead.
+        Assert.False(config.TryGetProperty("Category", out _));
+        Assert.Equal("keep-me", config.GetProperty("Account").GetString());
+    }
+
+    [Fact]
+    public async Task An_invalid_post_option_is_rejected_at_intake()
+    {
+        var connector = new ProgrammableConnector("Gallery", succeed: true, postOptionsSchema: ChoiceSchema);
+        using var h = new PipelineHarness(connector);
+        var cid = await h.SeedConnectorAsync("u1", "Gallery");
+
+        using var scope = h.Services.CreateScope();
+        var intake = scope.ServiceProvider.GetRequiredService<PostIntakeService>();
+        var ex = await Assert.ThrowsAsync<ConnectorValidationException>(() => intake.CreateAsync(
+            "u1", new CreatePostRequest(
+                [cid], "T", "body", null, null, null, null, null, null, null,
+                new Dictionary<Guid, IReadOnlyDictionary<string, string>>
+                {
+                    [cid] = new Dictionary<string, string> { ["Category"] = "999" }
+                })));
+
+        Assert.Contains("Category is not one of the available choices.", ex.Message);
+        Assert.Equal(0, connector.Calls);
+        Assert.Empty(await h.InScopeAsync(db => db.Posts.ToListAsync()));
     }
 }
 

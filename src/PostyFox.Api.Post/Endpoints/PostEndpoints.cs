@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Posting;
 using PostyFox.Web.Auth;
@@ -18,13 +19,20 @@ public static class PostEndpoints
 
         group.MapPost("", async (CreatePostRequest body, ClaimsPrincipal user, PostIntakeService svc, CancellationToken ct) =>
         {
-            var result = await svc.CreateAsync(user.UserId()!, body, ct);
-            return result is null
-                ? Results.BadRequest(new { error = "No valid, enabled target connectors specified" })
-                : Results.Accepted($"/api/posts/{result.PostId}", result);
+            try
+            {
+                var result = await svc.CreateAsync(user.UserId()!, body, ct);
+                return result is null
+                    ? Results.BadRequest(new { error = "No valid, enabled target connectors specified" })
+                    : Results.Accepted($"/api/posts/{result.PostId}", result);
+            }
+            catch (ConnectorValidationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         })
         .WithSummary("Create a post")
-        .WithDescription("Accepts a post for one or more target connectors and enqueues generation + delivery. Returns 202 with the post id; poll the status endpoint for progress.")
+        .WithDescription("Accepts a post for one or more target connectors and enqueues generation + delivery. `targetOptions` carries per-submission platform choices keyed by connector id (see the service definition's `postOptionsSchema`). Returns 202 with the post id; poll the status endpoint for progress.")
         .Produces<CreatePostResponse>(StatusCodes.Status202Accepted)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
