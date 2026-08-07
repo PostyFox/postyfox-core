@@ -12,7 +12,7 @@ x-dotnet-env: &dotnet-env
   ObjectStore__ServiceUrl: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
   ObjectStore__AccessKey: "${RUSTFS_ACCESS_KEY}"
   ObjectStore__SecretKey: "${RUSTFS_SECRET_KEY}"
-  ObjectStore__Bucket: "postyfox"
+  ObjectStore__Bucket: "${RUSTFS_BUCKET:-postyfox}"
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "${RABBITMQ_USER}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
@@ -156,7 +156,7 @@ services:
       OBJECT_STORE_SERVICE_URL: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
       OBJECT_STORE_ACCESS_KEY: "${RUSTFS_ACCESS_KEY}"
       OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
-      OBJECT_STORE_BUCKET: "postyfox"
+      OBJECT_STORE_BUCKET: "${RUSTFS_BUCKET:-postyfox}"
       OBJECT_STORE_FORCE_PATH_STYLE: "true"
       # OpenTelemetry (auto-instrumentation via --import in the image). Node uses OTLP/HTTP → the
       # collector's :4318. deployment.environment/cluster are stamped by the collector.
