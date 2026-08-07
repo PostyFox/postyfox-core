@@ -17,7 +17,7 @@
     <PackageReference Include="aneillans.adapters-secrets.HashiCorpVault" Version="1.2.31" />
     <PackageReference Include="aneillans.adapters-secrets.Infisical" Version="1.2.31" />
     <PackageReference Include="aneillans.adapters-secrets.InMemory" Version="1.2.31" />
-    <PackageReference Include="AWSSDK.S3" Version="4.0.101.3" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.101.4" />
     <PackageReference Include="FFMpegCore" Version="5.4.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
