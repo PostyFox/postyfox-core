@@ -210,9 +210,13 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
-      # Wait for the bundled Vault to be provisioned + unsealed (AppRole ready). Harmless when the
-      # stack is pointed at another secret store — vault/vault-init still run for both dev/prod.
-      vault-init: { condition: service_healthy }
+      # Order after the Vault provisioner, but DON'T gate on its health. vault-init reports healthy
+      # only once Vault is fully unsealed; a slow or failed unseal (e.g. a wiped keys volume →
+      # bootstrap exits → restart loop) would otherwise hang `compose up` — and the whole deploy —
+      # until vault-init's retry budget is exhausted. The app has its own start_period + restart
+      # policy and the Vault secret adapter retries, so it converges once Vault is unsealed. Harmless
+      # when the stack is pointed at another secret store — vault/vault-init still run for both envs.
+      vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -232,7 +236,8 @@ services:
       core-api: { condition: service_healthy }
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
-      vault-init: { condition: service_healthy }
+      # Started, not healthy — see core-api's vault-init note (don't hang the deploy on the unseal).
+      vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -249,7 +254,8 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
-      vault-init: { condition: service_healthy }
+      # Started, not healthy — see core-api's vault-init note (don't hang the deploy on the unseal).
+      vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
