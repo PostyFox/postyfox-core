@@ -37,7 +37,8 @@ Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_to
   full-page redirect if popups are blocked).
 - OAuth1 tokens are long-lived, so there is **no refresh** to manage.
 - The connector's per-user secret holds only `{OAuthToken, OAuthTokenSecret}`; the app (consumer)
-  credentials stay in the environment (below). Delivery still runs through `tumblr.js`.
+  credentials live in the configured operational secret store. Delivery still runs through
+  `tumblr.js`.
 
 ## Operator setup (Tumblr)
 
@@ -57,13 +58,12 @@ Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_to
 
    For a deployed environment, use the public edge host, e.g.
    `https://app.postyfox.com/api/connectors/oauth/callback`. It **must match exactly**.
-3. Provide the credentials + callback base via environment (e.g. in `deploy/.env`):
+3. Sign in with a Keycloak account carrying the `postyfox-admin` realm role, open
+   **Administration**, and set the Tumblr consumer key and consumer secret. They are stored as
+   `TumblrConsumerKey` and `TumblrConsumerSecret`.
 
-   | Variable | Service | Purpose |
-   |----------|---------|---------|
-   | `TUMBLR_CONSUMER_KEY` | connectors-node | Tumblr app consumer key |
-   | `TUMBLR_CONSUMER_SECRET` | connectors-node | Tumblr app consumer secret |
-   | callback base URL | core-api (`OAuth__CallbackBaseUrl`) | Public base the provider redirects back to |
+4. Configure the callback base URL for core-api (`OAuth__CallbackBaseUrl`). This is the public base
+   the provider redirects back to.
 
    The callback base is sourced per stack:
    - **Local full stack** (`docker-compose.yml`, bundled edge): `OAUTH_CALLBACK_BASE_URL`
@@ -71,10 +71,8 @@ Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_to
    - **Deployed** (`docker-compose.server.yml`, external edge): reuses **`PUBLIC_BASE_URL`** — the
      same public edge URL you already configure in `.env`, so there is no extra variable to set.
 
-   The env vars are wired in both `docker-compose.yml` and `docker-compose.server.yml`, and listed
-   in the `deploy/.env*.example` templates. If `TUMBLR_CONSUMER_KEY/SECRET` are unset, the connector
-   still lists in the catalogue but `SupportsOAuth` is reported false and the "Connect" button is
-   hidden.
+   If either operational secret is missing, Tumblr OAuth and delivery fail closed with a
+   configuration error.
 
 ## Operator setup (Iceshrimp / Fediverse)
 

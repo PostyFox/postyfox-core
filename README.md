@@ -159,8 +159,10 @@ Nested keys use `__`. Key settings: `ConnectionStrings__Postgres`, `ObjectStore_
 `INTERNAL_TOKEN` on that service), `ApplyMigrations`, `SeedServiceDefinitions`,
 `OTEL_EXPORTER_OTLP_ENDPOINT`.
 
-Trigger signing secrets live in the secret store under `trigger-{sourceType}-signing`. Telegram
-requires `TelegramApiID` / `TelegramApiHash` in the secret store (real MTProto credentials).
+Trigger signing secrets live in the secret store under `trigger-{sourceType}-signing`. Administrators
+with the Keycloak `postyfox-admin` realm role can manage connector operational credentials at
+`/admin`. Telegram uses `TelegramApiID` / `TelegramApiHash`; Tumblr uses `TumblrConsumerKey` /
+`TumblrConsumerSecret`. Values are written to the configured secret provider and are never returned.
 
 ## Known follow-ups
 

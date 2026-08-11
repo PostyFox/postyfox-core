@@ -130,12 +130,25 @@ test("tumblr deliver fails when secret is null", async () => {
 });
 
 test("tumblr deliver fails when consumer credentials are not configured", async () => {
-  // No consumer creds → connector cannot post (and exposes no oauth flow).
+  // No operational consumer creds → connector cannot post or begin OAuth.
   const connector = new TumblrConnector(() => fakeClient(), undefined, undefined);
-  assert.equal(connector.oauth, undefined);
   const result = await connector.deliver(ctx, post);
   assert.equal(result.success, false);
   assert.ok(result.error && result.error.includes("consumer credentials"));
+  await assert.rejects(
+    async () => connector.oauth.startAuthorization({ callbackUrl: "https://app/cb" }),
+    /operational secret store/,
+  );
+});
+
+test("tumblr uses operational consumer credentials from connector context", async () => {
+  const operationalCtx: ConnectorContext = {
+    ...ctx,
+    operationalSecretJson: JSON.stringify({ consumerKey: "vault-key", consumerSecret: "vault-secret" }),
+  };
+  const connector = new TumblrConnector(() => fakeClient(), undefined, undefined);
+
+  assert.equal((await connector.isAuthenticated(operationalCtx)).isAuthenticated, true);
 });
 
 test("tumblr oauth start returns an authorize URL + request token", async () => {

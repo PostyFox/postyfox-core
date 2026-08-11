@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UserConnectorService>();
         services.AddScoped<ConnectorOperationsService>();
         services.AddScoped<ConnectorCookiePairingService>();
+        services.AddScoped<OperationalSecretService>();
         services.AddScoped<PostIntakeService>();
         services.AddScoped<PostStatusService>();
         services.AddScoped<PostLifecycleService>();

@@ -212,10 +212,13 @@ erDiagram
 Notes:
 - **Secrets are never in domain tables.** Per-user connector secrets live in the secret store under
   `conn-{connectorId:N}-{userId}`; trigger signing secrets under `trigger-{sourceType}-signing`;
-  platform secrets (e.g. `TelegramApiID`/`TelegramApiHash`) under their own names. The store is a
+  platform secrets (e.g. `TelegramApiID`/`TelegramApiHash` and
+  `TumblrConsumerKey`/`TumblrConsumerSecret`) under their own names. The store is a
   pluggable `ISecretsProvider` (`adapters-secrets` library): in-memory for local/dev, and
   BitWarden/VaultWarden, Azure Key Vault, or Infisical for deployments — selected via
-  `Secrets:Provider`. There is no database table backing it.
+  `Secrets:Provider`. There is no database table backing it. The fixed platform-secret catalog is
+  managed through `/api/admin/operational-secrets`, protected by the `postyfox-admin` Keycloak role;
+  API responses expose configured status only, never values.
 - **Enums stored as strings** (`RootStatus`, `Status`) for readability.
 - **Object store**: `post/{postId}/{title|description|description-html}`, media manifest entries, and
   `telegram/{userId}` MTProto session blobs.

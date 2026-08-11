@@ -145,8 +145,10 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
 ### Tumblr
 
 - `configJson` → `{ "Username": "myblog" }` (blog identifier)
-- `secretJson` → OAuth1 credentials:
-  `{ "ConsumerKey": "", "ConsumerSecret": "", "OAuthToken": "", "OAuthTokenSecret": "" }`
+- `secretJson` → per-user OAuth1 credentials:
+  `{ "OAuthToken": "", "OAuthTokenSecret": "" }`
+- `operationalSecretJson` → Vault-sourced app credentials:
+  `{ "consumerKey": "", "consumerSecret": "" }`
 - `list-targets` returns the user's blogs as `{ id: blog.name, name: blog.title || blog.name }`.
 - `deliver` creates a text post and returns the post `id` and `post_url`.
 

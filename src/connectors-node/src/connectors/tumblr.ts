@@ -18,7 +18,6 @@ import type {
 } from "../types.js";
 import {
   TumblrOAuth1Provider,
-  tumblrConsumerFromEnv,
   type TumblrConsumerCredentials,
 } from "./tumblr-oauth.js";
 
@@ -149,16 +148,33 @@ const defaultClientFactory: TumblrClientFactory = (creds) => {
 
 export class TumblrConnector implements Connector {
   private readonly consumer?: TumblrConsumerCredentials;
-  /** Interactive OAuth1 "connect" flow, available when consumer credentials are configured. */
-  readonly oauth?: OAuthProvider;
+  readonly oauth: OAuthProvider;
 
   constructor(
     private readonly clientFactory: TumblrClientFactory = defaultClientFactory,
     private readonly mediaStore: MediaStore = mediaStoreFromEnv(),
-    consumer: TumblrConsumerCredentials | undefined = tumblrConsumerFromEnv(),
+    consumer?: TumblrConsumerCredentials,
   ) {
     this.consumer = consumer;
-    if (consumer) this.oauth = new TumblrOAuth1Provider(consumer);
+    this.oauth = {
+      startAuthorization: (input) =>
+        new TumblrOAuth1Provider(this.resolveConsumer(input.operationalSecretJson))
+          .startAuthorization(input),
+      completeAuthorization: (input) =>
+        new TumblrOAuth1Provider(this.resolveConsumer(input.operationalSecretJson))
+          .completeAuthorization(input),
+    };
+  }
+
+  private resolveConsumer(raw?: string | null): TumblrConsumerCredentials {
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<TumblrConsumerCredentials>;
+      if (parsed.consumerKey && parsed.consumerSecret) {
+        return { consumerKey: parsed.consumerKey, consumerSecret: parsed.consumerSecret };
+      }
+    }
+    if (this.consumer) return this.consumer;
+    throw new Error("Tumblr consumer credentials not configured in the operational secret store");
   }
 
   private parseCredentials(ctx: ConnectorContext): {
@@ -168,9 +184,7 @@ export class TumblrConnector implements Connector {
     const config = JSON.parse(ctx.configJson) as TumblrConfig;
     const username = config?.Username;
     if (!username) throw new Error("missing Tumblr Username in config");
-    if (!this.consumer) {
-      throw new Error("Tumblr consumer credentials not configured (TUMBLR_CONSUMER_KEY/SECRET)");
-    }
+    const consumer = this.resolveConsumer(ctx.operationalSecretJson);
     if (ctx.secretJson === null) throw new Error("missing Tumblr credentials");
     const secret = JSON.parse(ctx.secretJson) as TumblrSecret;
     if (!secret?.OAuthToken || !secret?.OAuthTokenSecret) {
@@ -179,8 +193,8 @@ export class TumblrConnector implements Connector {
     return {
       username,
       creds: {
-        consumer_key: this.consumer.consumerKey,
-        consumer_secret: this.consumer.consumerSecret,
+        consumer_key: consumer.consumerKey,
+        consumer_secret: consumer.consumerSecret,
         token: secret.OAuthToken,
         token_secret: secret.OAuthTokenSecret,
       },
@@ -259,4 +273,3 @@ export class TumblrConnector implements Connector {
     }
   }
 }
-

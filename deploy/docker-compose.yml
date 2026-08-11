@@ -77,6 +77,16 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
@@ -101,9 +111,6 @@ services:
       OTEL_LOGS_EXPORTER: "otlp"
       # Skip cloud resource detectors — avoids metadata-lookup timeouts at startup.
       OTEL_NODE_RESOURCE_DETECTORS: "env,host,os,serviceinstance,process"
-      # Tumblr OAuth1 app (consumer) credentials — enable the "Connect with Tumblr" flow.
-      TUMBLR_CONSUMER_KEY: "${TUMBLR_CONSUMER_KEY:-}"
-      TUMBLR_CONSUMER_SECRET: "${TUMBLR_CONSUMER_SECRET:-}"
     ports: ["8090:8090"]
     depends_on:
       rustfs: { condition: service_healthy }
@@ -237,6 +244,7 @@ services:
     depends_on:
       keycloak: { condition: service_healthy }
       gateway: { condition: service_started }
+      redis: { condition: service_healthy }
     restart: unless-stopped
 
 volumes:

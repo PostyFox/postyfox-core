@@ -28,7 +28,12 @@ public class JwtAuthTests
         return $"{{\"keys\":[{{\"kty\":\"RSA\",\"use\":\"sig\",\"alg\":\"RS256\",\"kid\":\"{Kid}\",\"n\":\"{n}\",\"e\":\"{e}\"}}]}}";
     }
 
-    private static string Token(RSA signer, string iss = Issuer, string aud = Audience, int expMinutes = 5)
+    private static string Token(
+        RSA signer,
+        string iss = Issuer,
+        string aud = Audience,
+        int expMinutes = 5,
+        IReadOnlyList<string>? realmRoles = null)
     {
         var key = new RsaSecurityKey(signer) { KeyId = Kid };
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
@@ -36,7 +41,14 @@ public class JwtAuthTests
             Issuer = iss,
             Audience = aud,
             Expires = DateTime.UtcNow.AddMinutes(expMinutes),
-            Claims = new Dictionary<string, object> { ["sub"] = "user-123" },
+            Claims = new Dictionary<string, object>
+            {
+                ["sub"] = "user-123",
+                ["realm_access"] = new Dictionary<string, object>
+                {
+                    ["roles"] = realmRoles ?? []
+                }
+            },
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256)
         });
     }
@@ -106,5 +118,16 @@ public class JwtAuthTests
         // A spoofed identity header must NOT authenticate outside DevMode.
         client.DefaultRequestHeaders.Add("X-Auth-Request-User", "victim");
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/templates")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Keycloak_realm_admin_role_authorizes_admin_endpoints()
+    {
+        using var f = BuildFactory();
+        var client = f.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", Token(SigningRsa, realmRoles: ["postyfox-admin"]));
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/admin/operational-secrets")).StatusCode);
     }
 }

@@ -58,6 +58,7 @@ app.MapGet("/api/version",
     () => Results.Ok(new { service = "postyfox-core-api", version = coreVersion })).AllowAnonymous();
 
 app.MapProfileEndpoints();
+app.MapAdminEndpoints();
 app.MapServiceEndpoints();
 app.MapTemplateEndpoints();
 app.MapTriggerEndpoints();

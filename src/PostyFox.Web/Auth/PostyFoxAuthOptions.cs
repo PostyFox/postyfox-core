@@ -12,6 +12,10 @@ public sealed class PostyFoxAuthOptions
     /// </summary>
     public bool DevMode { get; set; }
     public string DevUserId { get; set; } = "dev-user";
+    public string[] DevRoles { get; set; } = [];
+
+    /// <summary>Keycloak realm role required for operational administration.</summary>
+    public string AdminRole { get; set; } = "postyfox-admin";
 
     /// <summary>
     /// Identity header injected by oauth2-proxy after OIDC validation. Only consulted in DevMode;

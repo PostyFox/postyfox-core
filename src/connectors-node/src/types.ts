@@ -8,6 +8,8 @@ export interface ConnectorContext {
   configJson: string;
   /** JSON *string* holding secret credentials, or null. */
   secretJson: string | null;
+  /** JSON *string* holding operator-managed platform credentials, or null. */
+  operationalSecretJson?: string | null;
   targetId: string | null;
 }
 
@@ -101,6 +103,7 @@ export interface OAuthCompleteResult {
 export interface OAuthProvider {
   startAuthorization(input: {
     callbackUrl: string;
+    operationalSecretJson?: string | null;
     /** JSON string of the connector's non-secret config. Needed by providers whose authorization is
      * instance-scoped (e.g. Fediverse: the instance URL lives in config). OAuth1 providers ignore it. */
     configJson?: string;
@@ -109,5 +112,6 @@ export interface OAuthProvider {
     requestToken: string;
     requestTokenSecret: string;
     verifier: string;
+    operationalSecretJson?: string | null;
   }): Promise<OAuthCompleteResult>;
 }

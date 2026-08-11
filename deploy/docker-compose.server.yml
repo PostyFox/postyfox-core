@@ -80,6 +80,30 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # oauth2-proxy sessions contain the ID/access/refresh tokens and can exceed browser cookie limits
+  # once Keycloak roles are included. Keep only an opaque ticket in the browser and the encrypted
+  # session in this internal, non-persistent Redis instance.
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--requirepass",
+        "${OAUTH2_PROXY_REDIS_PASSWORD:?Set OAUTH2_PROXY_REDIS_PASSWORD}"
+      ]
+    environment:
+      REDISCLI_AUTH: "${OAUTH2_PROXY_REDIS_PASSWORD:?Set OAUTH2_PROXY_REDIS_PASSWORD}"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   # Edge collector: shapes + forwards OTLP to the CENTRAL Data Prepper (config.central.yaml).
   # Holds no OpenSearch secrets. Set OTEL_CENTRAL_HOST to the central Data Prepper host.
   otel-collector:
@@ -166,9 +190,6 @@ services:
       OTEL_LOGS_EXPORTER: "otlp"
       # Skip cloud (GCP/AWS/Azure) resource detectors — avoids metadata-lookup timeouts at startup.
       OTEL_NODE_RESOURCE_DETECTORS: "env,host,os,serviceinstance,process"
-      # Tumblr OAuth1 app (consumer) credentials — enable the "Connect with Tumblr" flow.
-      TUMBLR_CONSUMER_KEY: "${TUMBLR_CONSUMER_KEY:-}"
-      TUMBLR_CONSUMER_SECRET: "${TUMBLR_CONSUMER_SECRET:-}"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 5s
@@ -189,9 +210,13 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
-      # Wait for the bundled Vault to be provisioned + unsealed (AppRole ready). Harmless when the
-      # stack is pointed at another secret store — vault/vault-init still run for both dev/prod.
-      vault-init: { condition: service_healthy }
+      # Order after the Vault provisioner, but DON'T gate on its health. vault-init reports healthy
+      # only once Vault is fully unsealed; a slow or failed unseal (e.g. a wiped keys volume →
+      # bootstrap exits → restart loop) would otherwise hang `compose up` — and the whole deploy —
+      # until vault-init's retry budget is exhausted. The app has its own start_period + restart
+      # policy and the Vault secret adapter retries, so it converges once Vault is unsealed. Harmless
+      # when the stack is pointed at another secret store — vault/vault-init still run for both envs.
+      vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -211,7 +236,8 @@ services:
       core-api: { condition: service_healthy }
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
-      vault-init: { condition: service_healthy }
+      # Started, not healthy — see core-api's vault-init note (don't hang the deploy on the unseal).
+      vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -228,7 +254,8 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
-      vault-init: { condition: service_healthy }
+      # Started, not healthy — see core-api's vault-init note (don't hang the deploy on the unseal).
+      vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -316,6 +343,8 @@ services:
       OAUTH2_PROXY_CLIENT_ID: "${OIDC_CLIENT_ID:-oauth2-proxy}"
       OAUTH2_PROXY_CLIENT_SECRET: "${OIDC_CLIENT_SECRET}"
       OAUTH2_PROXY_COOKIE_SECRET: "${OAUTH2_PROXY_COOKIE_SECRET}"
+      OAUTH2_PROXY_SESSION_STORE_TYPE: "redis"
+      OAUTH2_PROXY_REDIS_CONNECTION_URL: "redis://:${OAUTH2_PROXY_REDIS_PASSWORD:?Set OAUTH2_PROXY_REDIS_PASSWORD}@redis:6379/0"
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
       OAUTH2_PROXY_REDIRECT_URL: "${PUBLIC_BASE_URL}/oauth2/callback"
       # Single root upstream → the internal nginx gateway (which does the path routing).
@@ -346,6 +375,7 @@ services:
       gateway: { condition: service_healthy }
       core-api: { condition: service_healthy }
       post-api: { condition: service_healthy }
+      redis: { condition: service_healthy }
     restart: unless-stopped
 
 volumes:

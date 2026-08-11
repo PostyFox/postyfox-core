@@ -96,7 +96,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   );
 
   // --- OAuth "connect" flow (platforms that expose `oauth`, e.g. Tumblr) -------------------------
-  app.post<{ Params: { platform: string }; Body: { callbackUrl: string; configJson?: string } }>(
+  app.post<{
+    Params: { platform: string };
+    Body: { callbackUrl: string; configJson?: string; operationalSecretJson?: string | null };
+  }>(
     "/connectors/:platform/oauth/request-token",
     async (request, reply) => {
       const connector = resolveConnector(registry, request.params.platform);
@@ -106,6 +109,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         return await connector.oauth.startAuthorization({
           callbackUrl: request.body.callbackUrl,
           configJson: request.body.configJson,
+          operationalSecretJson: request.body.operationalSecretJson,
         });
       } catch (err) {
         request.log.error({ err, platform: request.params.platform }, "oauth request-token failed");
@@ -116,7 +120,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   app.post<{
     Params: { platform: string };
-    Body: { requestToken: string; requestTokenSecret: string; verifier: string };
+    Body: {
+      requestToken: string;
+      requestTokenSecret: string;
+      verifier: string;
+      operationalSecretJson?: string | null;
+    };
   }>("/connectors/:platform/oauth/access-token", async (request, reply) => {
     const connector = resolveConnector(registry, request.params.platform);
     if (!connector) return reply.code(404).send({ error: "unknown platform" });

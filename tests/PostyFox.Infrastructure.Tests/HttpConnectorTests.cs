@@ -1,7 +1,12 @@
 using System.Net;
+using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Neillans.Adapters.Secrets.Core;
+using Neillans.Adapters.Secrets.InMemory;
 using PostyFox.Application.Connectors;
+using PostyFox.Application.Services;
 using PostyFox.Infrastructure.Connectors;
 using PostyFox.Infrastructure.Tests.Support;
 using PostyFox.Domain.Enums;
@@ -87,5 +92,34 @@ public class HttpConnectorTests
         var targets = await New(handler).ListTargetsAsync(Ctx());
         Assert.Single(targets);
         Assert.Equal("Blog A", targets[0].Name);
+    }
+
+    [Fact]
+    public async Task Tumblr_forwards_operational_credentials_from_the_secret_provider()
+    {
+        var services = new ServiceCollection();
+        services.AddInMemorySecretsProvider();
+        services.AddScoped<OperationalSecretService>();
+        await using var provider = services.BuildServiceProvider();
+        var secrets = provider.GetRequiredService<ISecretsProvider>();
+        await secrets.SetSecretAsync(OperationalSecretService.TumblrConsumerKey, "vault-key");
+        await secrets.SetSecretAsync(OperationalSecretService.TumblrConsumerSecret, "vault-secret");
+
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"isAuthenticated\":true}");
+        var connector = new HttpConnector(
+            "Tumblr",
+            new ConnectorDescriptor("Tumblr", "Tumblr", true, true, false, null, SupportsOAuth: true),
+            new StubHttpClientFactory(handler),
+            Options.Create(new NodeConnectorsOptions { BaseUrl = "http://node:8090", InternalToken = "tok" }),
+            NullLogger<HttpConnector>.Instance,
+            provider.GetRequiredService<IServiceScopeFactory>());
+
+        await connector.IsAuthenticatedAsync(Ctx());
+
+        Assert.NotNull(handler.LastBody);
+        using var payload = JsonDocument.Parse(handler.LastBody);
+        var operational = payload.RootElement.GetProperty("operationalSecretJson").GetString();
+        Assert.Contains("\"consumerKey\":\"vault-key\"", operational);
+        Assert.Contains("\"consumerSecret\":\"vault-secret\"", operational);
     }
 }

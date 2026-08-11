@@ -61,6 +61,16 @@ services:
           cpus: '0.5'
           memory: 256M
 
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+
   connectors-node:
     environment:
       OBJECT_STORE_SERVICE_URL: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"
@@ -153,4 +163,3 @@ volumes:
     name: postyfox-dev-vault-data
   vaultkeys:
     name: postyfox-dev-vault-keys
-

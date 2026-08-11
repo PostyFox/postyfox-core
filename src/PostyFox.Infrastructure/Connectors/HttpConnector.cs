@@ -2,9 +2,11 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using PostyFox.Application;
 using PostyFox.Application.Connectors;
+using PostyFox.Application.Services;
 
 namespace PostyFox.Infrastructure.Connectors;
 
@@ -18,7 +20,8 @@ public sealed class HttpConnector(
     ConnectorDescriptor descriptor,
     IHttpClientFactory httpFactory,
     IOptions<NodeConnectorsOptions> options,
-    ILogger<HttpConnector> logger) : IConnector, IOAuthConnector, ILimitsConnector
+    ILogger<HttpConnector> logger,
+    IServiceScopeFactory? scopeFactory = null) : IConnector, IOAuthConnector, ILimitsConnector
 {
     private readonly NodeConnectorsOptions _opts = options.Value;
 
@@ -29,7 +32,7 @@ public sealed class HttpConnector(
         // Platforms whose Node connector has no limits support respond 4xx → PostAsync returns null.
         // That non-2xx is expected here, so don't warn on it (it would be per-post noise for
         // Bluesky/Tumblr); PostAsync still logs the body at Debug for diagnosis.
-        var res = await PostAsync("limits", Ctx(context), ct, warnOnFailure: false);
+        var res = await PostAsync("limits", await CtxAsync(context, ct), ct, warnOnFailure: false);
         if (res is null) return null;
         var r = res.Value;
         int? max = r.TryGetProperty("maxContentLength", out var m) && m.ValueKind == JsonValueKind.Number ? m.GetInt32() : null;
@@ -44,7 +47,12 @@ public sealed class HttpConnector(
 
     public async Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, string? configJson, CancellationToken ct = default)
     {
-        var res = await PostAsync("oauth/request-token", new { callbackUrl, configJson }, ct);
+        var res = await PostAsync("oauth/request-token", new
+        {
+            callbackUrl,
+            configJson,
+            operationalSecretJson = await OperationalSecretJsonAsync(ct)
+        }, ct);
         if (res is null) return null;
         var url = res.Value.TryGetProperty("authorizeUrl", out var a) ? a.GetString() : null;
         var token = res.Value.TryGetProperty("requestToken", out var t) ? t.GetString() : null;
@@ -56,14 +64,20 @@ public sealed class HttpConnector(
 
     public async Task<string?> CompleteAuthorizationAsync(string requestToken, string requestTokenSecret, string verifier, CancellationToken ct = default)
     {
-        var res = await PostAsync("oauth/access-token", new { requestToken, requestTokenSecret, verifier }, ct);
+        var res = await PostAsync("oauth/access-token", new
+        {
+            requestToken,
+            requestTokenSecret,
+            verifier,
+            operationalSecretJson = await OperationalSecretJsonAsync(ct)
+        }, ct);
         if (res is null) return null;
         return res.Value.TryGetProperty("secretJson", out var s) ? s.GetString() : null;
     }
 
     public async Task<AuthState> IsAuthenticatedAsync(ConnectorContext context, CancellationToken ct = default)
     {
-        var res = await PostAsync($"is-authenticated", Ctx(context), ct);
+        var res = await PostAsync("is-authenticated", await CtxAsync(context, ct), ct);
         if (res is null) return new AuthState(false, "connectors-node unavailable");
         var authed = res.Value.TryGetProperty("isAuthenticated", out var a) && a.GetBoolean();
         var detail = res.Value.TryGetProperty("detail", out var d) ? d.GetString() : null;
@@ -72,7 +86,7 @@ public sealed class HttpConnector(
 
     public async Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext context, CancellationToken ct = default)
     {
-        var res = await PostAsync("list-targets", Ctx(context), ct);
+        var res = await PostAsync("list-targets", await CtxAsync(context, ct), ct);
         if (res is null || !res.Value.TryGetProperty("targets", out var arr)) return [];
         var list = new List<ConnectorTarget>();
         foreach (var t in arr.EnumerateArray())
@@ -84,7 +98,7 @@ public sealed class HttpConnector(
     {
         var payload = new
         {
-            context = Ctx(context),
+            context = await CtxAsync(context, ct),
             post = new
             {
                 title = post.Title,
@@ -105,14 +119,23 @@ public sealed class HttpConnector(
         return DeliveryResult.Fail(res.Value.TryGetProperty("error", out var e) ? e.GetString() ?? "delivery failed" : "delivery failed");
     }
 
-    private static object Ctx(ConnectorContext c) => new
+    private async Task<object> CtxAsync(ConnectorContext c, CancellationToken ct) => new
     {
         connectorId = c.ConnectorId,
         userId = c.UserId,
         configJson = c.ConfigJson,
         secretJson = c.SecretJson,
-        targetId = c.TargetId
+        targetId = c.TargetId,
+        operationalSecretJson = await OperationalSecretJsonAsync(ct)
     };
+
+    private async Task<string?> OperationalSecretJsonAsync(CancellationToken ct)
+    {
+        if (scopeFactory is null) return null;
+        await using var scope = scopeFactory.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<OperationalSecretService>()
+            .ConnectorCredentialsJsonAsync(platform, ct);
+    }
 
     private async Task<JsonElement?> PostAsync(string op, object body, CancellationToken ct, bool warnOnFailure = true)
     {

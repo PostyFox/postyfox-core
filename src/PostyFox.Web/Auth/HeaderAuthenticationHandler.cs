@@ -30,6 +30,7 @@ public sealed class HeaderAuthenticationHandler(
 
         var userId = _auth.DevUserId;
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId) };
+        claims.AddRange(_auth.DevRoles.Select(role => new Claim(ClaimTypes.Role, role)));
         if (_auth.EmailHeader is { } eh && Request.Headers.TryGetValue(eh, out var email) && !string.IsNullOrEmpty(email))
             claims.Add(new Claim(ClaimTypes.Email, email!));
 

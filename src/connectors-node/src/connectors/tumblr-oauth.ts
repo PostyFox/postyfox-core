@@ -11,17 +11,9 @@ export interface TumblrConsumerCredentials {
   consumerSecret: string;
 }
 
-/** Reads Tumblr app (consumer) credentials from the environment, if configured. */
-export function tumblrConsumerFromEnv(): TumblrConsumerCredentials | undefined {
-  const consumerKey = process.env.TUMBLR_CONSUMER_KEY;
-  const consumerSecret = process.env.TUMBLR_CONSUMER_SECRET;
-  if (!consumerKey || !consumerSecret) return undefined;
-  return { consumerKey, consumerSecret };
-}
-
 /**
  * Tumblr's OAuth 1.0a three-legged flow. Consumer (app) credentials come from the operator's
- * environment; the per-user token + secret it yields are what tumblr.js needs to post. Tokens are
+ * secret store; the per-user token + secret it yields are what tumblr.js needs to post. Tokens are
  * long-lived, so there is no refresh to manage.
  */
 export class TumblrOAuth1Provider implements OAuthProvider {

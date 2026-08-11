@@ -191,8 +191,23 @@ or an Organization API key (`BITWARDEN_CLIENT_ID`/`CLIENT_SECRET`/`ORGANIZATION_
 For Azure Key Vault set `Secrets__AzureKeyVault__VaultUri` (+ optional `TenantId`/`ClientId`/`ClientSecret`);
 for Infisical set `Secrets__Infisical__ClientId`/`ClientSecret`/`ProjectId`/`Environment` (+ `SiteUrl`/`SecretPath`).
 
-> The chosen store must be seeded with the platform secrets the app expects —
-> `TelegramApiID`/`TelegramApiHash` and each `trigger-{sourceType}-signing` key.
+> Connector operational secrets can be managed in the admin UI by a user with the Keycloak
+> `postyfox-admin` realm role. The current catalog is `TelegramApiID`/`TelegramApiHash` and
+> `TumblrConsumerKey`/`TumblrConsumerSecret`. Trigger keys (`trigger-{sourceType}-signing`) still
+> require direct seeding.
+
+For an external Keycloak realm, ensure the oauth2-proxy client includes realm roles in its ID token.
+The built-in `roles` client scope must be assigned with **Full scope allowed**, or add a
+**User Realm Role** mapper with token claim name `realm_access.roles`, multivalued enabled, and
+**Add to ID token** enabled. Core authorizes the validated ID token forwarded by oauth2-proxy; merely
+assigning the role to a user is insufficient if the client does not emit it. Sign out and back in
+after changing role assignments or mappers so oauth2-proxy receives a new ID token.
+
+oauth2-proxy uses the bundled internal Redis service for server-side sessions. This keeps the
+ID/access/refresh tokens out of browser cookies, which otherwise exceed the 4 KB cookie limit once
+Keycloak role claims are present. Deployed stacks require a URL-safe
+`OAUTH2_PROXY_REDIS_PASSWORD`; generate one with `openssl rand -hex 32`. Redis persistence is
+intentionally disabled: losing it signs users out but does not lose application data.
 
 ## HashiCorp Vault
 

@@ -1,6 +1,14 @@
 {
   "realm": "PostyFox",
   "enabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "postyfox-admin",
+        "description": "Manage PostyFox operational configuration"
+      }
+    ]
+  },
   "clients": [
     {
       "clientId": "oauth2-proxy",
@@ -8,10 +16,27 @@
       "protocol": "openid-connect",
       "publicClient": false,
       "secret": "oauth2-proxy-secret",
+      "fullScopeAllowed": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "redirectUris": ["http://localhost:4180/oauth2/callback"],
-      "webOrigins": ["http://localhost:4180"]
+      "webOrigins": ["http://localhost:4180"],
+      "protocolMappers": [
+        {
+          "name": "PostyFox realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -23,6 +48,7 @@
       "firstName": "Posty",
       "lastName": "Fox",
       "requiredActions": [],
+      "realmRoles": ["postyfox-admin"],
       "credentials": [{ "type": "password", "value": "postyfox", "temporary": false }]
     }
   ]
