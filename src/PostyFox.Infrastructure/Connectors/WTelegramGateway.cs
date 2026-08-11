@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Neillans.Adapters.Secrets.Core;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
+using PostyFox.Application.Services;
 using TL;
 
 namespace PostyFox.Infrastructure.Connectors;
@@ -24,19 +25,16 @@ public sealed class WTelegramGateway(
     ILogger<WTelegramGateway> logger) : ITelegramGateway
 {
     private readonly ConcurrentDictionary<string, WTelegram.Client> _loginClients = new();
-    private (int apiId, string apiHash)? _api;
 
     private async Task<(int apiId, string apiHash)> ApiAsync(CancellationToken ct)
     {
-        if (_api is { } a) return a;
         await using var scope = scopeFactory.CreateAsyncScope();
         var secrets = scope.ServiceProvider.GetRequiredService<ISecretsProvider>();
-        var id = await secrets.GetSecretAsync("TelegramApiID", ct);
-        var hash = await secrets.GetSecretAsync("TelegramApiHash", ct);
+        var id = await secrets.GetSecretAsync(OperationalSecretService.TelegramApiId, ct);
+        var hash = await secrets.GetSecretAsync(OperationalSecretService.TelegramApiHash, ct);
         if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(hash))
             throw new InvalidOperationException("Telegram api id/hash not configured in the secret store");
-        _api = (int.Parse(id!), hash!);
-        return _api.Value;
+        return (int.Parse(id!), hash!);
     }
 
     private async Task<WTelegram.Client> CreateClientAsync(string userId, string phone, CancellationToken ct)

@@ -7,4 +7,5 @@ public static class AuthConstants
     public const string ApiKey = "ApiKey";
     public const string Jwt = "Jwt";
     public const string ApiKeyHeader = "X-API-Key";
+    public const string AdminPolicy = "PostyFoxAdmin";
 }

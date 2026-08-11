@@ -1,6 +1,14 @@
 {
   "realm": "PostyFox",
   "enabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "postyfox-admin",
+        "description": "Manage PostyFox operational configuration"
+      }
+    ]
+  },
   "clients": [
     {
       "clientId": "oauth2-proxy",
@@ -23,6 +31,7 @@
       "firstName": "Posty",
       "lastName": "Fox",
       "requiredActions": [],
+      "realmRoles": ["postyfox-admin"],
       "credentials": [{ "type": "password", "value": "postyfox", "temporary": false }]
     }
   ]

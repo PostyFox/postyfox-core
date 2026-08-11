@@ -44,7 +44,10 @@ public static class WebExtensions
             .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(AuthConstants.ApiKey, null)
             .AddJwtBearer(AuthConstants.Jwt);
 
-        services.AddAuthorization();
+        var adminRole = config[$"{PostyFoxAuthOptions.SectionName}:AdminRole"] ?? "postyfox-admin";
+        services.AddAuthorization(options =>
+            options.AddPolicy(AuthConstants.AdminPolicy, policy =>
+                policy.RequireAuthenticatedUser().RequireRole(adminRole)));
         return services;
     }
 }

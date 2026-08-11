@@ -37,6 +37,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     public bool DevMode { get; init; } = true;
+    public bool DevAdmin { get; init; }
     public int? RateLimitPermits { get; init; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -52,6 +53,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Auth:DevMode"] = DevMode ? "true" : "false",
                 ["Auth:DevUserId"] = "dev-user"
             };
+            if (DevAdmin) settings["Auth:DevRoles:0"] = "postyfox-admin";
             if (RateLimitPermits is { } permits)
             {
                 settings["RateLimit:PermitsPerWindow"] = permits.ToString();

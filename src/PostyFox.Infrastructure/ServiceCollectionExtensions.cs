@@ -72,13 +72,15 @@ public static class ServiceCollectionExtensions
                 SupportsRating: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
-            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "Tumblr",
             new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
-            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "FurAffinity",
             new ConnectorDescriptor(
@@ -102,7 +104,8 @@ public static class ServiceCollectionExtensions
                 PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json")),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
-            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
 
         // Fediverse platforms — all delivered by the megalodon connector in the Node service, all via
         // an instance-scoped OAuth/MiAuth connect flow. They differ only in display name and the
@@ -114,7 +117,8 @@ public static class ServiceCollectionExtensions
                 new ConnectorDescriptor(platform, displayName, SupportsTitle: false, SupportsMedia: true, SupportsThreads: false, MaxContentLength: maxContentLength, SupportsOAuth: true),
                 sp.GetRequiredService<IHttpClientFactory>(),
                 sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
-                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>()));
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+                sp.GetRequiredService<IServiceScopeFactory>()));
 
         AddFediverse("Mastodon", "Mastodon", 500);
         AddFediverse("Pleroma", "Pleroma", 5000);

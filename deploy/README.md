@@ -191,8 +191,10 @@ or an Organization API key (`BITWARDEN_CLIENT_ID`/`CLIENT_SECRET`/`ORGANIZATION_
 For Azure Key Vault set `Secrets__AzureKeyVault__VaultUri` (+ optional `TenantId`/`ClientId`/`ClientSecret`);
 for Infisical set `Secrets__Infisical__ClientId`/`ClientSecret`/`ProjectId`/`Environment` (+ `SiteUrl`/`SecretPath`).
 
-> The chosen store must be seeded with the platform secrets the app expects —
-> `TelegramApiID`/`TelegramApiHash` and each `trigger-{sourceType}-signing` key.
+> Connector operational secrets can be managed in the admin UI by a user with the Keycloak
+> `postyfox-admin` realm role. The current catalog is `TelegramApiID`/`TelegramApiHash` and
+> `TumblrConsumerKey`/`TumblrConsumerSecret`. Trigger keys (`trigger-{sourceType}-signing`) still
+> require direct seeding.
 
 ## HashiCorp Vault
 

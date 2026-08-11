@@ -166,9 +166,6 @@ services:
       OTEL_LOGS_EXPORTER: "otlp"
       # Skip cloud (GCP/AWS/Azure) resource detectors — avoids metadata-lookup timeouts at startup.
       OTEL_NODE_RESOURCE_DETECTORS: "env,host,os,serviceinstance,process"
-      # Tumblr OAuth1 app (consumer) credentials — enable the "Connect with Tumblr" flow.
-      TUMBLR_CONSUMER_KEY: "${TUMBLR_CONSUMER_KEY:-}"
-      TUMBLR_CONSUMER_SECRET: "${TUMBLR_CONSUMER_SECRET:-}"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 5s
