@@ -63,6 +63,16 @@ services:
           cpus: '1'
           memory: 512M
 
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
   connectors-node:
     environment:
       OBJECT_STORE_SERVICE_URL: "${RUSTFS_PROTOCOL:-https}://${RUSTFS_HOST}:${RUSTFS_PORT:-9000}"

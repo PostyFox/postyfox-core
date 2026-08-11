@@ -77,6 +77,16 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
@@ -234,6 +244,7 @@ services:
     depends_on:
       keycloak: { condition: service_healthy }
       gateway: { condition: service_started }
+      redis: { condition: service_healthy }
     restart: unless-stopped
 
 volumes:

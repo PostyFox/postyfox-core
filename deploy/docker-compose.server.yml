@@ -80,6 +80,30 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # oauth2-proxy sessions contain the ID/access/refresh tokens and can exceed browser cookie limits
+  # once Keycloak roles are included. Keep only an opaque ticket in the browser and the encrypted
+  # session in this internal, non-persistent Redis instance.
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--requirepass",
+        "${OAUTH2_PROXY_REDIS_PASSWORD:?Set OAUTH2_PROXY_REDIS_PASSWORD}"
+      ]
+    environment:
+      REDISCLI_AUTH: "${OAUTH2_PROXY_REDIS_PASSWORD:?Set OAUTH2_PROXY_REDIS_PASSWORD}"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   # Edge collector: shapes + forwards OTLP to the CENTRAL Data Prepper (config.central.yaml).
   # Holds no OpenSearch secrets. Set OTEL_CENTRAL_HOST to the central Data Prepper host.
   otel-collector:
@@ -313,6 +337,8 @@ services:
       OAUTH2_PROXY_CLIENT_ID: "${OIDC_CLIENT_ID:-oauth2-proxy}"
       OAUTH2_PROXY_CLIENT_SECRET: "${OIDC_CLIENT_SECRET}"
       OAUTH2_PROXY_COOKIE_SECRET: "${OAUTH2_PROXY_COOKIE_SECRET}"
+      OAUTH2_PROXY_SESSION_STORE_TYPE: "redis"
+      OAUTH2_PROXY_REDIS_CONNECTION_URL: "redis://:${OAUTH2_PROXY_REDIS_PASSWORD:?Set OAUTH2_PROXY_REDIS_PASSWORD}@redis:6379/0"
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
       OAUTH2_PROXY_REDIRECT_URL: "${PUBLIC_BASE_URL}/oauth2/callback"
       # Single root upstream → the internal nginx gateway (which does the path routing).
@@ -343,6 +369,7 @@ services:
       gateway: { condition: service_healthy }
       core-api: { condition: service_healthy }
       post-api: { condition: service_healthy }
+      redis: { condition: service_healthy }
     restart: unless-stopped
 
 volumes:
