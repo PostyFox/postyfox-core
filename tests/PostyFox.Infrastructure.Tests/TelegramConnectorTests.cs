@@ -52,4 +52,13 @@ public class TelegramConnectorTests
         // The connector must hand the gateway Telegram's declared media spec, so bytes get normalized.
         Assert.Same(PostyFox.Infrastructure.Media.PlatformMediaSpecs.Telegram, gw.LastMediaSpec);
     }
+
+    [Fact]
+    public void Describe_reports_platform_and_media_support()
+    {
+        var d = new TelegramConnector(new FakeTelegramGateway()).Describe();
+        Assert.Equal("Telegram", d.Platform);
+        Assert.True(d.SupportsMedia);
+        Assert.Same(PostyFox.Infrastructure.Media.PlatformMediaSpecs.Telegram, d.MediaSpec);
+    }
 }

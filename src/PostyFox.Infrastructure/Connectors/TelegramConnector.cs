@@ -14,7 +14,7 @@ public sealed class TelegramConnector(ITelegramGateway gateway) : IConnector
     public const string PlatformKey = "Telegram";
 
     public ConnectorDescriptor Describe() =>
-        new(PlatformKey, "Telegram", SupportsTitle: true, SupportsMedia: false, SupportsThreads: false, 4096,
+        new(PlatformKey, "Telegram", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, 4096,
             MediaSpec: PlatformMediaSpecs.Telegram);
 
     public async Task<AuthState> IsAuthenticatedAsync(ConnectorContext context, CancellationToken ct = default)

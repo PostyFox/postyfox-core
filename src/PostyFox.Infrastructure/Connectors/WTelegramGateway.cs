@@ -12,11 +12,6 @@ namespace PostyFox.Infrastructure.Connectors;
 /// <summary>
 /// MTProto gateway backed by WTelegramClient. Sessions are persisted per user in the object
 /// store; interactive login clients are held in-process for the duration of the login flow.
-///
-/// STATEFULNESS: the login-flow client cache is per-instance. Route all Telegram operations for a
-/// given user to a single instance (e.g. a dedicated telegram-worker with consistent hashing on
-/// userId) so concurrent replicas do not corrupt an in-progress session — see the reimplementation
-/// plan §4.5.
 /// </summary>
 public sealed class WTelegramGateway(
     IObjectStore objectStore,
@@ -40,7 +35,8 @@ public sealed class WTelegramGateway(
     private async Task<WTelegram.Client> CreateClientAsync(string userId, string phone, CancellationToken ct)
     {
         var (apiId, apiHash) = await ApiAsync(ct);
-        var store = await BlobSessionStore.OpenAsync(objectStore, userId, ct);
+        logger.LogDebug("Opening Telegram session store ({Store}) for {User}", objectStore.GetType().Name, userId);
+        var store = await BlobSessionStore.OpenAsync(objectStore, userId, ct, logger);
         return new WTelegram.Client(what => what switch
         {
             "api_id" => apiId.ToString(),
@@ -56,7 +52,9 @@ public sealed class WTelegramGateway(
         {
             using var client = await CreateClientAsync(userId, phoneNumber, ct);
             await client.LoginUserIfNeeded();
-            return client.UserId != 0;
+            var authenticated = client.UserId != 0;
+            logger.LogDebug("Telegram session for {User} authenticated={Authenticated} (UserId={TelegramUserId})", userId, authenticated, client.UserId);
+            return authenticated;
         }
         catch (Exception ex)
         {
@@ -103,6 +101,7 @@ public sealed class WTelegramGateway(
             }
 
             var content = await mediaResolver.ResolveAsync(media, mediaSpec, ct);
+            logger.LogDebug("Telegram delivery for {User}: resolved {Count} media item(s) for chat {Chat}", userId, content.Count, chatId);
 
             if (content.Count == 1)
             {
@@ -136,6 +135,7 @@ public sealed class WTelegramGateway(
     {
         var client = _loginClients.GetOrAdd(userId, _ => CreateClientAsync(userId, phoneNumber, ct).GetAwaiter().GetResult());
         var next = await client.Login(value ?? phoneNumber);
+        logger.LogDebug("Telegram login step for {User} returned '{Step}'", userId, next ?? "null");
         switch (next)
         {
             case "verification_code":
@@ -143,7 +143,11 @@ public sealed class WTelegramGateway(
             case "password":
                 return new TelegramLoginStep(TelegramLoginStep.NeedsPassword, "value", "2FA Password");
             default:
-                if (_loginClients.TryRemove(userId, out var done)) done.Dispose(); // Dispose flushes the session to the object store
+                // Session state is persisted eagerly by BlobSessionStore on every write (see its
+                // remarks) — Dispose here only tears down the client/network resources, it does not
+                // itself trigger persistence.
+                if (_loginClients.TryRemove(userId, out var done)) done.Dispose();
+                logger.LogInformation("Telegram login completed for {User}", userId);
                 return new TelegramLoginStep(TelegramLoginStep.Complete);
         }
     }
