@@ -225,5 +225,36 @@ public class PipelineTests
         Assert.Equal(0, connector.Calls);
         Assert.Empty(await h.InScopeAsync(db => db.Posts.ToListAsync()));
     }
+
+    [Fact]
+    public async Task Posting_to_a_connector_destination_resolves_target_id_and_delivers_once_per_destination()
+    {
+        var connector = new ProgrammableConnector("Telegram", succeed: true, supportsMultipleTargets: true);
+        using var h = new PipelineHarness(connector);
+        var cid = await h.SeedConnectorAsync("u1", "Telegram");
+        var chatA = await h.SeedDestinationAsync(cid, "-100111", "Channel A");
+        var chatB = await h.SeedDestinationAsync(cid, "-100222", "Channel B");
+
+        await CreatePostAsync(h, "u1", chatA, chatB);
+
+        var targets = await h.InScopeAsync(db => db.PostTargets.OrderBy(t => t.TargetId).ToListAsync());
+        Assert.Equal(2, targets.Count);
+        Assert.All(targets, t => Assert.Equal(TargetStatus.Delivered, t.Status));
+        Assert.Equal(["-100111", "-100222"], targets.Select(t => t.TargetId).OrderBy(x => x));
+        Assert.Equal(2, connector.Calls);
+    }
+
+    [Fact]
+    public async Task Delivering_to_a_destination_passes_its_chat_id_into_the_connector_context()
+    {
+        var connector = new ProgrammableConnector("Telegram", succeed: true, supportsMultipleTargets: true);
+        using var h = new PipelineHarness(connector);
+        var cid = await h.SeedConnectorAsync("u1", "Telegram");
+        var chatA = await h.SeedDestinationAsync(cid, "-100111", "Channel A");
+
+        await CreatePostAsync(h, "u1", chatA);
+
+        Assert.Equal("-100111", connector.LastTargetId);
+    }
 }
 

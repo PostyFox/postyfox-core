@@ -23,7 +23,16 @@ public sealed class PostIntakeService(
     private readonly PipelineOptions _options = options.Value;
 
     /// <summary>
-    /// Persists a post + one target per selected connector, stores the payload, and enqueues
+    /// One resolved delivery destination for a post: either a whole connector (the legacy 1:1
+    /// behaviour) or one of its exposed <see cref="ConnectorDestination"/>s. <see cref="SelectionId"/>
+    /// is whichever id the client sent in <see cref="CreatePostRequest.Targets"/>, used to look up
+    /// per-submission <see cref="CreatePostRequest.TargetOptions"/>.
+    /// </summary>
+    private sealed record ResolvedDestination(
+        Guid SelectionId, Guid ConnectorId, string DisplayName, string Platform, string? TargetId, string? TargetName);
+
+    /// <summary>
+    /// Persists a post + one target per selected destination, stores the payload, and enqueues
     /// generation for each target (delayed if scheduled). Returns null if no valid targets.
     /// </summary>
     /// <exception cref="ConnectorValidationException">
@@ -34,11 +43,27 @@ public sealed class PostIntakeService(
         var targetIds = (request.Targets ?? []).Distinct().ToList();
         if (targetIds.Count == 0) return null;
 
+        // A requested id is either a whole connector (single-destination platforms, and the legacy
+        // behaviour every platform used before per-destination selection existed) or one of that
+        // connector's exposed ConnectorDestinations (multi-target platforms like Telegram — see
+        // ConnectorDescriptor.SupportsMultipleTargets). Both id spaces are plain Guids from different
+        // tables, so a requested id can only ever match one of them.
         var connectors = await db.UserConnectors
             .Include(c => c.ServiceDefinition)
             .Where(c => c.UserId == userId && c.Enabled && targetIds.Contains(c.Id))
             .ToListAsync(ct);
-        if (connectors.Count == 0) return null;
+
+        var destinations = await db.ConnectorDestinations
+            .Include(d => d.Connector!.ServiceDefinition)
+            .Where(d => d.Connector!.UserId == userId && d.Connector!.Enabled && targetIds.Contains(d.Id))
+            .ToListAsync(ct);
+
+        var resolved = new List<ResolvedDestination>();
+        resolved.AddRange(connectors.Select(c =>
+            new ResolvedDestination(c.Id, c.Id, c.DisplayName, c.ServiceDefinition!.Platform, null, null)));
+        resolved.AddRange(destinations.Select(d =>
+            new ResolvedDestination(d.Id, d.ConnectorId, d.Connector!.DisplayName, d.Connector!.ServiceDefinition!.Platform, d.ExternalId, d.Name)));
+        if (resolved.Count == 0) return null;
 
         var now = clock.UtcNow;
         var post = new Post
@@ -59,17 +84,18 @@ public sealed class PostIntakeService(
             UpdatedAt = now
         };
 
-        foreach (var connector in connectors)
+        foreach (var destination in resolved)
         {
-            var platform = connector.ServiceDefinition!.Platform;
             post.Targets.Add(new PostTarget
             {
                 Id = Guid.NewGuid(),
                 PostId = post.Id,
-                ConnectorId = connector.Id,
-                Platform = platform,
-                OptionsJson = TargetOptionsFor(platform, connector.DisplayName,
-                    request.TargetOptions?.GetValueOrDefault(connector.Id)),
+                ConnectorId = destination.ConnectorId,
+                Platform = destination.Platform,
+                TargetId = destination.TargetId,
+                TargetName = destination.TargetName,
+                OptionsJson = TargetOptionsFor(destination.Platform, destination.DisplayName,
+                    request.TargetOptions?.GetValueOrDefault(destination.SelectionId)),
                 Status = TargetStatus.Queued,
                 CreatedAt = now,
                 UpdatedAt = now

@@ -29,9 +29,45 @@ public sealed record ServiceDefinitionDto(
     /// <see cref="ConfigSchema"/>; null when the platform has none. Rendered by the compose form once
     /// per selected target, and submitted as <see cref="CreatePostRequest.TargetOptions"/>.
     /// </summary>
-    string? PostOptionsSchema);
+    string? PostOptionsSchema,
+    /// <summary>
+    /// True when one connector login can fan out to several independently selectable delivery
+    /// destinations (see <see cref="Connectors.ConnectorDescriptor.SupportsMultipleTargets"/>). The
+    /// compose UI lists each of the connector's exposed <c>ConnectorDestination</c>s as its own
+    /// selectable target instead of the connector itself.
+    /// </summary>
+    bool SupportsMultipleTargets = false);
 
 public sealed record UserConnectorDto(Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled);
+
+/// <summary>
+/// A destination the user has chosen to expose for posting under one connector login (e.g. one
+/// Telegram chat/channel reachable from a single MTProto login). See
+/// <see cref="Domain.Entities.ConnectorDestination"/>.
+/// </summary>
+public sealed record ConnectorDestinationDto(Guid Id, Guid ConnectorId, string ExternalId, string Name);
+
+/// <summary>
+/// A <see cref="ConnectorDestinationDto"/> flattened with its owning connector's identity, for the
+/// "every destination across every connector" listing the compose form uses to build its full set
+/// of selectable delivery targets.
+/// </summary>
+public sealed record ConnectorDestinationSummaryDto(
+    Guid Id,
+    Guid ConnectorId,
+    string Platform,
+    string ConnectorDisplayName,
+    string ExternalId,
+    string Name);
+
+/// <summary>One destination to expose, as chosen from a connector's live <c>ListTargetsAsync</c> results.</summary>
+public sealed record ConnectorDestinationInput(string ExternalId, string Name);
+
+/// <summary>
+/// Replaces the full set of destinations exposed for a connector (add/update/remove in one call) —
+/// simpler for the client than issuing individual add/remove requests as checkboxes are toggled.
+/// </summary>
+public sealed record SetConnectorDestinationsRequest(IReadOnlyList<ConnectorDestinationInput> Destinations);
 
 /// <summary>
 /// A site the signed-in user can hand a browser session to. One entry per cookie-pairing platform:
@@ -60,6 +96,13 @@ public sealed record TemplateDto(Guid Id, string Title, string MarkdownBody);
 public sealed record TemplateUpsertRequest(Guid? Id, string Title, string MarkdownBody);
 
 public sealed record CreatePostRequest(
+    /// <summary>
+    /// Ids of the destinations to deliver to. Each entry is either a <see cref="Domain.Entities.UserConnector"/> id
+    /// (the legacy 1:1 behaviour — the connector's own configured destination is used), or a
+    /// <see cref="ConnectorDestinationDto"/> id for a connector that declares
+    /// <see cref="Connectors.ConnectorDescriptor.SupportsMultipleTargets"/> (Telegram) — in which case
+    /// delivery goes to that specific exposed chat/channel rather than the connector's default.
+    /// </summary>
     IReadOnlyList<Guid> Targets,
     string? Title,
     string? Description,
@@ -71,8 +114,8 @@ public sealed record CreatePostRequest(
     DateTimeOffset? PostAt,
     ContentRating? Rating = null,
     /// <summary>
-    /// Per-submission platform choices, keyed by target connector id — FurAffinity's category,
-    /// species, gender and folders. Validated against that platform's
+    /// Per-submission platform choices, keyed by the same id used in <see cref="Targets"/>  —
+    /// FurAffinity's category, species, gender and folders. Validated against that platform's
     /// <see cref="ServiceDefinitionDto.PostOptionsSchema"/>; anything it does not declare is dropped.
     /// Entries for connectors outside <see cref="Targets"/> are ignored.
     /// </summary>

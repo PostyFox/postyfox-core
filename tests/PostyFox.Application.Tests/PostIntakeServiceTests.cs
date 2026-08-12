@@ -92,4 +92,68 @@ public class PostIntakeServiceTests
         Assert.NotNull(published.Delay);
         Assert.Equal(TimeSpan.FromHours(2), published.Delay!.Value);
     }
+
+    [Fact]
+    public async Task Create_resolves_a_connector_destination_selection_to_its_chat_id()
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "Telegram", Name = "Telegram", Platform = "Telegram", Enabled = true });
+        var connectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = connectorId, UserId = "u1", ServiceDefinitionId = "Telegram", DisplayName = "Telegram", Enabled = true
+        });
+        var destinationId = Guid.NewGuid();
+        db.ConnectorDestinations.Add(new ConnectorDestination
+        {
+            Id = destinationId, ConnectorId = connectorId, ExternalId = "-100111", Name = "Channel A"
+        });
+        await db.SaveChangesAsync();
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeMultiTargetConnector("Telegram")),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [destinationId], "Title", "Body", null, null, null, null, null, null));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        Assert.Equal(connectorId, target.ConnectorId);
+        Assert.Equal("-100111", target.TargetId);
+        Assert.Equal("Channel A", target.TargetName);
+    }
+
+    [Fact]
+    public async Task Create_resolves_mixed_connector_and_destination_selections_into_separate_targets()
+    {
+        using var db = TestDbContext.Create();
+        var discordId = await SeedConnectorAsync(db, "u1");
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "Telegram", Name = "Telegram", Platform = "Telegram", Enabled = true });
+        var telegramConnectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = telegramConnectorId, UserId = "u1", ServiceDefinitionId = "Telegram", DisplayName = "Telegram", Enabled = true
+        });
+        var destinationId = Guid.NewGuid();
+        db.ConnectorDestinations.Add(new ConnectorDestination
+        {
+            Id = destinationId, ConnectorId = telegramConnectorId, ExternalId = "-100111", Name = "Channel A"
+        });
+        await db.SaveChangesAsync();
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("DiscordWH"), new FakeMultiTargetConnector("Telegram")),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [discordId, destinationId], "Title", "Body", null, null, null, null, null, null));
+
+        Assert.NotNull(result);
+        Assert.Equal(2, db.PostTargets.Count());
+        var discordTarget = db.PostTargets.Single(t => t.ConnectorId == discordId);
+        Assert.Null(discordTarget.TargetId);
+        var telegramTarget = db.PostTargets.Single(t => t.ConnectorId == telegramConnectorId);
+        Assert.Equal("-100111", telegramTarget.TargetId);
+    }
 }

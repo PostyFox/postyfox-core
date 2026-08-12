@@ -72,7 +72,7 @@ public sealed class DeliverTargetHandler(
             userId,
             EffectiveConfig(connector.Describe().PostOptionsSchema, configJson, target.OptionsJson),
             secretJson,
-            null);
+            target.TargetId);
 
         target.Status = TargetStatus.Delivering;
         target.Attempts++;

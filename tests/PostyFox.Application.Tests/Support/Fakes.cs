@@ -64,6 +64,17 @@ public sealed class FakeConnectorWithMediaSpec(string platform, MediaSpec mediaS
         => Task.FromResult(DeliveryResult.Ok("ext-1"));
 }
 
+/// <summary>A connector for platforms exposing multiple user-selectable destinations (e.g. Telegram).</summary>
+public sealed class FakeMultiTargetConnector(string platform) : IConnector
+{
+    public ConnectorDescriptor Describe() => new(platform, platform, true, false, false, null, SupportsMultipleTargets: true);
+    public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
+    public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
+        => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
+    public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
+        => Task.FromResult(DeliveryResult.Ok("ext-1"));
+}
+
 /// <summary>A connector that authenticates from a handed-over website session (see FurAffinity).</summary>
 public sealed class FakeCookiePairingConnector(string platform, params string[] cookieNames) : IConnector
 {
