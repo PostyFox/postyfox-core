@@ -107,7 +107,16 @@ public sealed class WTelegramGateway(
             {
                 using var ms = new MemoryStream(content[0].Data);
                 var file = await client.UploadFileAsync(ms, content[0].FileName);
-                var msg = await client.SendMediaAsync(peer, text, file, content[0].ContentType, entities: entities);
+                // Client.SendMediaAsync only auto-detects photo-vs-document from the filename
+                // extension when its mimeType parameter is null; passing our resolved content type
+                // (as we did before) skips that check entirely and always sends an
+                // InputMediaUploadedDocument — i.e. every image arrived in Telegram as a "file"
+                // instead of a photo. Build the InputMedia ourselves instead, exactly as the album
+                // path below already (correctly) does.
+                InputMedia inputMedia = content[0].ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                    ? new InputMediaUploadedPhoto { file = file }
+                    : new InputMediaUploadedDocument { file = file, mime_type = content[0].ContentType };
+                var msg = await client.SendMessageAsync(peer, text, inputMedia, entities: entities);
                 return DeliveryResult.Ok(msg.id.ToString());
             }
 
