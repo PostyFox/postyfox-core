@@ -23,7 +23,9 @@ public enum PostRootStatus
     PartiallyFailed = 4,
     Failed = 5,
     /// <summary>Every remaining target was cancelled by the user. Terminal.</summary>
-    Cancelled = 6
+    Cancelled = 6,
+    /// <summary>Saved by the user but not yet submitted; has no targets/queue activity until published.</summary>
+    Draft = 7
 }
 
 /// <summary>Audience/content classification supplied by the author for platforms that require it.</summary>

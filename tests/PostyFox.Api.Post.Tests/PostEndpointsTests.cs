@@ -50,6 +50,115 @@ public class PostEndpointsTests(CustomWebApplicationFactory factory) : IClassFix
     }
 
     [Fact]
+    public async Task Create_draft_is_created_with_no_targets_enqueued()
+    {
+        var create = await _client.PostAsJsonAsync("/api/posts", new
+        {
+            targets = new[] { factory.SeededConnectorId },
+            title = "My draft",
+            isDraft = true
+        });
+
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<CreatePostResponse>();
+        Assert.Equal(PostRootStatus.Draft, created!.RootStatus);
+
+        var status = await _client.GetFromJsonAsync<PostStatusDto>($"/api/posts/{created.PostId}");
+        Assert.Equal(PostRootStatus.Draft, status!.RootStatus);
+        Assert.Empty(status.Targets);
+    }
+
+    [Fact]
+    public async Task Draft_can_be_saved_with_no_targets_at_all()
+    {
+        var create = await _client.PostAsJsonAsync("/api/posts", new
+        {
+            targets = Array.Empty<Guid>(),
+            title = "Untargeted draft",
+            isDraft = true
+        });
+
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+    }
+
+    [Fact]
+    public async Task Draft_content_can_be_fetched_updated_and_then_published()
+    {
+        var create = await _client.PostAsJsonAsync("/api/posts", new
+        {
+            targets = Array.Empty<Guid>(),
+            title = "Draft v1",
+            description = "first",
+            isDraft = true
+        });
+        var created = await create.Content.ReadFromJsonAsync<CreatePostResponse>();
+
+        var content = await _client.GetFromJsonAsync<PostContentDto>($"/api/posts/{created!.PostId}/content");
+        Assert.Equal("Draft v1", content!.Title);
+
+        var update = await _client.PutAsJsonAsync($"/api/posts/{created.PostId}", new
+        {
+            targets = new[] { factory.SeededConnectorId },
+            title = "Draft v2",
+            description = "second"
+        });
+        Assert.Equal(HttpStatusCode.NoContent, update.StatusCode);
+
+        var updatedContent = await _client.GetFromJsonAsync<PostContentDto>($"/api/posts/{created.PostId}/content");
+        Assert.Equal("Draft v2", updatedContent!.Title);
+        Assert.Contains(factory.SeededConnectorId, updatedContent.ConnectorIds);
+
+        var publish = await _client.PostAsync($"/api/posts/{created.PostId}/publish", null);
+        Assert.Equal(HttpStatusCode.OK, publish.StatusCode);
+        var published = await publish.Content.ReadFromJsonAsync<CreatePostResponse>();
+        Assert.Equal(PostRootStatus.Queued, published!.RootStatus);
+
+        var status = await _client.GetFromJsonAsync<PostStatusDto>($"/api/posts/{created.PostId}");
+        Assert.Equal(PostRootStatus.Queued, status!.RootStatus);
+        Assert.Single(status.Targets);
+        Assert.Contains(factory.Bus.Messages, m => m is GenerateTargetCommand);
+    }
+
+    [Fact]
+    public async Task Publishing_a_draft_with_no_valid_targets_is_bad_request()
+    {
+        var create = await _client.PostAsJsonAsync("/api/posts", new
+        {
+            targets = Array.Empty<Guid>(),
+            title = "No targets",
+            isDraft = true
+        });
+        var created = await create.Content.ReadFromJsonAsync<CreatePostResponse>();
+
+        var publish = await _client.PostAsync($"/api/posts/{created!.PostId}/publish", null);
+        Assert.Equal(HttpStatusCode.BadRequest, publish.StatusCode);
+    }
+
+    [Fact]
+    public async Task Updating_or_publishing_an_already_published_post_conflicts()
+    {
+        var body = new { targets = new[] { factory.SeededConnectorId }, title = "Already sent" };
+        var created = await (await _client.PostAsJsonAsync("/api/posts", body)).Content.ReadFromJsonAsync<CreatePostResponse>();
+
+        var update = await _client.PutAsJsonAsync($"/api/posts/{created!.PostId}", body);
+        Assert.Equal(HttpStatusCode.Conflict, update.StatusCode);
+
+        var publish = await _client.PostAsync($"/api/posts/{created.PostId}/publish", null);
+        Assert.Equal(HttpStatusCode.Conflict, publish.StatusCode);
+    }
+
+    [Fact]
+    public async Task Updating_or_publishing_an_unknown_post_is_not_found()
+    {
+        var id = Guid.NewGuid();
+        var update = await _client.PutAsJsonAsync($"/api/posts/{id}", new { targets = Array.Empty<Guid>(), title = "x" });
+        Assert.Equal(HttpStatusCode.NotFound, update.StatusCode);
+
+        var publish = await _client.PostAsync($"/api/posts/{id}/publish", null);
+        Assert.Equal(HttpStatusCode.NotFound, publish.StatusCode);
+    }
+
+    [Fact]
     public async Task Unknown_post_status_is_not_found()
     {
         var resp = await _client.GetAsync($"/api/posts/{Guid.NewGuid()}");

@@ -45,6 +45,22 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             .FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
         if (post is null) return null;
 
+        // A draft has no PostTarget rows yet — its target selection lives in DraftTargetsJson/
+        // DraftTargetOptionsJson instead (see PostIntakeService) — until it's published.
+        if (post.RootStatus == PostRootStatus.Draft)
+            return new PostContentDto(
+                string.IsNullOrEmpty(post.Title) ? null : post.Title,
+                string.IsNullOrEmpty(post.Description) ? null : post.Description,
+                string.IsNullOrEmpty(post.HtmlDescription) ? null : post.HtmlDescription,
+                Json.Deserialize<List<string>>(post.TagsJson) ?? [],
+                Json.Deserialize<List<MediaRef>>(post.MediaManifestJson) ?? [],
+                post.TemplateId,
+                Json.Deserialize<Dictionary<string, string>>(post.VariablesJson) ?? new(),
+                Json.Deserialize<List<Guid>>(post.DraftTargetsJson ?? "[]") ?? [],
+                post.PostAt,
+                post.Rating,
+                Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}") ?? new());
+
         // "Post again" must re-tick the exact same destination the post was originally sent to, not
         // just its connector — for a multi-target platform (Telegram) that means resolving each
         // target's chat id back to the ConnectorDestination the compose form originally selected.

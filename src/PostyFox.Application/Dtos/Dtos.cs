@@ -119,9 +119,32 @@ public sealed record CreatePostRequest(
     /// <see cref="ServiceDefinitionDto.PostOptionsSchema"/>; anything it does not declare is dropped.
     /// Entries for connectors outside <see cref="Targets"/> are ignored.
     /// </summary>
-    IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? TargetOptions = null);
+    IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? TargetOptions = null,
+    /// <summary>
+    /// True to save this as a draft instead of submitting it: no targets are resolved/validated and
+    /// nothing is enqueued for delivery. <see cref="Targets"/> and <see cref="TargetOptions"/> are
+    /// still stored as-authored so the draft can be edited and eventually published. Also the request
+    /// body accepted by the draft update endpoint (which ignores this flag — a post's draft status
+    /// only changes via publish).
+    /// </summary>
+    bool IsDraft = false);
 
 public sealed record CreatePostResponse(Guid PostId, PostRootStatus RootStatus);
+
+/// <summary>Outcome of an action restricted to draft posts (edit/publish).</summary>
+public enum DraftActionOutcome
+{
+    /// <summary>No such post for this user.</summary>
+    NotFound,
+    /// <summary>Post exists but is no longer a draft (already published).</summary>
+    NotADraft,
+    /// <summary>Publish only: the draft's stored target selection resolved to nothing postable.</summary>
+    NoValidTargets,
+    Success
+}
+
+/// <summary>Result of publishing a draft: the outcome, and the resulting post/status when successful.</summary>
+public sealed record PublishDraftResult(DraftActionOutcome Outcome, CreatePostResponse? Response);
 
 public sealed record PostTargetStatusDto(Guid TargetId, string Platform, TargetStatus Status, string? ExternalId, string? ExternalUrl, string? Error, int Attempts);
 public sealed record PostStatusDto(Guid PostId, PostRootStatus RootStatus, IReadOnlyList<PostTargetStatusDto> Targets);
