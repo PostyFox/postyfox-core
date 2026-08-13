@@ -11,6 +11,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ServiceDefinition> ServiceDefinitions => Set<ServiceDefinition>();
     public DbSet<UserConnector> UserConnectors => Set<UserConnector>();
     public DbSet<ConnectorCookiePairing> ConnectorCookiePairings => Set<ConnectorCookiePairing>();
+    public DbSet<ConnectorDestination> ConnectorDestinations => Set<ConnectorDestination>();
     public DbSet<Template> Templates => Set<Template>();
     public DbSet<ExternalTrigger> ExternalTriggers => Set<ExternalTrigger>();
     public DbSet<ExternalInterest> ExternalInterests => Set<ExternalInterest>();
@@ -56,6 +57,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.TokenHash).HasMaxLength(64);
             e.HasIndex(x => x.ConnectorId).IsUnique();
             e.HasIndex(x => x.ExpiresAt);
+            e.HasOne(x => x.Connector)
+                .WithMany()
+                .HasForeignKey(x => x.ConnectorId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ConnectorDestination>(e =>
+        {
+            e.ToTable("connector_destinations");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.ConnectorId);
+            e.HasIndex(x => new { x.ConnectorId, x.ExternalId }).IsUnique();
             e.HasOne(x => x.Connector)
                 .WithMany()
                 .HasForeignKey(x => x.ConnectorId)

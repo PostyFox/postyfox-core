@@ -78,8 +78,31 @@ public static class ServiceEndpoints
         connectors.MapGet("{id:guid}/targets", async (Guid id, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
             await svc.ListTargetsAsync(user.UserId()!, id, ct) is { } targets ? Results.Ok(targets) : Results.NotFound())
         .WithSummary("List the delivery targets available on a connector")
+        .WithDescription("Fetched live from the platform (e.g. a Telegram account's chats). For connectors that support multiple targets, pick from this list which ones to expose via PUT .../destinations.")
         .Produces<IReadOnlyList<ConnectorTarget>>()
         .Produces(StatusCodes.Status404NotFound);
+
+        connectors.MapGet("{id:guid}/destinations", async (Guid id, ClaimsPrincipal user, ConnectorDestinationService svc, CancellationToken ct) =>
+            await svc.ListAsync(user.UserId()!, id, ct) is { } destinations ? Results.Ok(destinations) : Results.NotFound())
+        .WithSummary("List the destinations exposed for posting under a connector")
+        .WithDescription("For connectors that support multiple targets (e.g. Telegram), these are the chats/channels the compose form offers as individually selectable destinations.")
+        .Produces<IReadOnlyList<ConnectorDestinationDto>>()
+        .Produces(StatusCodes.Status404NotFound);
+
+        connectors.MapPut("{id:guid}/destinations", async (Guid id, SetConnectorDestinationsRequest body, ClaimsPrincipal user, ConnectorDestinationService svc, CancellationToken ct) =>
+            await svc.SetAsync(user.UserId()!, id, body.Destinations ?? [], ct) is { } destinations
+                ? Results.Ok(destinations)
+                : Results.BadRequest(new { error = "Unknown connector, or it does not support multiple targets" }))
+        .WithSummary("Replace the destinations exposed for posting under a connector")
+        .WithDescription("Pass the full desired set (matched by ExternalId) — entries not included are removed, new ones are added, and names are refreshed.")
+        .Produces<IReadOnlyList<ConnectorDestinationDto>>()
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        connectors.MapGet("destinations", async (ClaimsPrincipal user, ConnectorDestinationService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ListAllAsync(user.UserId()!, ct)))
+        .WithSummary("List every destination the user has exposed across all their connectors")
+        .WithDescription("Flattened with each destination's owning connector, for the compose form to build its full set of selectable delivery targets.")
+        .Produces<IReadOnlyList<ConnectorDestinationSummaryDto>>();
 
         connectors.MapGet("{id:guid}/limits", async (Guid id, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
             await svc.GetLimitsAsync(user.UserId()!, id, ct) is { } limits ? Results.Ok(limits) : Results.NotFound())

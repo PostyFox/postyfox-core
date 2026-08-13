@@ -14,6 +14,7 @@ public interface IAppDbContext
     DbSet<ServiceDefinition> ServiceDefinitions { get; }
     DbSet<UserConnector> UserConnectors { get; }
     DbSet<ConnectorCookiePairing> ConnectorCookiePairings { get; }
+    DbSet<ConnectorDestination> ConnectorDestinations { get; }
     DbSet<Template> Templates { get; }
     DbSet<ExternalTrigger> ExternalTriggers { get; }
     DbSet<ExternalInterest> ExternalInterests { get; }

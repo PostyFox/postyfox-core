@@ -4,6 +4,7 @@ using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Options;
+using PostyFox.Domain.Entities;
 using PostyFox.Domain.Enums;
 
 namespace PostyFox.Application.Posting;
@@ -44,6 +45,28 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             .FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
         if (post is null) return null;
 
+        // "Post again" must re-tick the exact same destination the post was originally sent to, not
+        // just its connector — for a multi-target platform (Telegram) that means resolving each
+        // target's chat id back to the ConnectorDestination the compose form originally selected.
+        // Falls back to the connector itself if that destination is no longer exposed.
+        var connectorIdsWithTarget = post.Targets
+            .Where(t => t.ConnectorId.HasValue && t.TargetId != null)
+            .Select(t => t.ConnectorId!.Value)
+            .Distinct()
+            .ToList();
+        var destinationLookup = connectorIdsWithTarget.Count == 0
+            ? new Dictionary<(Guid ConnectorId, string ExternalId), Guid>()
+            : (await db.ConnectorDestinations
+                .Where(d => connectorIdsWithTarget.Contains(d.ConnectorId))
+                .Select(d => new { d.Id, d.ConnectorId, d.ExternalId })
+                .ToListAsync(ct))
+                .ToDictionary(d => (d.ConnectorId, d.ExternalId), d => d.Id);
+
+        Guid SelectionId(PostTarget t) =>
+            t.TargetId != null && destinationLookup.TryGetValue((t.ConnectorId!.Value, t.TargetId), out var destinationId)
+                ? destinationId
+                : t.ConnectorId!.Value;
+
         return new PostContentDto(
             string.IsNullOrEmpty(post.Title) ? null : post.Title,
             string.IsNullOrEmpty(post.Description) ? null : post.Description,
@@ -52,15 +75,15 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             Json.Deserialize<List<MediaRef>>(post.MediaManifestJson) ?? [],
             post.TemplateId,
             Json.Deserialize<Dictionary<string, string>>(post.VariablesJson) ?? new(),
-            post.Targets.Where(t => t.ConnectorId.HasValue).Select(t => t.ConnectorId!.Value).Distinct().ToList(),
+            post.Targets.Where(t => t.ConnectorId.HasValue).Select(SelectionId).Distinct().ToList(),
             post.PostAt,
             post.Rating,
             post.Targets
                 .Where(t => t.ConnectorId.HasValue)
-                .Select(t => (t.ConnectorId!.Value,
+                .Select(t => (SelectionId: SelectionId(t),
                     Options: Json.Deserialize<Dictionary<string, string>>(t.OptionsJson)))
                 .Where(x => x.Options is { Count: > 0 })
-                .GroupBy(x => x.Item1)
+                .GroupBy(x => x.SelectionId)
                 .ToDictionary(
                     g => g.Key,
                     g => (IReadOnlyDictionary<string, string>)g.First().Options!));

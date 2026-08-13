@@ -10,6 +10,15 @@ public class PostTarget
     public Guid? ConnectorId { get; set; }
     public string Platform { get; set; } = string.Empty;
     /// <summary>
+    /// The specific destination within the connector's account to deliver to (e.g. a Telegram chat
+    /// id), when the target was selected via a <see cref="ConnectorDestination"/> rather than the
+    /// connector's single default destination. Null means "use the connector's own config" (the
+    /// legacy 1:1 connector-to-destination behaviour every other platform still uses).
+    /// </summary>
+    public string? TargetId { get; set; }
+    /// <summary>Human-readable label for <see cref="TargetId"/>, captured at selection time for display.</summary>
+    public string? TargetName { get; set; }
+    /// <summary>
     /// The author's per-submission choices for this platform (FurAffinity's category, species, gender,
     /// gallery folders), as declared by its connector descriptor's <c>PostOptionsSchema</c>. Applied
     /// over the connector's own config at delivery; <c>{}</c> means "use the platform's defaults".

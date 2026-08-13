@@ -33,22 +33,25 @@ public sealed class FakeObjectStore : IObjectStore
     public Task DeleteAsync(string c, string k, CancellationToken t = default) => Task.CompletedTask;
 }
 
-public sealed class ProgrammableConnector(string platform, bool succeed, string? postOptionsSchema = null) : IConnector
+public sealed class ProgrammableConnector(string platform, bool succeed, string? postOptionsSchema = null, bool supportsMultipleTargets = false) : IConnector
 {
     public int Calls { get; private set; }
     public ConnectorDescriptor Describe() =>
-        new(platform, platform, true, false, false, null, PostOptionsSchema: postOptionsSchema);
+        new(platform, platform, true, false, false, null, PostOptionsSchema: postOptionsSchema, SupportsMultipleTargets: supportsMultipleTargets);
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
     public int LastMediaCount { get; private set; }
     /// <summary>The config the pipeline resolved for the last delivery (account config + post options).</summary>
     public string? LastConfigJson { get; private set; }
+    /// <summary>The destination (chat/channel) id the pipeline resolved for the last delivery, if any.</summary>
+    public string? LastTargetId { get; private set; }
     public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
     {
         Calls++;
         LastMediaCount = post.Media.Count;
         LastConfigJson = c.ConfigJson;
+        LastTargetId = c.TargetId;
         return Task.FromResult(succeed ? DeliveryResult.Ok($"ext-{Calls}", "http://x") : DeliveryResult.Fail("boom"));
     }
 }
@@ -92,6 +95,19 @@ public sealed class PipelineHarness : IDisposable
         {
             Id = id, UserId = userId, ServiceDefinitionId = platform, DisplayName = platform,
             ConfigJson = configJson, Enabled = enabled
+        });
+        await db.SaveChangesAsync();
+        return id;
+    }
+
+    public async Task<Guid> SeedDestinationAsync(Guid connectorId, string externalId, string name)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var id = Guid.NewGuid();
+        db.ConnectorDestinations.Add(new ConnectorDestination
+        {
+            Id = id, ConnectorId = connectorId, ExternalId = externalId, Name = name
         });
         await db.SaveChangesAsync();
         return id;

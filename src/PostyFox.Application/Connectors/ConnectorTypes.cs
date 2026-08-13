@@ -45,7 +45,15 @@ public sealed record ConnectorDescriptor(
     /// target; the values are stored on the <see cref="Domain.Entities.PostTarget"/> and applied over
     /// the connector's config at delivery. Null when the platform has no per-submission choices.
     /// </summary>
-    string? PostOptionsSchema = null)
+    string? PostOptionsSchema = null,
+    /// <summary>
+    /// True when a single connector login can fan out to several independently selectable delivery
+    /// destinations (e.g. one Telegram MTProto login reaching many chats/channels) — see
+    /// <see cref="Domain.Entities.ConnectorDestination"/>. The compose UI then lets the author pick
+    /// individual exposed destinations rather than the connector itself. False (the default) keeps
+    /// the legacy 1:1 connector-to-destination behaviour every other platform uses.
+    /// </summary>
+    bool SupportsMultipleTargets = false)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;
