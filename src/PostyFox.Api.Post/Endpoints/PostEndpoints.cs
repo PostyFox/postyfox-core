@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Posting;
+using PostyFox.Domain.Enums;
 using PostyFox.Web.Auth;
 
 namespace PostyFox.Api.Post.Endpoints;
@@ -22,8 +23,9 @@ public static class PostEndpoints
             try
             {
                 var result = await svc.CreateAsync(user.UserId()!, body, ct);
-                return result is null
-                    ? Results.BadRequest(new { error = "No valid, enabled target connectors specified" })
+                if (result is null) return Results.BadRequest(new { error = "No valid, enabled target connectors specified" });
+                return result.RootStatus == PostRootStatus.Draft
+                    ? Results.Created($"/api/posts/{result.PostId}", result)
                     : Results.Accepted($"/api/posts/{result.PostId}", result);
             }
             catch (ConnectorValidationException ex)
@@ -32,7 +34,7 @@ public static class PostEndpoints
             }
         })
         .WithSummary("Create a post")
-        .WithDescription("Accepts a post for one or more target connectors and enqueues generation + delivery. `targetOptions` carries per-submission platform choices keyed by connector id (see the service definition's `postOptionsSchema`). Returns 202 with the post id; poll the status endpoint for progress.")
+        .WithDescription("Accepts a post for one or more target connectors and enqueues generation + delivery. `targetOptions` carries per-submission platform choices keyed by connector id (see the service definition's `postOptionsSchema`). Set `isDraft` to save it for later instead — it's persisted with no targets resolved/validated and nothing enqueued; publish it later via `POST /{id}/publish`. Returns 202 (or 201 for a draft) with the post id; poll the status endpoint for progress.")
         .Produces<CreatePostResponse>(StatusCodes.Status202Accepted)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -47,6 +49,61 @@ public static class PostEndpoints
         .WithSummary("Get post status")
         .WithDescription("Returns the aggregated root status and per-target delivery status.")
         .Produces<PostStatusDto>()
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("{id:guid}/content", async (Guid id, ClaimsPrincipal user, PostStatusService svc, CancellationToken ct) =>
+            await svc.GetContentAsync(user.UserId()!, id, ct) is { } dto ? Results.Ok(dto) : Results.NotFound())
+        .WithSummary("Get a post's authored content")
+        .WithDescription("Returns a post's authored content as-is, no media duplication — used to load a draft back into the compose form for editing.")
+        .Produces<PostContentDto>()
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPut("{id:guid}", async (Guid id, CreatePostRequest body, ClaimsPrincipal user, PostIntakeService svc, CancellationToken ct) =>
+        {
+            try
+            {
+                return await svc.UpdateDraftAsync(user.UserId()!, id, body, ct) switch
+                {
+                    DraftActionOutcome.Success => Results.NoContent(),
+                    DraftActionOutcome.NotADraft => Results.Conflict(new { error = "Post has already been published and can no longer be edited as a draft" }),
+                    _ => Results.NotFound()
+                };
+            }
+            catch (ConnectorValidationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        })
+        .WithSummary("Update a draft")
+        .WithDescription("Overwrites a draft's authored content and target selection in place. 409 once it's been published — recreate it via duplicate instead.")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("{id:guid}/publish", async (Guid id, ClaimsPrincipal user, PostIntakeService svc, CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await svc.PublishDraftAsync(user.UserId()!, id, ct);
+                return result.Outcome switch
+                {
+                    DraftActionOutcome.Success => Results.Ok(result.Response),
+                    DraftActionOutcome.NotADraft => Results.Conflict(new { error = "Post has already been published" }),
+                    DraftActionOutcome.NoValidTargets => Results.BadRequest(new { error = "No valid, enabled target connectors specified" }),
+                    _ => Results.NotFound()
+                };
+            }
+            catch (ConnectorValidationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        })
+        .WithSummary("Publish a draft")
+        .WithDescription("Resolves the draft's stored target selection against the user's current connectors, enqueues generation + delivery, and it stops being a draft. Returns 202 with the post id; poll the status endpoint for progress.")
+        .Produces<CreatePostResponse>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound);
 
         group.MapPost("{id:guid}/duplicate", async (Guid id, ClaimsPrincipal user, PostDuplicationService svc, CancellationToken ct) =>

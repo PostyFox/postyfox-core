@@ -40,14 +40,170 @@ public sealed class PostIntakeService(
     /// </exception>
     public async Task<CreatePostResponse?> CreateAsync(string userId, CreatePostRequest request, CancellationToken ct = default)
     {
-        var targetIds = (request.Targets ?? []).Distinct().ToList();
-        if (targetIds.Count == 0) return null;
+        if (request.IsDraft) return await SaveDraftAsync(userId, request, ct);
 
-        // A requested id is either a whole connector (single-destination platforms, and the legacy
-        // behaviour every platform used before per-destination selection existed) or one of that
-        // connector's exposed ConnectorDestinations (multi-target platforms like Telegram — see
-        // ConnectorDescriptor.SupportsMultipleTargets). Both id spaces are plain Guids from different
-        // tables, so a requested id can only ever match one of them.
+        var targetIds = (request.Targets ?? []).Distinct().ToList();
+        var resolved = await ResolveDestinationsAsync(userId, targetIds, ct);
+        if (resolved.Count == 0) return null;
+
+        var now = clock.UtcNow;
+        var post = new Post
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            RootStatus = PostRootStatus.Queued,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        ApplyContent(post, request);
+        // Throws ConnectorValidationException before anything is persisted if a target's options fail.
+        post.Targets = BuildTargets(post.Id, resolved, request.TargetOptions, now);
+
+        // From here on, every log in this request carries the PostId (see PostIdLogEnricher), so a
+        // user can hand a dev the post id from the UI and the dev finds the intake telemetry too.
+        PostTelemetry.SetBusinessBaggage(post.Id);
+
+        db.Posts.Add(post);
+        await db.SaveChangesAsync(ct);
+        await PersistPayloadAsync(post, ct);
+
+        var delay = request.PostAt is { } at && at > now ? at - now : (TimeSpan?)null;
+        foreach (var target in post.Targets)
+            await bus.PublishAsync(new GenerateTargetCommand { PostId = post.Id, TargetId = target.Id }, delay, ct);
+
+        return new CreatePostResponse(post.Id, post.RootStatus);
+    }
+
+    /// <summary>
+    /// Saves a post as a draft: the authored content is persisted as-is, but the target selection is
+    /// kept raw (unresolved/unvalidated) on the post itself rather than as real <see cref="PostTarget"/>
+    /// rows, and nothing is enqueued. Unlike <see cref="CreateAsync"/>, an empty or currently-invalid
+    /// target selection is fine — the draft just isn't postable yet.
+    /// </summary>
+    public async Task<CreatePostResponse> SaveDraftAsync(string userId, CreatePostRequest request, CancellationToken ct = default)
+    {
+        var now = clock.UtcNow;
+        var post = new Post
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            RootStatus = PostRootStatus.Draft,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        ApplyContent(post, request);
+        ApplyDraftTargets(post, request);
+
+        db.Posts.Add(post);
+        await db.SaveChangesAsync(ct);
+        await PersistPayloadAsync(post, ct);
+
+        return new CreatePostResponse(post.Id, post.RootStatus);
+    }
+
+    /// <summary>
+    /// Overwrites a draft's authored content and target selection in place. Only valid while the post
+    /// is still a draft — once published, edit "post again" (duplicate) instead.
+    /// </summary>
+    public async Task<DraftActionOutcome> UpdateDraftAsync(string userId, Guid postId, CreatePostRequest request, CancellationToken ct = default)
+    {
+        var post = await db.Posts.FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
+        if (post is null) return DraftActionOutcome.NotFound;
+        if (post.RootStatus != PostRootStatus.Draft) return DraftActionOutcome.NotADraft;
+
+        ApplyContent(post, request);
+        ApplyDraftTargets(post, request);
+        post.UpdatedAt = clock.UtcNow;
+
+        await db.SaveChangesAsync(ct);
+        await PersistPayloadAsync(post, ct);
+        return DraftActionOutcome.Success;
+    }
+
+    /// <summary>
+    /// Publishes a draft: resolves its stored target selection against the user's current connectors
+    /// (a connector disabled since the draft was saved is simply dropped, same as a fresh create),
+    /// builds real <see cref="PostTarget"/> rows, and enqueues generation exactly like <see cref="CreateAsync"/>.
+    /// </summary>
+    /// <exception cref="ConnectorValidationException">A target's stored options fail its platform's schema.</exception>
+    public async Task<PublishDraftResult> PublishDraftAsync(string userId, Guid postId, CancellationToken ct = default)
+    {
+        var post = await db.Posts.Include(p => p.Targets)
+            .FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
+        if (post is null) return new PublishDraftResult(DraftActionOutcome.NotFound, null);
+        if (post.RootStatus != PostRootStatus.Draft) return new PublishDraftResult(DraftActionOutcome.NotADraft, null);
+
+        var targetIds = Json.Deserialize<List<Guid>>(post.DraftTargetsJson ?? "[]") ?? [];
+        var resolved = await ResolveDestinationsAsync(userId, targetIds, ct);
+        if (resolved.Count == 0) return new PublishDraftResult(DraftActionOutcome.NoValidTargets, null);
+
+        var targetOptions = Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}");
+
+        var now = clock.UtcNow;
+        var targets = BuildTargets(post.Id, resolved, targetOptions, now);
+        // Explicit Add rather than post.Targets.Add(...): post is already tracked (loaded above), so
+        // navigation fixup alone leaves these client-keyed entities Modified instead of Added — EF has
+        // no other way to tell a manually-assigned Guid key apart from an existing row's.
+        db.PostTargets.AddRange(targets);
+        post.DraftTargetsJson = null;
+        post.DraftTargetOptionsJson = null;
+        post.RootStatus = PostRootStatus.Queued;
+        post.UpdatedAt = now;
+
+        PostTelemetry.SetBusinessBaggage(post.Id);
+        await db.SaveChangesAsync(ct);
+
+        var delay = post.PostAt is { } at && at > now ? at - now : (TimeSpan?)null;
+        foreach (var target in targets)
+            await bus.PublishAsync(new GenerateTargetCommand { PostId = post.Id, TargetId = target.Id }, delay, ct);
+
+        return new PublishDraftResult(DraftActionOutcome.Success, new CreatePostResponse(post.Id, post.RootStatus));
+    }
+
+    /// <summary>Copies the request's authored fields onto the post. Shared by create, save-draft and update-draft.</summary>
+    private static void ApplyContent(Post post, CreatePostRequest request)
+    {
+        post.Title = request.Title ?? string.Empty;
+        post.Description = request.Description ?? string.Empty;
+        post.HtmlDescription = request.HtmlDescription ?? string.Empty;
+        post.TagsJson = Json.Serialize(request.Tags ?? []);
+        post.MediaManifestJson = Json.Serialize(request.Media ?? []);
+        post.VariablesJson = Json.Serialize(request.Variables ?? new Dictionary<string, string>());
+        post.Rating = request.Rating;
+        post.TemplateId = request.TemplateId;
+        post.PostAt = request.PostAt;
+    }
+
+    /// <summary>Stores the request's raw (unresolved) target selection on a draft post.</summary>
+    private static void ApplyDraftTargets(Post post, CreatePostRequest request)
+    {
+        var targetIds = (request.Targets ?? []).Distinct().ToList();
+        post.DraftTargetsJson = Json.Serialize(targetIds);
+        post.DraftTargetOptionsJson = Json.Serialize(
+            request.TargetOptions ?? new Dictionary<Guid, IReadOnlyDictionary<string, string>>());
+    }
+
+    /// <summary>Persists the human-authored payload alongside the record (mirrors media storage).</summary>
+    private async Task PersistPayloadAsync(Post post, CancellationToken ct)
+    {
+        await objectStore.PutTextAsync(_options.PostContainer, $"{post.Id}/title", post.Title, ct: ct);
+        await objectStore.PutTextAsync(_options.PostContainer, $"{post.Id}/description", post.Description, ct: ct);
+        await objectStore.PutTextAsync(_options.PostContainer, $"{post.Id}/description-html", post.HtmlDescription, ct: ct);
+    }
+
+    /// <summary>
+    /// Resolves requested target ids to their destinations. A requested id is either a whole connector
+    /// (single-destination platforms, and the legacy behaviour every platform used before
+    /// per-destination selection existed) or one of that connector's exposed ConnectorDestinations
+    /// (multi-target platforms like Telegram — see ConnectorDescriptor.SupportsMultipleTargets). Both
+    /// id spaces are plain Guids from different tables, so a requested id can only ever match one of
+    /// them. Ids that don't resolve (unknown, disabled, or belonging to another user) are silently
+    /// dropped.
+    /// </summary>
+    private async Task<List<ResolvedDestination>> ResolveDestinationsAsync(string userId, IReadOnlyList<Guid> targetIds, CancellationToken ct)
+    {
+        if (targetIds.Count == 0) return [];
+
         var connectors = await db.UserConnectors
             .Include(c => c.ServiceDefinition)
             .Where(c => c.UserId == userId && c.Enabled && targetIds.Contains(c.Id))
@@ -63,62 +219,36 @@ public sealed class PostIntakeService(
             new ResolvedDestination(c.Id, c.Id, c.DisplayName, c.ServiceDefinition!.Platform, null, null)));
         resolved.AddRange(destinations.Select(d =>
             new ResolvedDestination(d.Id, d.ConnectorId, d.Connector!.DisplayName, d.Connector!.ServiceDefinition!.Platform, d.ExternalId, d.Name)));
-        if (resolved.Count == 0) return null;
+        return resolved;
+    }
 
-        var now = clock.UtcNow;
-        var post = new Post
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Title = request.Title ?? string.Empty,
-            Description = request.Description ?? string.Empty,
-            HtmlDescription = request.HtmlDescription ?? string.Empty,
-            TagsJson = Json.Serialize(request.Tags ?? []),
-            MediaManifestJson = Json.Serialize(request.Media ?? []),
-            VariablesJson = Json.Serialize(request.Variables ?? new Dictionary<string, string>()),
-            Rating = request.Rating,
-            TemplateId = request.TemplateId,
-            PostAt = request.PostAt,
-            RootStatus = PostRootStatus.Queued,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
+    /// <summary>Builds one <see cref="PostTarget"/> per resolved destination, validating its per-submission options.</summary>
+    /// <exception cref="ConnectorValidationException">A target's options fail its platform's schema.</exception>
+    private List<PostTarget> BuildTargets(
+        Guid postId,
+        List<ResolvedDestination> resolved,
+        IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? targetOptions,
+        DateTimeOffset now)
+    {
+        var targets = new List<PostTarget>(resolved.Count);
         foreach (var destination in resolved)
         {
-            post.Targets.Add(new PostTarget
+            targets.Add(new PostTarget
             {
                 Id = Guid.NewGuid(),
-                PostId = post.Id,
+                PostId = postId,
                 ConnectorId = destination.ConnectorId,
                 Platform = destination.Platform,
                 TargetId = destination.TargetId,
                 TargetName = destination.TargetName,
                 OptionsJson = TargetOptionsFor(destination.Platform, destination.DisplayName,
-                    request.TargetOptions?.GetValueOrDefault(destination.SelectionId)),
+                    targetOptions?.GetValueOrDefault(destination.SelectionId)),
                 Status = TargetStatus.Queued,
                 CreatedAt = now,
                 UpdatedAt = now
             });
         }
-
-        // From here on, every log in this request carries the PostId (see PostIdLogEnricher), so a
-        // user can hand a dev the post id from the UI and the dev finds the intake telemetry too.
-        PostTelemetry.SetBusinessBaggage(post.Id);
-
-        db.Posts.Add(post);
-        await db.SaveChangesAsync(ct);
-
-        // Persist the human-authored payload alongside the record (mirrors media storage).
-        await objectStore.PutTextAsync(_options.PostContainer, $"{post.Id}/title", post.Title, ct: ct);
-        await objectStore.PutTextAsync(_options.PostContainer, $"{post.Id}/description", post.Description, ct: ct);
-        await objectStore.PutTextAsync(_options.PostContainer, $"{post.Id}/description-html", post.HtmlDescription, ct: ct);
-
-        var delay = request.PostAt is { } at && at > now ? at - now : (TimeSpan?)null;
-        foreach (var target in post.Targets)
-            await bus.PublishAsync(new GenerateTargetCommand { PostId = post.Id, TargetId = target.Id }, delay, ct);
-
-        return new CreatePostResponse(post.Id, post.RootStatus);
+        return targets;
     }
 
     /// <summary>

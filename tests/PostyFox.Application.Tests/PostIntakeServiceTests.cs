@@ -156,4 +156,151 @@ public class PostIntakeServiceTests
         var telegramTarget = db.PostTargets.Single(t => t.ConnectorId == telegramConnectorId);
         Assert.Equal("-100111", telegramTarget.TargetId);
     }
+
+    [Fact]
+    public async Task Create_with_isDraft_saves_a_draft_with_no_targets_and_nothing_enqueued()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Draft title", "Draft body", null, null, null, null, null, null,
+            IsDraft: true));
+
+        Assert.NotNull(result);
+        Assert.Equal(PostRootStatus.Draft, result.RootStatus);
+        var post = Assert.Single(db.Posts);
+        Assert.Equal(PostRootStatus.Draft, post.RootStatus);
+        Assert.Empty(db.PostTargets);
+        Assert.Empty(bus.Messages);
+    }
+
+    [Fact]
+    public async Task SaveDraft_allows_zero_targets()
+    {
+        using var db = TestDbContext.Create();
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.SaveDraftAsync("u1", new CreatePostRequest(
+            [], "Draft title", null, null, null, null, null, null, null));
+
+        Assert.Equal(PostRootStatus.Draft, result.RootStatus);
+        Assert.Single(db.Posts);
+    }
+
+    [Fact]
+    public async Task UpdateDraft_overwrites_content_and_stays_a_draft()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+        var created = await svc.SaveDraftAsync("u1", new CreatePostRequest(
+            [], "Old title", null, null, null, null, null, null, null));
+
+        var outcome = await svc.UpdateDraftAsync("u1", created.PostId, new CreatePostRequest(
+            [connectorId], "New title", "New body", null, null, null, null, null, null));
+
+        Assert.Equal(DraftActionOutcome.Success, outcome);
+        var post = Assert.Single(db.Posts);
+        Assert.Equal("New title", post.Title);
+        Assert.Equal(PostRootStatus.Draft, post.RootStatus);
+        Assert.Empty(db.PostTargets);
+    }
+
+    [Fact]
+    public async Task UpdateDraft_on_unknown_post_returns_NotFound()
+    {
+        using var db = TestDbContext.Create();
+        var svc = New(db, new FakeBus(), new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var outcome = await svc.UpdateDraftAsync("u1", Guid.NewGuid(), new CreatePostRequest(
+            [], "t", null, null, null, null, null, null, null));
+
+        Assert.Equal(DraftActionOutcome.NotFound, outcome);
+    }
+
+    [Fact]
+    public async Task UpdateDraft_on_a_published_post_returns_NotADraft()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+        var created = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "t", "b", null, null, null, null, null, null));
+
+        var outcome = await svc.UpdateDraftAsync("u1", created!.PostId, new CreatePostRequest(
+            [connectorId], "t2", null, null, null, null, null, null, null));
+
+        Assert.Equal(DraftActionOutcome.NotADraft, outcome);
+    }
+
+    [Fact]
+    public async Task PublishDraft_resolves_stored_targets_and_enqueues_generation()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+        var created = await svc.SaveDraftAsync("u1", new CreatePostRequest(
+            [connectorId], "Draft", "Body", null, null, null, null, null, null));
+        db.ChangeTracker.Clear(); // simulates a fresh per-request DbContext, as in production
+
+        var result = await svc.PublishDraftAsync("u1", created.PostId);
+
+        Assert.Equal(DraftActionOutcome.Success, result.Outcome);
+        Assert.Equal(PostRootStatus.Queued, result.Response!.RootStatus);
+        var post = Assert.Single(db.Posts);
+        Assert.Equal(PostRootStatus.Queued, post.RootStatus);
+        Assert.Null(post.DraftTargetsJson);
+        Assert.Single(db.PostTargets);
+        var cmd = Assert.Single(bus.Of<GenerateTargetCommand>());
+        Assert.Equal(post.Id, cmd.PostId);
+    }
+
+    [Fact]
+    public async Task PublishDraft_with_no_resolvable_targets_returns_NoValidTargets()
+    {
+        using var db = TestDbContext.Create();
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+        var created = await svc.SaveDraftAsync("u1", new CreatePostRequest(
+            [Guid.NewGuid()], "Draft", null, null, null, null, null, null, null));
+
+        var result = await svc.PublishDraftAsync("u1", created.PostId);
+
+        Assert.Equal(DraftActionOutcome.NoValidTargets, result.Outcome);
+        Assert.Null(result.Response);
+        Assert.Empty(bus.Messages);
+    }
+
+    [Fact]
+    public async Task PublishDraft_on_an_already_published_post_returns_NotADraft()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+        var created = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "t", "b", null, null, null, null, null, null));
+
+        var result = await svc.PublishDraftAsync("u1", created!.PostId);
+
+        Assert.Equal(DraftActionOutcome.NotADraft, result.Outcome);
+    }
+
+    [Fact]
+    public async Task PublishDraft_on_unknown_post_returns_NotFound()
+    {
+        using var db = TestDbContext.Create();
+        var svc = New(db, new FakeBus(), new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.PublishDraftAsync("u1", Guid.NewGuid());
+
+        Assert.Equal(DraftActionOutcome.NotFound, result.Outcome);
+    }
 }
