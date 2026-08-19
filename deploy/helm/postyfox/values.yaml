@@ -1,59 +1,86 @@
-# Published container images (built + pushed by CI). One repo per service, shared tag.
+# PostyFox Helm chart - designed to be reusable by ANY deployer, not just the project's own
+# cluster. Nothing cluster-specific is hardcoded in templates: hostnames, storage classes, OIDC
+# provider details, and every third-party image/tag are values with sensible (but generic)
+# defaults. Override this file (or use --set / an extra -f values-<env>.yaml) per environment.
+#
+# Two deployment shapes are supported from the same chart:
+#   1. Self-contained: set `postgres.enabled`, `rabbitmq.enabled`, `vault.enabled`, `redis.enabled`
+#      to true (default) and the chart deploys all backing services alongside the app.
+#   2. Bring-your-own: set any of those to `false` and point `externalXxx.*` at your own managed
+#      Postgres / RabbitMQ / Vault / Redis / OIDC provider / S3-compatible store instead.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Published application container images (built + pushed by this repo's CI). One repo per
+# service, shared tag - see .github/workflows/release.yml.
 image:
   registry: ghcr.io
   repository: your-org/postyfox     # images: {registry}/{repository}-{service}:{tag}
-  tag: latest
+  tag: ""                            # defaults to .Chart.AppVersion when empty
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
-# Backing services (PostgreSQL, RabbitMQ, S3/object store) are expected to be provided externally
-# (managed services or separate charts). Only their connection details are configured here.
+# ---------------------------------------------------------------------------------------------
+# Backing services (PostgreSQL, RabbitMQ, S3/object store, Vault, Redis, OIDC) are expected to be
+# provided externally by default, and this file's `config`/`secrets` blocks configure how the apps
+# reach them. The toggles below let the chart deploy its own copy of the STATEFUL ones instead,
+# for a fully self-contained install (e.g. a first deployment with nothing else already running).
+# ---------------------------------------------------------------------------------------------
+
 config:
-  objectStoreServiceUrl: "http://rustfs:9000"   # any S3-compatible endpoint (RustFS/MinIO/managed S3)
+  # S3-compatible object store (RustFS/MinIO/managed S3). Never deployed by this chart.
+  objectStoreServiceUrl: "http://rustfs:9000"
   objectStoreBucket: "postyfox"
-  rabbitMqHost: "rabbitmq"
-  rabbitMqUser: "guest"
   authUserHeader: "X-Auth-Request-User"
-  # In-app OIDC bearer validation. The APIs trust NO injected header — only the validated JWT the
-  # edge forwards (or an API key). This MUST stay enabled. Point issuer/JWKS at your Keycloak.
+  # In-app OIDC bearer validation. The APIs trust NO injected header - only the validated JWT the
+  # edge forwards (or an API key). This MUST stay enabled. Point issuer/JWKS at YOUR OIDC provider
+  # (Keycloak or otherwise) - these are never defaulted to a real host.
   authOidcEnabled: "true"
-  authOidcIssuer: "https://keycloak.example/realms/PostyFox"
-  authOidcJwksUrl: "https://keycloak.example/realms/PostyFox/protocol/openid-connect/certs"
+  authOidcIssuer: "https://oidc.example.com/realms/PostyFox"
+  authOidcJwksUrl: "https://oidc.example.com/realms/PostyFox/protocol/openid-connect/certs"
   authOidcAudience: "oauth2-proxy"
+  # Public base URL callers redirect back to after OAuth login (oauth2-proxy's public URL).
+  oauthCallbackBaseUrl: "https://postyfox.example.com"
   otelEndpoint: "http://otel-collector:4317"
   # Secret store (Neillans.Adapters.Secrets): HashiCorpVault | BitWarden | AzureKeyVault | Infisical
-  # | InMemory. Non-secret provider options go here; credentials live under `secrets` below. Defaults
-  # to HashiCorpVault — point it at your cluster's Vault (this chart does not deploy Vault itself).
-  # For AzureKeyVault/Infisical, set secretsProvider and add their Secrets__<Provider>__* keys.
+  # | InMemory. Non-secret provider options go here; credentials live under `secrets` below.
   secretsProvider: "HashiCorpVault"
-  # HashiCorp Vault (KV v2) — the RoleId is non-secret; the SecretId/Token live under `secrets`.
+  # Only used when vault.enabled=false (bring-your-own Vault) — this chart's own Vault address is
+  # derived automatically when vault.enabled=true.
   hashiCorpVaultAddress: "https://vault.example.com:8200"
   hashiCorpVaultMountPoint: "secret"
   hashiCorpVaultBasePath: "postyfox"
   hashiCorpVaultRoleId: ""
-  bitwardenServerUrl: "https://vault.example.com"
+  bitwardenServerUrl: ""
   bitwardenOrganizationId: ""
   bitwardenIdentityUrl: ""
+  rateLimit:
+    enabled: "true"
+    requestsPerMinute: "300"
+  pipeline:
+    maxDeliveryAttempts: "5"
+    retryBaseSeconds: "60"
 
-# Secret values. In production, source these from a secret manager (External Secrets / Sealed
-# Secrets / CSI) rather than committing them. Leaving 'create: false' lets you supply your own
-# Secret named "<release>-postyfox-secrets".
+# Secret values. In production, prefer sourcing these from a secret manager (External Secrets /
+# Sealed Secrets / CSI driver) rather than committing real values here. Set `secrets.create: false`
+# and supply your own Secret named "<fullname>-secrets" with the same keys to do that.
 secrets:
   create: true
-  postgresConnection: "Host=postgres;Port=5432;Database=postyfox;Username=postyfox;Password=postyfox"
-  # Secret-store credentials for the selected config.secretsProvider.
-  # HashiCorp Vault: supply EITHER an AppRole SecretId (with config.hashiCorpVaultRoleId) OR a Token.
+  # Only used when postgres.enabled=false (bring-your-own Postgres) - full connection string.
+  externalPostgresConnection: "Host=postgres.example.com;Port=5432;Database=postyfox;Username=postyfox;Password=change-me"
   hashiCorpVaultSecretId: ""
   hashiCorpVaultToken: ""
-  # BitWarden: supply EITHER bitwardenApiKey OR the Organization API key pair (bitwardenClientId +
-  # bitwardenClientSecret).
   bitwardenApiKey: ""
   bitwardenClientId: ""
   bitwardenClientSecret: ""
-  internalToken: "change-me"        # shared token core/worker ↔ connectors-node
-  objectStoreAccessKey: "minioadmin"
-  objectStoreSecretKey: "minioadmin"
-  rabbitMqPassword: "guest"
+  internalToken: "change-me"        # shared token core/worker <-> connectors-node
+  objectStoreAccessKey: "change-me"
+  objectStoreSecretKey: "change-me"
+  # Only used when rabbitmq.enabled=false (bring-your-own RabbitMQ).
+  externalRabbitMqHost: "rabbitmq.example.com"
+  externalRabbitMqUser: "guest"
+  externalRabbitMqPassword: "change-me"
 
 services:
   coreApi:
@@ -72,17 +99,153 @@ resources:
   requests: { cpu: "100m", memory: "128Mi" }
   limits: { cpu: "1", memory: "512Mi" }
 
-# SECURITY — exposure model: only the OIDC edge (oauth2-proxy) may be publicly reachable. The
-# core-api/post-api/connectors-node Services are ClusterIP (internal) and must NEVER be given a
-# public Ingress or LoadBalancer. This Ingress fronts the edge only.
-#
-# NB: this chart does not yet package the OIDC edge itself (oauth2-proxy + Keycloak) — deploy it
-# separately (or as a follow-up, add it here) and point `edgeServiceName` at its in-cluster Service.
+# ---------------------------------------------------------------------------------------------
+# PostgreSQL - toggleable. Disable and point `secrets.externalPostgresConnection` at your own
+# instance (managed service, shared HA cluster already in your k8s cluster, etc.) instead.
+# ---------------------------------------------------------------------------------------------
+postgres:
+  enabled: true
+  image: "postgres:16-alpine"
+  database: "postyfox"
+  username: "postyfox"
+  password: "change-me"
+  storage:
+    size: "10Gi"
+    storageClassName: ""           # empty = cluster default StorageClass
+  resources:
+    requests: { cpu: "250m", memory: "256Mi" }
+    limits: { cpu: "2", memory: "2Gi" }
+
+# ---------------------------------------------------------------------------------------------
+# RabbitMQ - toggleable. Disable and point `secrets.externalRabbitMqHost/-User/-Password` at your
+# own broker instead. When enabled, the delayed-message-exchange + prometheus plugins (baked into
+# the project's own image via deploy/rabbitmq/Dockerfile for docker-compose) are installed at
+# container start via an init container + postStart hook, so this chart can use the stock upstream
+# image rather than requiring a custom one to be published.
+# ---------------------------------------------------------------------------------------------
+rabbitmq:
+  enabled: true
+  image: "rabbitmq:3.13-management"
+  delayedMessageExchangeVersion: "3.13.0"
+  username: "postyfox"
+  password: "change-me"
+  storage:
+    size: "5Gi"
+    storageClassName: ""
+  resources:
+    requests: { cpu: "250m", memory: "256Mi" }
+    limits: { cpu: "2", memory: "1Gi" }
+
+# ---------------------------------------------------------------------------------------------
+# Redis - session store for oauth2-proxy only (opaque cookie, avoids browser cookie-size limits).
+# No persistence by design (matches docker-compose: --save "" --appendonly no). Toggleable;
+# disable and point `oauth2Proxy.redisConnectionUrl` at your own instance instead.
+# ---------------------------------------------------------------------------------------------
+redis:
+  enabled: true
+  image: "redis:7-alpine"
+  password: "change-me"
+  resources:
+    requests: { cpu: "50m", memory: "64Mi" }
+    limits: { cpu: "500m", memory: "256Mi" }
+
+# ---------------------------------------------------------------------------------------------
+# HashiCorp Vault (bundled secrets backend) - toggleable. Uses the file storage backend + Shamir
+# seal, auto-initialised/unsealed by a `vault-init` sidecar in the same pod (ported from
+# deploy/vault/bootstrap.sh). Disable and set config.secretsProvider to point the apps at your own
+# Vault / BitWarden / AzureKeyVault / Infisical instead.
+# ---------------------------------------------------------------------------------------------
+vault:
+  enabled: true
+  image: "hashicorp/vault:1.18"
+  keyShares: 5
+  keyThreshold: 3
+  appRoleName: "postyfox"
+  appPolicyName: "postyfox"
+  # AppRole RoleId/SecretId the apps authenticate with. RoleId is non-secret (config.hashiCorpVaultRoleId);
+  # SecretId lives in `secrets.hashiCorpVaultSecretId`. Vault-init PINS both to these values on boot,
+  # so the apps can authenticate without any runtime token hand-off. Generate real random values per
+  # deployment - these are placeholders only.
+  storage:
+    dataSize: "2Gi"
+    keysSize: "256Mi"
+    storageClassName: ""
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits: { cpu: "1", memory: "512Mi" }
+
+# ---------------------------------------------------------------------------------------------
+# otel-collector - edge collector receiving OTLP from the apps + gateway logs, forwarding to a
+# central observability backend. Set otelCollector.centralHost to your own OTLP/gRPC collector (or
+# leave the pipelines but point exporters elsewhere by supplying your own configOverride).
+# ---------------------------------------------------------------------------------------------
+otelCollector:
+  enabled: true
+  image: "otel/opentelemetry-collector-contrib:0.112.0"
+  centralHost: ""                  # empty = pipelines still run but exporters will fail to connect;
+                                    # set to your central OTLP/gRPC endpoint (host:port form)
+  deployEnv: "production"
+  deployCluster: "postyfox"
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits: { cpu: "1", memory: "512Mi" }
+
+# ---------------------------------------------------------------------------------------------
+# Gateway - internal nginx path router sitting behind oauth2-proxy (never public itself). Routes
+# core-api/post-api/otel-collector by path, and reserves the "/" catch-all for an (optionally
+# separately deployed) frontend Service, gracefully degrading to the maintenance page if that
+# Service doesn't exist/isn't ready yet. Ships a fluent-bit sidecar shipping its logs via OTLP.
+# ---------------------------------------------------------------------------------------------
+gateway:
+  image: "nginx:1.27-alpine"
+  fluentBitImage: "fluent/fluent-bit:3.1"
+  maintenanceMode: false           # set true (or --set during an upgrade) to force a 503 + maintenance page
+  # In-cluster Service name (in THIS namespace) of an optionally, separately-deployed frontend/SPA.
+  # "/" proxies here when frontend.enabled is true; otherwise "/" falls through to core-api.
+  frontend:
+    enabled: false
+    serviceName: "frontend"
+    servicePort: 80
+  resources:
+    requests: { cpu: "50m", memory: "64Mi" }
+    limits: { cpu: "500m", memory: "256Mi" }
+
+# ---------------------------------------------------------------------------------------------
+# oauth2-proxy - the ONLY component intended to be reached via the Ingress. Fronts the gateway
+# with OIDC login (any OIDC provider - Keycloak, Auth0, Entra ID, etc; nothing here assumes
+# Keycloak specifically beyond the default URL shapes in the examples below).
+# ---------------------------------------------------------------------------------------------
+oauth2Proxy:
+  image: "quay.io/oauth2-proxy/oauth2-proxy:v7.6.0"
+  # OIDC provider endpoints. Fill these in for your own provider; skipOidcDiscovery lets front/back
+  # -channel URLs differ (e.g. a public login URL vs an in-cluster token/JWKS endpoint) while the
+  # token issuer stays constant - see comments in templates/oauth2-proxy-configmap.yaml.
+  oidcIssuerUrl: "https://oidc.example.com/realms/PostyFox"
+  loginUrl: "https://oidc.example.com/realms/PostyFox/protocol/openid-connect/auth"
+  redeemUrl: "https://oidc.example.com/realms/PostyFox/protocol/openid-connect/token"
+  jwksUrl: "https://oidc.example.com/realms/PostyFox/protocol/openid-connect/certs"
+  clientId: "oauth2-proxy"
+  clientSecret: "change-me"
+  cookieSecret: "0123456789abcdef0123456789abcdef" # must be 16/24/32 raw bytes, base64 or plain
+  redirectUrl: "https://postyfox.example.com/oauth2/callback"
+  emailDomains: ["*"]
+  skipAuthRoutes:
+    - "POST=^/api/webhooks/"
+    - "POST=^/api/connectors/cookie-pairing/complete$"
+    - "OPTIONS=^/api/connectors/cookie-pairing/complete$"
+    - "GET=^/api/connectors/cookie-pairing/sites$"
+  apiRoutes:
+    - "^/api/"
+  resources:
+    requests: { cpu: "50m", memory: "64Mi" }
+    limits: { cpu: "500m", memory: "256Mi" }
+
+# SECURITY - exposure model: only the OIDC edge (oauth2-proxy) may be publicly reachable.
+# core-api/post-api/connectors-node Services are ClusterIP and intentionally have no Ingress rule.
 ingress:
   enabled: false
-  className: ""
-  annotations: {}
-  host: postyfox.example        # single public host → the OIDC edge
-  edgeServiceName: oauth2-proxy # in-cluster Service name of the OIDC edge (NOT an API service)
-  edgePort: 4180
-  tls: []
+  className: ""                   # e.g. "nginx", "contour", "traefik" - leave empty to use the
+                                    # cluster's default IngressClass
+  annotations: {}                  # e.g. cert-manager.io/cluster-issuer: letsencrypt-prod
+  host: postyfox.example.com       # single public host -> the OIDC edge
+  tls: []                          # e.g. [{ hosts: [postyfox.example.com], secretName: postyfox-tls }]

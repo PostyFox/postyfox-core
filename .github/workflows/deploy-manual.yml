@@ -25,10 +25,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-  DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-  DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-  DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
 
 jobs:
   validate-confirmation:
@@ -97,7 +93,11 @@ jobs:
       - name: Compute version
         id: ver
         run: |
-          LAST=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo 0.0.0)
+          if LAST="$(git describe --tags --abbrev=0 2>/dev/null)"; then
+            LAST="${LAST#v}"
+          else
+            LAST="0.0.0"
+          fi
           echo "version=${LAST}-dev+$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: docker/login-action@v4
@@ -243,6 +243,9 @@ jobs:
     name: Deploy production
     runs-on: ubuntu-latest
     environment: production
+    env:
+      NAMESPACE: postyfox
+      RELEASE_NAME: postyfox
     steps:
       - uses: actions/checkout@v7
         with:
@@ -259,132 +262,69 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Image tag: $TAG"
 
-      - name: Resolve stack settings
-        id: stack
-        run: |
-          echo "directory=prod" >> "$GITHUB_OUTPUT"
-          echo "project=postyfox-prod" >> "$GITHUB_OUTPUT"
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
 
-      - name: Resolve image repository
-        id: image
+      - name: Configure kubeconfig
         run: |
-          echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$RUNNER_TEMP/.kube/config"
+          chmod 600 "$RUNNER_TEMP/.kube/config"
+          echo "KUBECONFIG=$RUNNER_TEMP/.kube/config" >> "$GITHUB_ENV"
 
-      - name: Prepare SSH
+      - name: Verify cluster connectivity
+        run: kubectl cluster-info
+
+      - name: Render secret overrides
+        # See release.yml for the rationale — same secret set, same gitignored/workflow-local file.
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          cat > "$RUNNER_TEMP/values-secrets.yaml" <<EOF
+          postgres:
+            password: "${{ secrets.DB_PASSWORD }}"
+          rabbitmq:
+            password: "${{ secrets.RABBITMQ_PASSWORD }}"
+          secrets:
+            externalPostgresConnection: "${{ secrets.EXTERNAL_POSTGRES_CONNECTION }}"
+            hashiCorpVaultSecretId: "${{ secrets.VAULT_SECRET_ID }}"
+            internalToken: "${{ secrets.INTERNAL_TOKEN }}"
+            objectStoreAccessKey: "${{ secrets.RUSTFS_ACCESS_KEY }}"
+            objectStoreSecretKey: "${{ secrets.RUSTFS_SECRET_KEY }}"
+          config:
+            hashiCorpVaultRoleId: "${{ secrets.VAULT_ROLE_ID }}"
+          oauth2Proxy:
+            clientSecret: "${{ secrets.OIDC_CLIENT_SECRET }}"
+            cookieSecret: "${{ secrets.OAUTH2_PROXY_COOKIE_SECRET }}"
+          redis:
+            password: "${{ secrets.REDIS_PASSWORD }}"
+          EOF
 
-      - name: Copy deployment files
+      - name: Helm upgrade --install (⚠️ PRODUCTION)
         env:
-          STACK_DIR: /opt/postyfox/prod
-        run: |
-          echo "🧹 Removing stale gateway config, preserving any frontend-deployed overrides (conf.d/*.conf is glob-included; leftover fragments would still load)..."
-          # The postyfox-frontend deploy drops routes/90-root.conf + upstreams/frontend.conf into this
-          # same tree to point the SPA route at its container. Back those two up, wipe core's base, and
-          # restore them after the copy so a frontend deploy survives a core redeploy.
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "set -e; cd $STACK_DIR; \
-             rm -rf .gwbak; mkdir -p .gwbak/routes .gwbak/upstreams; \
-             cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true; \
-             cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true; \
-             rm -rf gateway" || {
-            echo "❌ Failed to clean stale gateway config"
-            exit 1
-          }
-          echo "📦 Copying deployment files to prod stack..."
-          scp -P ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            -r deploy/docker-compose.server.yml \
-            deploy/docker-compose.prod.yml \
-            deploy/rabbitmq \
-            deploy/gateway \
-            deploy/oauth2-proxy \
-            deploy/vault \
-            deploy/fluent-bit \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/opt/postyfox/prod/ || {
-            echo "❌ Failed to copy deployment files"
-            exit 1
-          }
-          echo "📦 Syncing otel collector config to prod stack (preserves any otel/certs)..."
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "mkdir -p $STACK_DIR/otel" || {
-            echo "❌ Failed to ensure otel directory on prod stack"
-            exit 1
-          }
-          scp -P ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            deploy/otel/config.yaml \
-            deploy/otel/config.central.yaml \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:$STACK_DIR/otel/ || {
-            echo "❌ Failed to copy otel config"
-            exit 1
-          }
-          echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "set -e; cd $STACK_DIR; \
-             [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true; \
-             [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true; \
-             rm -rf .gwbak" || {
-            echo "❌ Failed to restore frontend gateway overrides"
-            exit 1
-          }
-
-      - name: Deploy prod stack
-        env:
-          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-          STACK_NAME: ${{ steps.stack.outputs.project }}
         run: |
-          echo "🚀 Deploying to prod stack (⚠️ PRODUCTION)..."
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "set -e; \
-            cd /opt/postyfox/prod && \
-            echo '📋 Checking .env file exists...' && \
-            [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }; \
-            source .env 2>/dev/null || true; \
-            export IMAGE_REPOSITORY=${{ env.IMAGE_REPOSITORY }} && \
-            export IMAGE_TAG=${{ env.IMAGE_TAG }} && \
-            export COMPOSE_PROJECT_NAME=${{ env.STACK_NAME }} && \
-            echo '🔄 Pulling latest images...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml pull || { echo '❌ Failed to pull images'; exit 1; }; \
-            echo '⬆️ Updating services (backup your data first!)...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml up -d --build || { echo '❌ Failed to start services'; exit 1; }; \
-            echo '🔄 Reloading gateway + oauth2-proxy (their conf.d/templates are bind-mounted; up -d alone does not pick up content changes)...' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml restart gateway oauth2-proxy || { echo '❌ Failed to restart gateway/oauth2-proxy'; exit 1; }; \
-            echo '✅ Prod stack deployed successfully' && \
-            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps" || {
-            echo "❌ Prod deployment failed"
-            exit 1
-          }
+          echo "🚀 Deploying image tag ${IMAGE_TAG} to prod k8s (namespace: ${NAMESPACE})..."
+          helm upgrade --install "$RELEASE_NAME" deploy/helm/postyfox \
+            --namespace "$NAMESPACE" --create-namespace \
+            -f deploy/helm/postyfox/values-prod.yaml \
+            -f "$RUNNER_TEMP/values-secrets.yaml" \
+            --set image.tag="${IMAGE_TAG}" \
+            --atomic --wait --timeout 5m \
+            || { echo "❌ Helm upgrade failed (auto-rolled back by --atomic)"; exit 1; }
+          echo "✅ Prod deployed"
 
       - name: Health check
-        env:
-          STACK_DIR: /opt/postyfox/prod
         run: |
-          echo "🏥 Running health checks..."
-          sleep 15
-          ssh -p ${{ env.DEPLOY_PORT }} \
-            -i ~/.ssh/deploy_key \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "cd $STACK_DIR && \
-            docker compose -f docker-compose.server.yml -f docker-compose.prod.yml ps | grep -E '(core-api|post-api|worker)' | grep -E '(Up|healthy)' || { \
-            echo '⚠️ Warning: Some services may not be healthy yet'; }; \
-            true"
+          kubectl -n "$NAMESPACE" get pods -l app.kubernetes.io/part-of=postyfox
+          kubectl -n "$NAMESPACE" rollout status deployment/"$RELEASE_NAME"-core-api --timeout=60s || \
+            echo "⚠️ Warning: core-api rollout not confirmed healthy within timeout"
+          kubectl -n "$NAMESPACE" rollout status deployment/"$RELEASE_NAME"-post-api --timeout=60s || \
+            echo "⚠️ Warning: post-api rollout not confirmed healthy within timeout"
 
-      - name: Cleanup SSH
+      - name: Cleanup secret overrides
         if: always()
-        run: rm -f ~/.ssh/deploy_key
+        run: rm -f "$RUNNER_TEMP/values-secrets.yaml" "$RUNNER_TEMP/.kube/config"
 
       - name: Summary
         if: success()
@@ -393,7 +333,7 @@ jobs:
           ✅ Manual deployment completed!
           
           📊 Deployment Details:
-          - Environment: production
+          - Environment: production (Kubernetes namespace: postyfox)
           - Image Tag: ${{ steps.tag.outputs.tag }}
           - Triggered by: ${{ github.actor }}
           - Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
