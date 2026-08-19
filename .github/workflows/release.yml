@@ -38,8 +38,9 @@ jobs:
     outputs:
       version: ${{ steps.resolve.outputs.version }}   # bare semver, no leading v
       ref: ${{ steps.resolve.outputs.ref }}           # git ref the deploy jobs check out
-      is_new: ${{ steps.resolve.outputs.is_new }}     # 'true' = new release (build + tag); 'false' = redeploy
-      image_tag: ${{ steps.image_tag.outputs.image_tag }}   # tag the deploy jobs actually pull (may fall back to a commit SHA)
+      is_new: ${{ steps.resolve.outputs.is_new }}     # 'true' = new release; 'false' = redeploy
+      needs_build: ${{ steps.image_check.outputs.needs_build }}   # 'true' if the images must be (re)built
+      build_sha: ${{ steps.image_check.outputs.build_sha }}       # commit SHA actually being built (== ref, resolved)
     steps:
       - uses: actions/checkout@v7
         with:
@@ -75,46 +76,44 @@ jobs:
             echo "is_new=true" >> "$GITHUB_OUTPUT"
             echo "🆕 New release version ${{ steps.semver.outputs.version }}"
           fi
-      - name: Resolve image tag to deploy
+      - name: Check whether images need (re)building
         # A git tag existing does NOT guarantee its semver-tagged images were ever pushed to
-        # GHCR (e.g. a tag created before this pipeline existed, or created outside of it). Check
-        # the registry directly and, for redeploys, fall back to the commit-SHA tag — which every
-        # push to main always publishes via platform-ci — rather than letting a much later
-        # `docker compose pull` fail with an opaque "manifest unknown".
-        id: image_tag
+        # GHCR (e.g. a tag created before this pipeline existed, or created outside of it).
+        # Rather than silently deploying differently-versioned images (or failing deep inside
+        # `docker compose pull`), rebuild from the tagged commit whenever the semver image is
+        # missing so the correct version is baked into every image (and therefore the footer/
+        # `/api/version`) either way. Checking core-api is a representative proxy for the whole
+        # matrix — they're always built and pushed together.
+        id: image_check
         env:
           IS_NEW: ${{ steps.resolve.outputs.is_new }}
           VERSION: ${{ steps.resolve.outputs.version }}
           REF: ${{ steps.resolve.outputs.ref }}
         run: |
-          IMAGE_REPOSITORY="${GITHUB_REPOSITORY,,}"
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin >/dev/null
+          BUILD_SHA="$(git rev-parse "$REF")"
+          echo "build_sha=${BUILD_SHA}" >> "$GITHUB_OUTPUT"
 
           if [ "$IS_NEW" = "true" ]; then
-            # Images for a brand-new release don't exist yet — the build job will push them
-            # tagged with both the semver and the commit SHA, so the semver tag is correct here.
-            echo "image_tag=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "needs_build=true" >> "$GITHUB_OUTPUT"
+            echo "🆕 New release — will build fresh images."
             exit 0
           fi
 
+          IMAGE_REPOSITORY="${GITHUB_REPOSITORY,,}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin >/dev/null
           if docker manifest inspect "ghcr.io/${IMAGE_REPOSITORY}-core-api:${VERSION}" >/dev/null 2>&1; then
-            echo "image_tag=${VERSION}" >> "$GITHUB_OUTPUT"
-            echo "✅ Found published image ghcr.io/${IMAGE_REPOSITORY}-core-api:${VERSION}"
+            echo "needs_build=false" >> "$GITHUB_OUTPUT"
+            echo "✅ Found published image ghcr.io/${IMAGE_REPOSITORY}-core-api:${VERSION} — reusing it."
           else
-            SHA="$(git rev-parse "$REF")"
-            if docker manifest inspect "ghcr.io/${IMAGE_REPOSITORY}-core-api:${SHA}" >/dev/null 2>&1; then
-              echo "⚠️ No semver-tagged image for v${VERSION}; falling back to commit-SHA image ${SHA}"
-              echo "image_tag=${SHA}" >> "$GITHUB_OUTPUT"
-            else
-              echo "❌ No published image found for v${VERSION} (checked tags '${VERSION}' and '${SHA}') — cannot redeploy a version whose images were never pushed."
-              exit 1
-            fi
+            echo "needs_build=true" >> "$GITHUB_OUTPUT"
+            echo "⚠️ No image published for v${VERSION} (tag exists but was never built) — rebuilding from ${REF} (commit ${BUILD_SHA}) so the correct version is baked in."
           fi
 
   build:
-    # New releases build fresh images; a redeploy reuses the already-published tag.
+    # Builds whenever there's no already-published, correctly-versioned set of images: always for
+    # a new release, and for a redeploy only if that version's images were never actually pushed.
     needs: compute-version
-    if: needs.compute-version.outputs.is_new == 'true'
+    if: needs.compute-version.outputs.needs_build == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -144,6 +143,8 @@ jobs:
             assembly: ""
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.compute-version.outputs.ref }}
       - name: Normalize image repository name
         run: echo "IMAGE_REPOSITORY=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - uses: docker/login-action@v4
@@ -156,18 +157,20 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
-          # Tag with the semver AND the commit SHA for traceability.
+          # Tag with the semver AND the actual built commit SHA for traceability. Note this is
+          # NOT necessarily `github.sha` — a rebuild-on-redeploy builds the tagged commit, which
+          # may differ from the commit that triggered this workflow run.
           tags: |
             ghcr.io/${{ env.IMAGE_REPOSITORY }}-${{ matrix.service }}:${{ needs.compute-version.outputs.version }}
-            ghcr.io/${{ env.IMAGE_REPOSITORY }}-${{ matrix.service }}:${{ github.sha }}
+            ghcr.io/${{ env.IMAGE_REPOSITORY }}-${{ matrix.service }}:${{ needs.compute-version.outputs.build_sha }}
           build-args: |
             PROJECT=${{ matrix.project }}
             ASSEMBLY=${{ matrix.assembly }}
             VERSION=${{ needs.compute-version.outputs.version }}
 
   deploy-dev:
-    # Release artifacts MUST prove out on dev before prod. Runs whether we built fresh images
-    # (new release) or are redeploying an existing tag (build job skipped).
+    # Release artifacts MUST prove out on dev before prod. Runs whether we (re)built the images
+    # this run or are redeploying already-published, correctly-versioned ones (build skipped).
     needs: [compute-version, build]
     if: |
       always() &&
@@ -220,7 +223,7 @@ jobs:
       - name: Deploy dev stack
         env:
           IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
-          IMAGE_TAG: ${{ needs.compute-version.outputs.image_tag }}
+          IMAGE_TAG: ${{ needs.compute-version.outputs.version }}
           STACK_DIR: ${{ steps.stack.outputs.dir }}
         run: |
           echo "🚀 Deploying release ${IMAGE_TAG} to dev stack..."
@@ -328,7 +331,7 @@ jobs:
       - name: Deploy prod stack
         env:
           IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
-          IMAGE_TAG: ${{ needs.compute-version.outputs.image_tag }}
+          IMAGE_TAG: ${{ needs.compute-version.outputs.version }}
         run: |
           echo "🚀 Deploying release ${IMAGE_TAG} to prod stack (⚠️ PRODUCTION)..."
           ssh -p ${{ env.DEPLOY_PORT }} \
