@@ -49,7 +49,8 @@ jobs:
           echo "✅ Required deployment secrets are configured"
 
   deploy-dev:
-    # Runs on the self-hosted dev agent; production still deploys over SSH.
+    # Runs on the self-hosted dev agent. Production is deployed separately, to Kubernetes via
+    # Helm, only through release.yml / deploy-manual.yml's production job.
     needs: check-prerequisites
     if: |
       github.event.workflow_run.conclusion == 'success' &&

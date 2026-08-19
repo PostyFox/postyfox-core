@@ -1,18 +1,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "postyfox.fullname" . }}-config
+  name: {{ include "postyfox.configName" . }}
   labels: {{- include "postyfox.labels" . | nindent 4 }}
 data:
   ObjectStore__ServiceUrl: {{ .Values.config.objectStoreServiceUrl | quote }}
   ObjectStore__Bucket: {{ .Values.config.objectStoreBucket | quote }}
-  RabbitMq__Host: {{ .Values.config.rabbitMqHost | quote }}
-  RabbitMq__User: {{ .Values.config.rabbitMqUser | quote }}
+  RabbitMq__Host: {{ include "postyfox.rabbitMqHost" . | quote }}
+  RabbitMq__User: {{ include "postyfox.rabbitMqUser" . | quote }}
   Auth__UserHeader: {{ .Values.config.authUserHeader | quote }}
   # Secret store (Neillans.Adapters.Secrets). Provider selection + non-secret provider options;
   # credentials are in the Secret. AzureKeyVault/Infisical add their own Secrets__<Provider>__* keys.
   Secrets__Provider: {{ .Values.config.secretsProvider | quote }}
-  Secrets__HashiCorpVault__VaultAddress: {{ .Values.config.hashiCorpVaultAddress | quote }}
+  Secrets__HashiCorpVault__VaultAddress: {{ include "postyfox.vaultAddress" . | quote }}
   Secrets__HashiCorpVault__MountPoint: {{ .Values.config.hashiCorpVaultMountPoint | quote }}
   Secrets__HashiCorpVault__BasePath: {{ .Values.config.hashiCorpVaultBasePath | quote }}
   Secrets__HashiCorpVault__RoleId: {{ .Values.config.hashiCorpVaultRoleId | quote }}
@@ -25,8 +25,13 @@ data:
   Auth__Oidc__Issuer: {{ .Values.config.authOidcIssuer | quote }}
   Auth__Oidc__JwksUrl: {{ .Values.config.authOidcJwksUrl | quote }}
   Auth__Oidc__Audience: {{ .Values.config.authOidcAudience | quote }}
+  OAuth__CallbackBaseUrl: {{ .Values.config.oauthCallbackBaseUrl | quote }}
+  RateLimit__Enabled: {{ .Values.config.rateLimit.enabled | quote }}
+  RateLimit__RequestsPerMinute: {{ .Values.config.rateLimit.requestsPerMinute | quote }}
+  Pipeline__MaxDeliveryAttempts: {{ .Values.config.pipeline.maxDeliveryAttempts | quote }}
+  Pipeline__RetryBaseSeconds: {{ .Values.config.pipeline.retryBaseSeconds | quote }}
   NodeConnectors__BaseUrl: "http://{{ include "postyfox.fullname" . }}-connectors-node:8090"
-  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.config.otelEndpoint | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ include "postyfox.otelEndpoint" . | quote }}
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   ASPNETCORE_URLS: "http://+:8080"
   PORT: "8090"

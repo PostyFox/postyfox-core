@@ -1,6 +1,13 @@
 apiVersion: v2
 name: postyfox
-description: PostyFox platform — core-api, post-api, posting-worker, connectors-node.
+description: >-
+  PostyFox platform: core-api, post-api, posting-worker, connectors-node, plus the optional
+  in-cluster infrastructure (Postgres, RabbitMQ, Vault, Redis, otel-collector, gateway,
+  oauth2-proxy) needed to run a complete, self-contained deployment. Every backing service can
+  also be pointed at your own externally-managed instance instead — see values.yaml.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
+home: https://github.com/PostyFox/postyfox-core
+sources:
+  - https://github.com/PostyFox/postyfox-core
