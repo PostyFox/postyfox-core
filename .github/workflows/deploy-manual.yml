@@ -93,7 +93,11 @@ jobs:
       - name: Compute version
         id: ver
         run: |
-          LAST=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo 0.0.0)
+          if LAST="$(git describe --tags --abbrev=0 2>/dev/null)"; then
+            LAST="${LAST#v}"
+          else
+            LAST="0.0.0"
+          fi
           echo "version=${LAST}-dev+$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: docker/login-action@v4
