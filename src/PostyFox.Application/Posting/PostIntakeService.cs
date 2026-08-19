@@ -56,8 +56,9 @@ public sealed class PostIntakeService(
             UpdatedAt = now
         };
         ApplyContent(post, request);
-        // Throws ConnectorValidationException before anything is persisted if a target's options fail.
-        post.Targets = BuildTargets(post.Id, resolved, request.TargetOptions, now);
+        // Throws ConnectorValidationException before anything is persisted if a target's options fail,
+        // or if a target's platform requires tags and none are being sent.
+        post.Targets = BuildTargets(post.Id, resolved, request.TargetOptions, request.TargetIncludeTags, request.Tags, now);
 
         // From here on, every log in this request carries the PostId (see PostIdLogEnricher), so a
         // user can hand a dev the post id from the UI and the dev finds the intake telemetry too.
@@ -138,9 +139,11 @@ public sealed class PostIntakeService(
         if (resolved.Count == 0) return new PublishDraftResult(DraftActionOutcome.NoValidTargets, null);
 
         var targetOptions = Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}");
+        var targetIncludeTags = Json.Deserialize<Dictionary<Guid, bool>>(post.DraftTargetIncludeTagsJson ?? "{}");
+        var tags = Json.Deserialize<List<string>>(post.TagsJson) ?? [];
 
         var now = clock.UtcNow;
-        var targets = BuildTargets(post.Id, resolved, targetOptions, now);
+        var targets = BuildTargets(post.Id, resolved, targetOptions, targetIncludeTags, tags, now);
         // Explicit Add rather than post.Targets.Add(...): post is already tracked (loaded above), so
         // navigation fixup alone leaves these client-keyed entities Modified instead of Added — EF has
         // no other way to tell a manually-assigned Guid key apart from an existing row's.
@@ -181,6 +184,7 @@ public sealed class PostIntakeService(
         post.DraftTargetsJson = Json.Serialize(targetIds);
         post.DraftTargetOptionsJson = Json.Serialize(
             request.TargetOptions ?? new Dictionary<Guid, IReadOnlyDictionary<string, string>>());
+        post.DraftTargetIncludeTagsJson = Json.Serialize(request.TargetIncludeTags ?? new Dictionary<Guid, bool>());
     }
 
     /// <summary>Persists the human-authored payload alongside the record (mirrors media storage).</summary>
@@ -223,16 +227,32 @@ public sealed class PostIntakeService(
     }
 
     /// <summary>Builds one <see cref="PostTarget"/> per resolved destination, validating its per-submission options.</summary>
-    /// <exception cref="ConnectorValidationException">A target's options fail its platform's schema.</exception>
+    /// <exception cref="ConnectorValidationException">
+    /// A target's options fail its platform's schema, or its platform requires tags and none are supplied.
+    /// </exception>
     private List<PostTarget> BuildTargets(
         Guid postId,
         List<ResolvedDestination> resolved,
         IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? targetOptions,
+        IReadOnlyDictionary<Guid, bool>? targetIncludeTags,
+        IReadOnlyList<string>? tags,
         DateTimeOffset now)
     {
+        var hasTags = (tags ?? []).Count > 0;
         var targets = new List<PostTarget>(resolved.Count);
         foreach (var destination in resolved)
         {
+            registry.TryGet(destination.Platform, out var connector);
+            var descriptor = connector?.Describe();
+            var requiresTags = descriptor?.RequiresTags ?? false;
+            if (requiresTags && !hasTags)
+                throw new ConnectorValidationException($"{destination.DisplayName}: at least one tag is required for this platform.");
+
+            // RequiresTags forces the toggle on regardless of what the client sent; otherwise the
+            // author's per-target choice applies (defaulting to on when absent).
+            var includeTags = requiresTags
+                || !(targetIncludeTags?.TryGetValue(destination.SelectionId, out var chosen) == true && !chosen);
+
             targets.Add(new PostTarget
             {
                 Id = Guid.NewGuid(),
@@ -243,6 +263,7 @@ public sealed class PostIntakeService(
                 TargetName = destination.TargetName,
                 OptionsJson = TargetOptionsFor(destination.Platform, destination.DisplayName,
                     targetOptions?.GetValueOrDefault(destination.SelectionId)),
+                IncludeTags = includeTags,
                 Status = TargetStatus.Queued,
                 CreatedAt = now,
                 UpdatedAt = now

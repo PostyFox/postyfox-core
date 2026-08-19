@@ -20,7 +20,7 @@ public sealed class DiscordWebhookConnector(IHttpClientFactory httpFactory, IMed
 
     public ConnectorDescriptor Describe() =>
         new(PlatformKey, "Discord Web Hook", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength,
-            MediaSpec: PlatformMediaSpecs.Discord);
+            MediaSpec: PlatformMediaSpecs.Discord, SupportsTags: false);
 
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext context, CancellationToken ct = default) =>
         Task.FromResult(new AuthState(!string.IsNullOrWhiteSpace(GetWebhook(context.ConfigJson))));

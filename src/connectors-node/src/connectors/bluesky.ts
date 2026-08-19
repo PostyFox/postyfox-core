@@ -102,6 +102,9 @@ export class BlueskyConnector implements Connector {
       const agent = this.agentFactory();
       await agent.login({ identifier: handle, password: appPassword });
 
+      // Bluesky has no separate tags field; core weaves any tags into `post.body` as `#hashtag`s
+      // before it reaches here (see TemplateEngine — this connector declares `SupportsTags: false`),
+      // so `post.tags` normally arrives empty. RichText below detects those hashtags as "tag" facets.
       // Detect facets (links/mentions) where possible; fall back to plain text.
       let text = post.body;
       let facets: unknown | undefined;

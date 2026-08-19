@@ -53,7 +53,21 @@ public sealed record ConnectorDescriptor(
     /// individual exposed destinations rather than the connector itself. False (the default) keeps
     /// the legacy 1:1 connector-to-destination behaviour every other platform uses.
     /// </summary>
-    bool SupportsMultipleTargets = false)
+    bool SupportsMultipleTargets = false,
+    /// <summary>
+    /// True when the platform has a native tags field/mechanism the connector sends tags through
+    /// directly (Tumblr, FurAffinity). False means the platform has no such field — tags can only
+    /// reach it by being woven into the body text, either at an author-placed <c>{tags}</c> template
+    /// token or, failing that, appended to the end. The default (true) matches most platforms having
+    /// been built with an assumed tags field; every connector explicitly declares this.
+    /// </summary>
+    bool SupportsTags = true,
+    /// <summary>
+    /// True when a delivery must include at least one tag (FurAffinity). Forces "include tags" on for
+    /// every post to this platform — the compose UI cannot turn it off, and intake rejects a post
+    /// with no tags for a target that requires them.
+    /// </summary>
+    bool RequiresTags = false)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;
@@ -114,7 +128,14 @@ public sealed record RenderedPost(
     string Body,
     IReadOnlyList<string> Tags,
     IReadOnlyList<MediaRef> Media,
-    ContentRating? Rating = null);
+    ContentRating? Rating = null,
+    /// <summary>
+    /// How many tags were dropped from an inline <c>#hashtag</c> interpolation (see
+    /// <see cref="ConnectorDescriptor.SupportsTags"/> = false) to keep the rendered body within the
+    /// platform's <see cref="ConnectorDescriptor.MaxContentLength"/>. Always 0 for platforms with a
+    /// native tags field, or when no trimming was needed.
+    /// </summary>
+    int TagsOmitted = 0);
 
 /// <summary>
 /// Reference to a stored media object (carried on the post / in the manifest and passed to

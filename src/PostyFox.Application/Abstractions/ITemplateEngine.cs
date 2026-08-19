@@ -11,7 +11,17 @@ public sealed record RenderRequest(
     IReadOnlyDictionary<string, string> Variables,
     IReadOnlyList<string> Tags,
     IReadOnlyList<MediaRef> Media,
-    ContentRating? Rating = null);
+    ContentRating? Rating = null,
+    /// <summary>Whether the author chose to include tags for this target (default on).</summary>
+    bool IncludeTags = true,
+    /// <summary>
+    /// Whether the platform has a native tags field (see
+    /// <see cref="Connectors.ConnectorDescriptor.SupportsTags"/>). False means tags are woven into
+    /// the body instead, at an author-placed <c>{tags}</c> token or appended to the end.
+    /// </summary>
+    bool SupportsTags = true,
+    /// <summary>Static character-limit hint used to trim inline hashtags so the body stays under it.</summary>
+    int? MaxContentLength = null);
 
 /// <summary>
 /// Renders template bodies: variable substitution, conditionals, and per-platform formatting.

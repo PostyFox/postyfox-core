@@ -477,7 +477,13 @@ function assertMediaAllowed(item: PostMedia, bytes: Buffer, type: string, limits
   }
 }
 
-/** Fediverse has no separate tags field; append them as hashtags, as clients conventionally expect. */
+/**
+ * Fediverse has no separate tags field. Core already interpolates tags into the body as hashtags
+ * before it reaches here (see TemplateEngine — connectors declaring `SupportsTags: false` get
+ * an author-placed `{tags}` token replaced, or a hashtag line appended), so `post.tags` normally
+ * arrives empty. This appends any tags reaching the connector directly (e.g. a caller bypassing
+ * core) as a defensive fallback — it is a no-op for tags already woven into the body.
+ */
 function composeStatus(post: Post): string {
   const tagLine = (post.tags ?? [])
     .map((t) => t.trim())

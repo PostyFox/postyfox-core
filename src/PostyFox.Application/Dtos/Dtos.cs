@@ -23,6 +23,10 @@ public sealed record ServiceDefinitionDto(
     bool SupportsCookiePairing,
     bool SupportsRating,
     bool RequiresRating,
+    /// <summary>True when the platform has a native tags field (see <see cref="Connectors.ConnectorDescriptor.SupportsTags"/>).</summary>
+    bool SupportsTags,
+    /// <summary>True when a delivery to this platform must include at least one tag.</summary>
+    bool RequiresTags,
     /// <summary>
     /// Field descriptors for choices this platform takes per submission rather than per account (see
     /// <see cref="Connectors.ConnectorDescriptor.PostOptionsSchema"/>). Same format as
@@ -121,6 +125,12 @@ public sealed record CreatePostRequest(
     /// </summary>
     IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? TargetOptions = null,
     /// <summary>
+    /// Per-target "include tags" choice, keyed by the same id used in <see cref="Targets"/>. Absent
+    /// entries default to true. Ignored (forced true) for a target whose platform declares
+    /// <see cref="Connectors.ConnectorDescriptor.RequiresTags"/>.
+    /// </summary>
+    IReadOnlyDictionary<Guid, bool>? TargetIncludeTags = null,
+    /// <summary>
     /// True to save this as a draft instead of submitting it: no targets are resolved/validated and
     /// nothing is enqueued for delivery. <see cref="Targets"/> and <see cref="TargetOptions"/> are
     /// still stored as-authored so the draft can be edited and eventually published. Also the request
@@ -146,7 +156,16 @@ public enum DraftActionOutcome
 /// <summary>Result of publishing a draft: the outcome, and the resulting post/status when successful.</summary>
 public sealed record PublishDraftResult(DraftActionOutcome Outcome, CreatePostResponse? Response);
 
-public sealed record PostTargetStatusDto(Guid TargetId, string Platform, TargetStatus Status, string? ExternalId, string? ExternalUrl, string? Error, int Attempts);
+public sealed record PostTargetStatusDto(
+    Guid TargetId, string Platform, TargetStatus Status, string? ExternalId, string? ExternalUrl, string? Error, int Attempts,
+    /// <summary>Whether tags were included for this target.</summary>
+    bool IncludeTags = true,
+    /// <summary>
+    /// How many tags were dropped to keep an inline hashtag interpolation under the platform's
+    /// character limit (see <see cref="Connectors.RenderedPost.TagsOmitted"/>); 0 once rendered
+    /// unless trimming was needed, or if generation hasn't happened yet.
+    /// </summary>
+    int TagsOmitted = 0);
 public sealed record PostStatusDto(Guid PostId, PostRootStatus RootStatus, IReadOnlyList<PostTargetStatusDto> Targets);
 
 /// <summary>The user-authored content of a post, shaped to re-seed the compose form ("post again").</summary>
@@ -165,7 +184,9 @@ public sealed record PostContentDto(
     /// The per-submission platform choices this post was created with, keyed by connector id, so
     /// "post again" re-seeds them rather than silently reverting to platform defaults.
     /// </summary>
-    IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>> TargetOptions);
+    IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>> TargetOptions,
+    /// <summary>The per-target "include tags" choices this post was created with, keyed by connector id.</summary>
+    IReadOnlyDictionary<Guid, bool> TargetIncludeTags);
 
 /// <summary>Lightweight row for the post list / activity view (no per-target detail).</summary>
 public sealed record PostSummaryDto(

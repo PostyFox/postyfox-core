@@ -24,6 +24,14 @@ public class PostTarget
     /// over the connector's own config at delivery; <c>{}</c> means "use the platform's defaults".
     /// </summary>
     public string OptionsJson { get; set; } = "{}";
+    /// <summary>
+    /// Whether tags should be included for this target — optional for every platform (even ones with
+    /// no native tags field, which get them woven into the body instead; see
+    /// <see cref="Connectors.ConnectorDescriptor.SupportsTags"/>), and forced true for platforms that
+    /// declare <see cref="Connectors.ConnectorDescriptor.RequiresTags"/>. Defaults to true so
+    /// existing behaviour is unchanged unless the author opts out.
+    /// </summary>
+    public bool IncludeTags { get; set; } = true;
     public string? RenderedContentJson { get; set; }
     public TargetStatus Status { get; set; } = TargetStatus.Queued;
     public string? ExternalId { get; set; }
