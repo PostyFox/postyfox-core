@@ -39,6 +39,7 @@ jobs:
       version: ${{ steps.resolve.outputs.version }}   # bare semver, no leading v
       ref: ${{ steps.resolve.outputs.ref }}           # git ref the deploy jobs check out
       is_new: ${{ steps.resolve.outputs.is_new }}     # 'true' = new release (build + tag); 'false' = redeploy
+      image_tag: ${{ steps.image_tag.outputs.image_tag }}   # tag the deploy jobs actually pull (may fall back to a commit SHA)
     steps:
       - uses: actions/checkout@v7
         with:
@@ -73,6 +74,41 @@ jobs:
             echo "ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
             echo "is_new=true" >> "$GITHUB_OUTPUT"
             echo "🆕 New release version ${{ steps.semver.outputs.version }}"
+          fi
+      - name: Resolve image tag to deploy
+        # A git tag existing does NOT guarantee its semver-tagged images were ever pushed to
+        # GHCR (e.g. a tag created before this pipeline existed, or created outside of it). Check
+        # the registry directly and, for redeploys, fall back to the commit-SHA tag — which every
+        # push to main always publishes via platform-ci — rather than letting a much later
+        # `docker compose pull` fail with an opaque "manifest unknown".
+        id: image_tag
+        env:
+          IS_NEW: ${{ steps.resolve.outputs.is_new }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          REF: ${{ steps.resolve.outputs.ref }}
+        run: |
+          IMAGE_REPOSITORY="${GITHUB_REPOSITORY,,}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin >/dev/null
+
+          if [ "$IS_NEW" = "true" ]; then
+            # Images for a brand-new release don't exist yet — the build job will push them
+            # tagged with both the semver and the commit SHA, so the semver tag is correct here.
+            echo "image_tag=${VERSION}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if docker manifest inspect "ghcr.io/${IMAGE_REPOSITORY}-core-api:${VERSION}" >/dev/null 2>&1; then
+            echo "image_tag=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "✅ Found published image ghcr.io/${IMAGE_REPOSITORY}-core-api:${VERSION}"
+          else
+            SHA="$(git rev-parse "$REF")"
+            if docker manifest inspect "ghcr.io/${IMAGE_REPOSITORY}-core-api:${SHA}" >/dev/null 2>&1; then
+              echo "⚠️ No semver-tagged image for v${VERSION}; falling back to commit-SHA image ${SHA}"
+              echo "image_tag=${SHA}" >> "$GITHUB_OUTPUT"
+            else
+              echo "❌ No published image found for v${VERSION} (checked tags '${VERSION}' and '${SHA}') — cannot redeploy a version whose images were never pushed."
+              exit 1
+            fi
           fi
 
   build:
@@ -184,7 +220,7 @@ jobs:
       - name: Deploy dev stack
         env:
           IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
-          IMAGE_TAG: ${{ needs.compute-version.outputs.version }}
+          IMAGE_TAG: ${{ needs.compute-version.outputs.image_tag }}
           STACK_DIR: ${{ steps.stack.outputs.dir }}
         run: |
           echo "🚀 Deploying release ${IMAGE_TAG} to dev stack..."
@@ -292,7 +328,7 @@ jobs:
       - name: Deploy prod stack
         env:
           IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
-          IMAGE_TAG: ${{ needs.compute-version.outputs.version }}
+          IMAGE_TAG: ${{ needs.compute-version.outputs.image_tag }}
         run: |
           echo "🚀 Deploying release ${IMAGE_TAG} to prod stack (⚠️ PRODUCTION)..."
           ssh -p ${{ env.DEPLOY_PORT }} \
