@@ -264,6 +264,7 @@ public class PostEndpointsTests(CustomWebApplicationFactory factory) : IClassFix
             targets = new[] { connectorId },
             title = "Filed",
             description = "x",
+            tags = new[] { "t" },
             targetOptions = new Dictionary<string, Dictionary<string, string>>
             {
                 [connectorId.ToString()] = new() { ["Category"] = "13", ["Species"] = "6016" }
@@ -290,6 +291,7 @@ public class PostEndpointsTests(CustomWebApplicationFactory factory) : IClassFix
         {
             targets = new[] { connectorId },
             title = "Filed",
+            tags = new[] { "t" },
             targetOptions = new Dictionary<string, Dictionary<string, string>>
             {
                 [connectorId.ToString()] = new() { ["Category"] = "not-a-category" }
@@ -317,6 +319,7 @@ public class PostEndpointsTests(CustomWebApplicationFactory factory) : IClassFix
         {
             targets = new[] { connectorId },
             title = "Filed",
+            tags = new[] { "t" },
             targetOptions = new Dictionary<string, Dictionary<string, string>>
             {
                 [connectorId.ToString()] = new() { ["category"] = "13", ["unknownField"] = "ignored" }
