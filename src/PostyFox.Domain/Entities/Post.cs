@@ -31,5 +31,12 @@ public class Post
     /// <summary>The draft's per-submission platform choices, keyed by the same raw selection id as <see cref="DraftTargetsJson"/>.</summary>
     public string? DraftTargetOptionsJson { get; set; }
 
+    /// <summary>
+    /// The draft's per-target "include tags" choices (see <see cref="PostTarget.IncludeTags"/>), keyed
+    /// by the same raw selection id as <see cref="DraftTargetsJson"/>. Null/absent entries default to
+    /// true (include tags) once published.
+    /// </summary>
+    public string? DraftTargetIncludeTagsJson { get; set; }
+
     public List<PostTarget> Targets { get; set; } = new();
 }

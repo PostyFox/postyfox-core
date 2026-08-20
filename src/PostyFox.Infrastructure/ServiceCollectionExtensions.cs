@@ -69,14 +69,15 @@ public static class ServiceCollectionExtensions
                 SupportsMedia: true,
                 SupportsThreads: true,
                 MaxContentLength: 300,
-                SupportsRating: true),
+                SupportsRating: true,
+                SupportsTags: false),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
             sp.GetRequiredService<IServiceScopeFactory>()));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "Tumblr",
-            new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true),
+            new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true, SupportsTags: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
@@ -98,6 +99,8 @@ public static class ServiceCollectionExtensions
                     CookieNames: ["a", "b"]),
                 SupportsRating: true,
                 RequiresRating: true,
+                SupportsTags: true,
+                RequiresTags: true,
                 // Category/theme/species/gender/folders are chosen per submission on FurAffinity's own
                 // form, so they belong to the post rather than the account. The lists run to ~500
                 // entries — see Persistence/Schemas/README.md for provenance and regeneration.
@@ -114,7 +117,7 @@ public static class ServiceCollectionExtensions
         void AddFediverse(string platform, string displayName, int? maxContentLength) =>
             services.AddSingleton<IConnector>(sp => new HttpConnector(
                 platform,
-                new ConnectorDescriptor(platform, displayName, SupportsTitle: false, SupportsMedia: true, SupportsThreads: false, MaxContentLength: maxContentLength, SupportsOAuth: true),
+                new ConnectorDescriptor(platform, displayName, SupportsTitle: false, SupportsMedia: true, SupportsThreads: false, MaxContentLength: maxContentLength, SupportsOAuth: true, SupportsTags: false),
                 sp.GetRequiredService<IHttpClientFactory>(),
                 sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),

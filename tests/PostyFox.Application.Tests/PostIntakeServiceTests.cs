@@ -303,4 +303,83 @@ public class PostIntakeServiceTests
 
         Assert.Equal(DraftActionOutcome.NotFound, result.Outcome);
     }
+
+    [Fact]
+    public async Task Create_rejects_a_target_that_requires_tags_when_none_supplied()
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true });
+        var connectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = connectorId, UserId = "u1", ServiceDefinitionId = "FurAffinity", DisplayName = "FA", Enabled = true
+        });
+        await db.SaveChangesAsync();
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("FurAffinity", requiresTags: true)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        await Assert.ThrowsAsync<PostyFox.Application.Connectors.ConnectorValidationException>(() =>
+            svc.CreateAsync("u1", new CreatePostRequest(
+                [connectorId], "Title", "Body", null, null, null, null, null, null)));
+    }
+
+    [Fact]
+    public async Task Create_forces_include_tags_on_for_a_target_that_requires_tags()
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true });
+        var connectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = connectorId, UserId = "u1", ServiceDefinitionId = "FurAffinity", DisplayName = "FA", Enabled = true
+        });
+        await db.SaveChangesAsync();
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("FurAffinity", requiresTags: true)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, ["tag1", "tag2", "tag3"], null, null, null, null,
+            TargetIncludeTags: new Dictionary<Guid, bool> { [connectorId] = false }));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        Assert.True(target.IncludeTags);
+    }
+
+    [Fact]
+    public async Task Create_honours_a_per_target_include_tags_choice()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, ["tag"], null, null, null, null,
+            TargetIncludeTags: new Dictionary<Guid, bool> { [connectorId] = false }));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        Assert.False(target.IncludeTags);
+    }
+
+    [Fact]
+    public async Task Create_defaults_include_tags_to_true_when_unspecified()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, ["tag"], null, null, null, null));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        Assert.True(target.IncludeTags);
+    }
 }

@@ -43,10 +43,10 @@ public sealed class FakeObjectStore : IObjectStore
     public Task DeleteAsync(string c, string k, CancellationToken t = default) { Text.Remove($"{c}/{k}"); Blobs.Remove($"{c}/{k}"); return Task.CompletedTask; }
 }
 
-public sealed class FakeConnector(string platform, Func<RenderedPost, DeliveryResult>? deliver = null) : IConnector
+public sealed class FakeConnector(string platform, Func<RenderedPost, DeliveryResult>? deliver = null, bool supportsTags = true, bool requiresTags = false, int? maxContentLength = null) : IConnector
 {
     public int DeliverCount { get; private set; }
-    public ConnectorDescriptor Describe() => new(platform, platform, true, false, false, null);
+    public ConnectorDescriptor Describe() => new(platform, platform, true, false, false, maxContentLength, SupportsTags: supportsTags, RequiresTags: requiresTags);
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);

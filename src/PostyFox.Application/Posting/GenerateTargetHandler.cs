@@ -13,6 +13,7 @@ public sealed class GenerateTargetHandler(
     ITemplateEngine engine,
     IMessageBus bus,
     IClock clock,
+    IConnectorRegistry registry,
     ILogger<GenerateTargetHandler> logger) : IMessageHandler<GenerateTargetCommand>
 {
     public async Task HandleAsync(GenerateTargetCommand message, CancellationToken ct)
@@ -48,6 +49,15 @@ public sealed class GenerateTargetHandler(
             if (template is not null) body = template.MarkdownBody;
         }
 
+        var supportsTags = true;
+        var maxContentLength = (int?)null;
+        if (registry.TryGet(target.Platform, out var connector))
+        {
+            var descriptor = connector.Describe();
+            supportsTags = descriptor.SupportsTags;
+            maxContentLength = descriptor.MaxContentLength;
+        }
+
         var rendered = engine.Render(new RenderRequest(
             target.Platform,
             string.IsNullOrEmpty(post.Title) ? null : post.Title,
@@ -55,7 +65,10 @@ public sealed class GenerateTargetHandler(
             variables,
             tags,
             media,
-            post.Rating));
+            post.Rating,
+            target.IncludeTags,
+            supportsTags,
+            maxContentLength));
 
         target.RenderedContentJson = Json.Serialize(rendered);
         target.Status = TargetStatus.Ready;

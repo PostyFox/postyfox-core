@@ -26,7 +26,12 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
 
         var targets = post.Targets
             .OrderBy(t => t.Platform)
-            .Select(t => new PostTargetStatusDto(t.Id, t.Platform, t.Status, t.ExternalId, t.ExternalUrl, t.Error, t.Attempts))
+            .Select(t => new PostTargetStatusDto(
+                t.Id, t.Platform, t.Status, t.ExternalId, t.ExternalUrl, t.Error, t.Attempts,
+                t.IncludeTags,
+                t.RenderedContentJson is { } rendered
+                    ? Json.Deserialize<RenderedPost>(rendered)?.TagsOmitted ?? 0
+                    : 0))
             .ToList();
 
         return new PostStatusDto(post.Id, post.RootStatus, targets);
@@ -59,7 +64,8 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 Json.Deserialize<List<Guid>>(post.DraftTargetsJson ?? "[]") ?? [],
                 post.PostAt,
                 post.Rating,
-                Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}") ?? new());
+                Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}") ?? new(),
+                Json.Deserialize<Dictionary<Guid, bool>>(post.DraftTargetIncludeTagsJson ?? "{}") ?? new());
 
         // "Post again" must re-tick the exact same destination the post was originally sent to, not
         // just its connector — for a multi-target platform (Telegram) that means resolving each
@@ -102,7 +108,12 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 .GroupBy(x => x.SelectionId)
                 .ToDictionary(
                     g => g.Key,
-                    g => (IReadOnlyDictionary<string, string>)g.First().Options!));
+                    g => (IReadOnlyDictionary<string, string>)g.First().Options!),
+            post.Targets
+                .Where(t => t.ConnectorId.HasValue)
+                .Select(t => (SelectionId: SelectionId(t), t.IncludeTags))
+                .GroupBy(x => x.SelectionId)
+                .ToDictionary(g => g.Key, g => g.First().IncludeTags));
     }
 
     /// <summary>

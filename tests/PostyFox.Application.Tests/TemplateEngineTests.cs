@@ -64,4 +64,83 @@ public class TemplateEngineTests
         Assert.Equal("Title 42", rendered.Title);
         Assert.Equal("Body **42**", rendered.Body);
     }
+
+    [Fact]
+    public void Render_native_tags_platform_passes_tags_through_unchanged()
+    {
+        var req = new RenderRequest("Tumblr", null, "Body", new Dictionary<string, string>(),
+            ["one", "two"], [], SupportsTags: true);
+        var rendered = _engine.Render(req);
+        Assert.Equal(["one", "two"], rendered.Tags);
+        Assert.Equal("Body", rendered.Body);
+        Assert.Equal(0, rendered.TagsOmitted);
+    }
+
+    [Fact]
+    public void Render_native_tags_platform_excludes_tags_when_not_included()
+    {
+        var req = new RenderRequest("Tumblr", null, "Body", new Dictionary<string, string>(),
+            ["one", "two"], [], SupportsTags: true, IncludeTags: false);
+        var rendered = _engine.Render(req);
+        Assert.Empty(rendered.Tags);
+    }
+
+    [Fact]
+    public void Render_native_tags_platform_strips_a_stray_tags_token()
+    {
+        var req = new RenderRequest("Tumblr", null, "Body {tags} end", new Dictionary<string, string>(),
+            ["one"], [], SupportsTags: true);
+        var rendered = _engine.Render(req);
+        Assert.Equal("Body  end", rendered.Body);
+        Assert.Equal(["one"], rendered.Tags);
+    }
+
+    [Fact]
+    public void Render_non_native_tags_platform_interpolates_placeholder()
+    {
+        var req = new RenderRequest("BlueSky", null, "Check this out {tags}", new Dictionary<string, string>(),
+            ["fox art", "cute"], [], SupportsTags: false);
+        var rendered = _engine.Render(req);
+        Assert.Equal("Check this out #fox_art #cute", rendered.Body);
+        Assert.Empty(rendered.Tags); // carried in the body instead of a native field
+        Assert.Equal(0, rendered.TagsOmitted);
+    }
+
+    [Fact]
+    public void Render_non_native_tags_platform_appends_hashtags_without_a_placeholder()
+    {
+        var req = new RenderRequest("Mastodon", null, "Check this out", new Dictionary<string, string>(),
+            ["fox", "cute"], [], SupportsTags: false);
+        var rendered = _engine.Render(req);
+        Assert.Equal("Check this out\n\n#fox #cute", rendered.Body);
+    }
+
+    [Fact]
+    public void Render_non_native_tags_platform_omits_no_tags_when_include_tags_false()
+    {
+        var req = new RenderRequest("BlueSky", null, "Body {tags}", new Dictionary<string, string>(),
+            ["one"], [], SupportsTags: false, IncludeTags: false);
+        var rendered = _engine.Render(req);
+        Assert.Equal("Body ", rendered.Body);
+    }
+
+    [Fact]
+    public void Render_trims_excess_tags_to_respect_max_content_length()
+    {
+        var req = new RenderRequest("BlueSky", null, "Body {tags}", new Dictionary<string, string>(),
+            ["aaaaaaaaaa", "bbbbbbbbbb", "cccccccccc"], [], SupportsTags: false, MaxContentLength: 20);
+        var rendered = _engine.Render(req);
+        Assert.Equal("Body #aaaaaaaaaa", rendered.Body);
+        Assert.Equal(2, rendered.TagsOmitted);
+    }
+
+    [Fact]
+    public void Render_no_max_content_length_keeps_all_tags()
+    {
+        var req = new RenderRequest("BlueSky", null, "Body {tags}", new Dictionary<string, string>(),
+            ["aaaaaaaaaa", "bbbbbbbbbb", "cccccccccc"], [], SupportsTags: false, MaxContentLength: null);
+        var rendered = _engine.Render(req);
+        Assert.Equal("Body #aaaaaaaaaa #bbbbbbbbbb #cccccccccc", rendered.Body);
+        Assert.Equal(0, rendered.TagsOmitted);
+    }
 }
