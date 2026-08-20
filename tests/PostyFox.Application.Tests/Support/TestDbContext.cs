@@ -14,6 +14,7 @@ public sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbC
     public DbSet<ConnectorCookiePairing> ConnectorCookiePairings => Set<ConnectorCookiePairing>();
     public DbSet<ConnectorDestination> ConnectorDestinations => Set<ConnectorDestination>();
     public DbSet<Template> Templates => Set<Template>();
+    public DbSet<TagPreset> TagPresets => Set<TagPreset>();
     public DbSet<ExternalTrigger> ExternalTriggers => Set<ExternalTrigger>();
     public DbSet<ExternalInterest> ExternalInterests => Set<ExternalInterest>();
     public DbSet<Post> Posts => Set<Post>();

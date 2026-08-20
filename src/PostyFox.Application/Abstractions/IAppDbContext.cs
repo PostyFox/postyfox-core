@@ -16,6 +16,7 @@ public interface IAppDbContext
     DbSet<ConnectorCookiePairing> ConnectorCookiePairings { get; }
     DbSet<ConnectorDestination> ConnectorDestinations { get; }
     DbSet<Template> Templates { get; }
+    DbSet<TagPreset> TagPresets { get; }
     DbSet<ExternalTrigger> ExternalTriggers { get; }
     DbSet<ExternalInterest> ExternalInterests { get; }
     DbSet<Post> Posts { get; }
