@@ -13,6 +13,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ConnectorCookiePairing> ConnectorCookiePairings => Set<ConnectorCookiePairing>();
     public DbSet<ConnectorDestination> ConnectorDestinations => Set<ConnectorDestination>();
     public DbSet<Template> Templates => Set<Template>();
+    public DbSet<TagPreset> TagPresets => Set<TagPreset>();
     public DbSet<ExternalTrigger> ExternalTriggers => Set<ExternalTrigger>();
     public DbSet<ExternalInterest> ExternalInterests => Set<ExternalInterest>();
     public DbSet<Post> Posts => Set<Post>();
@@ -78,6 +79,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         b.Entity<Template>(e =>
         {
             e.ToTable("templates");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.UserId);
+        });
+
+        b.Entity<TagPreset>(e =>
+        {
+            e.ToTable("tag_presets");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.UserId);
         });

@@ -99,6 +99,10 @@ public sealed record UserConnectorUpsertRequest(
 public sealed record TemplateDto(Guid Id, string Title, string MarkdownBody);
 public sealed record TemplateUpsertRequest(Guid? Id, string Title, string MarkdownBody);
 
+/// <summary>A named, reusable set of post tags (see <see cref="Domain.Entities.TagPreset"/>).</summary>
+public sealed record TagPresetDto(Guid Id, string Name, IReadOnlyList<string> Tags);
+public sealed record TagPresetUpsertRequest(Guid? Id, string Name, IReadOnlyList<string> Tags);
+
 public sealed record CreatePostRequest(
     /// <summary>
     /// Ids of the destinations to deliver to. Each entry is either a <see cref="Domain.Entities.UserConnector"/> id
