@@ -286,7 +286,7 @@ jobs:
           echo "🏷️ Tagged and released v${VERSION}"
 
       - name: Set up kubectl + Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
           version: v3.16.4
 
