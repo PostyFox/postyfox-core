@@ -1,5 +1,3 @@
-// Shared types for the connectors-node service.
-
 /** Context object shared by all connector operations. */
 export interface ConnectorContext {
   connectorId: string;

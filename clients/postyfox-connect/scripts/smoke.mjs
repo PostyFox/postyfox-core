@@ -21,8 +21,6 @@ const FUR_AFFINITY = {
   cookieNames: ["a", "b"],
 };
 
-// ----- stubs -------------------------------------------------------------------------------------
-
 const SELECTORS = [
   "#dev-mode",
   "#status",
@@ -151,8 +149,6 @@ function harness({ signedIn, cookies, connectorId, devMode = false }) {
     },
   };
 }
-
-// ----- scenarios ---------------------------------------------------------------------------------
 
 const scenarios = {
   async "one click connects an existing connector"() {

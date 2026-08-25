@@ -38,10 +38,8 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
-// Liveness – always returns ok if the process is running
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
-// Readiness – confirms the worker can reach the database
 app.MapGet("/readyz", async (AppDbContext db) =>
     await db.Database.CanConnectAsync()
         ? Results.Ok(new { status = "ready" })
