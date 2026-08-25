@@ -1,0 +1,129 @@
+# Production overlay for the postyfox-core Helm chart.
+# Secret values are NOT set here — they are rendered at deploy time from GitHub Environment
+# secrets into a gitignored values-secrets.yaml and passed as an extra -f to `helm upgrade`
+# (see .github/workflows/release.yml). This file only carries non-sensitive configuration.
+
+config:
+  authOidcAudience: oauth2-proxy
+  authOidcEnabled: "true"
+  authOidcIssuer: https://auth.postyfox.com/realms/PostyFox
+  authOidcJwksUrl: http://keycloak.keycloak.svc.cluster.local:8080/realms/PostyFox/protocol/openid-connect/certs
+  hashiCorpVaultBasePath: postyfox
+  hashiCorpVaultMountPoint: secret
+  # hashiCorpVaultRoleId supplied via values-secrets.yaml (VAULT_ROLE_ID)
+  oauthCallbackBaseUrl: https://app.postyfox.com
+  objectStoreBucket: postyfox
+  objectStoreServiceUrl: http://rustfs.rustfs.svc.cluster.local:9000
+  secretsProvider: HashiCorpVault
+
+gateway:
+  frontend:
+    enabled: true
+    serviceName: postyfox-frontend
+    servicePort: 80
+  maintenanceMode: false
+
+image:
+  registry: ghcr.io
+  repository: postyfox/postyfox-core
+  # tag is set via --set image.tag at deploy time
+
+imagePullSecrets:
+  - name: ghcr-pull
+
+ingress:
+  enabled: true
+  className: contour
+  host: app.postyfox.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+  tls:
+    - hosts:
+        - app.postyfox.com
+      secretName: postyfox-tls
+
+oauth2Proxy:
+  clientId: oauth2-proxy
+  # clientSecret / cookieSecret supplied via values-secrets.yaml
+  emailDomains:
+    - '*'
+  jwksUrl: http://keycloak.keycloak.svc.cluster.local:8080/realms/PostyFox/protocol/openid-connect/certs
+  loginUrl: https://auth.postyfox.com/realms/PostyFox/protocol/openid-connect/auth
+  oidcIssuerUrl: https://auth.postyfox.com/realms/PostyFox
+  redeemUrl: http://keycloak.keycloak.svc.cluster.local:8080/realms/PostyFox/protocol/openid-connect/token
+  redirectUrl: https://app.postyfox.com/oauth2/callback
+
+otelCollector:
+  centralHost: data-prepper.opensearch.svc.cluster.local
+  deployCluster: postyfox
+  deployEnv: production
+  enabled: true
+
+# External, centrally-managed Postgres cluster — the chart-managed instance is disabled and the
+# connection string (with credentials) is supplied via values-secrets.yaml (EXTERNAL_POSTGRES_CONNECTION).
+postgres:
+  enabled: false
+
+rabbitmq:
+  enabled: true
+  # password supplied via values-secrets.yaml (RABBITMQ_PASSWORD)
+  resources:
+    limits:
+      cpu: "2"
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  storage:
+    size: 10Gi
+    storageClassName: longhorn
+
+redis:
+  enabled: true
+  # password supplied via values-secrets.yaml (REDIS_PASSWORD)
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+resources:
+  limits:
+    cpu: "1"
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+secrets:
+  create: true
+  # externalPostgresConnection / hashiCorpVaultSecretId / internalToken / objectStoreAccessKey /
+  # objectStoreSecretKey all supplied via values-secrets.yaml
+
+services:
+  connectorsNode:
+    replicas: 1
+  coreApi:
+    applyMigrations: "true"
+    replicas: 2
+    seedServiceDefinitions: "true"
+  postApi:
+    replicas: 2
+  worker:
+    replicas: 1
+
+vault:
+  enabled: true
+  resources:
+    limits:
+      cpu: "1"
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  storage:
+    dataSize: 2Gi
+    keysSize: 256Mi
+    storageClassName: longhorn

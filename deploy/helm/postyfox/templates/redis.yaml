@@ -1,0 +1,42 @@
+{{- if .Values.redis.enabled }}
+# Self-contained Redis instance — session store for oauth2-proxy only (opaque cookie, avoids
+# browser cookie-size limits). No persistence by design (matches docker-compose: --save ""
+# --appendonly no). Disable (redis.enabled: false) and point oauth2-proxy at your own instance
+# instead (the connection URL is only built from this chart's own Service when enabled).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "postyfox.fullname" . }}-redis
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: postyfox-redis }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: postyfox-redis }
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.redis.image }}
+          imagePullPolicy: IfNotPresent
+          args: ["--requirepass", "$(REDIS_PASSWORD)", "--save", "", "--appendonly", "no"]
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: RedisPassword } }
+          ports: [{ containerPort: 6379 }]
+          readinessProbe:
+            exec: { command: ["sh", "-c", "redis-cli -a \"$REDIS_PASSWORD\" ping"] }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources: {{- toYaml .Values.redis.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "postyfox.fullname" . }}-redis
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: postyfox-redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+{{- end }}
