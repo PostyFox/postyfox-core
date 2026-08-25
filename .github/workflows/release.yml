@@ -262,7 +262,7 @@ jobs:
       always() &&
       needs.compute-version.result == 'success' &&
       needs.deploy-dev.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted]
     environment: production
     env:
       NAMESPACE: postyfox
