@@ -29,10 +29,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   const app = Fastify({ logger: options.logger ?? false });
 
-  // Auth middleware: everything except /health requires a valid token.
   app.addHook("onRequest", async (request, reply) => {
     if (request.url === "/health") return;
-    // If no token configured, allow all (dev).
     if (internalToken === undefined || internalToken === "") return;
 
     const provided = request.headers["x-internal-token"];
@@ -95,7 +93,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     },
   );
 
-  // --- OAuth "connect" flow (platforms that expose `oauth`, e.g. Tumblr) -------------------------
   app.post<{
     Params: { platform: string };
     Body: { callbackUrl: string; configJson?: string; operationalSecretJson?: string | null };

@@ -17,7 +17,6 @@ public sealed class MediaResolver(IObjectStore objectStore, IMediaProcessor proc
     {
         if (refs.Count == 0) return [];
 
-        // Enforce the platform's attachment cap before doing any work.
         var capped = spec.MaxAttachments is { } max && refs.Count > max
             ? refs.Take(max).ToList()
             : refs;

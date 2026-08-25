@@ -15,15 +15,12 @@ public sealed class MediaProcessor(
     {
         var type = (source.ContentType ?? string.Empty).ToLowerInvariant();
 
-        // Still raster images. (Animated WebP is detected and re-routed inside the image processor.)
         if (type is "image/jpeg" or "image/jpg" or "image/png" or "image/webp")
             return imageProcessor.NormalizeAsync(source, spec, ct);
 
-        // Video and animated GIF are handled by ffmpeg.
         if (type == "image/gif" || type.StartsWith("video/", StringComparison.Ordinal))
             return videoProcessor.NormalizeAsync(source, spec, ct);
 
-        // Documents, audio, unknown — nothing to normalize.
         return Task.FromResult(source);
     }
 }

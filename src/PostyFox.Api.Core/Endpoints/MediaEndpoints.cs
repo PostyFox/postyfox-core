@@ -30,7 +30,6 @@ public static class MediaEndpoints
             await using var stream = file.OpenReadStream();
             await store.PutAsync(Container, key, stream, contentType, ct);
 
-            // The returned MediaRef is what the client attaches to a post's `media` array.
             return Results.Ok(new MediaRef(Container, key, contentType));
         })
         .WithSummary("Upload a media file")
