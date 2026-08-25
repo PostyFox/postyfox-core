@@ -349,8 +349,12 @@ services:
       OAUTH2_PROXY_REDIRECT_URL: "${PUBLIC_BASE_URL}/oauth2/callback"
       # Single root upstream → the internal nginx gateway (which does the path routing).
       OAUTH2_PROXY_UPSTREAMS: "http://gateway:80/"
-      # Anonymous, HMAC-signed inbound webhook — external senders can't do an OIDC login.
-      OAUTH2_PROXY_SKIP_AUTH_ROUTES: "POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$"
+      # Anonymous, HMAC-signed inbound webhook — external senders can't do an OIDC login. Also:
+      # public cookie-pairing metadata (read pre-session by the browser extension); the SPA's
+      # public /privacy route; and the static JS/CSS/font/icon assets it needs to boot pre-auth
+      # (see ../postyfox-frontend/src/app/app.routes.ts and deploy/oauth2-proxy/oauth2-proxy.cfg
+      # for the matching entries used in local dev).
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: 'POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$,GET=^/api/connectors/cookie-pairing/sites$,GET=^/privacy$,GET=\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$'
       # Forward the validated ID token to upstreams as `Authorization: Bearer` (APIs re-validate it).
       OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
@@ -365,9 +369,10 @@ services:
       # cookies (set EDGE_COOKIE_SECURE=false only if you expose the edge over plain HTTP).
       OAUTH2_PROXY_REVERSE_PROXY: "true"
       OAUTH2_PROXY_COOKIE_SECURE: "${EDGE_COOKIE_SECURE:-true}"
-      # Custom error.html — shown when the `gateway` upstream itself is unreachable/restarting (in
-      # addition to oauth2-proxy's other error cases). Only error.html is overridden; sign_in.html
-      # etc. still fall back to oauth2-proxy's embedded defaults. See ./oauth2-proxy/templates.
+      # Custom sign_in.html — oauth2-proxy's default page with a "Privacy policy" footer link
+      # added (reachable pre-auth, see the SKIP_AUTH_ROUTES entry above and
+      # ./oauth2-proxy/templates/sign_in.html). error.html is also overridden for the
+      # gateway-unreachable case; any other template still falls back to oauth2-proxy's defaults.
       OAUTH2_PROXY_CUSTOM_TEMPLATES_DIR: "/etc/oauth2-proxy/templates"
     volumes:
       - ./oauth2-proxy/templates:/etc/oauth2-proxy/templates:ro
