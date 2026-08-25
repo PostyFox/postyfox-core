@@ -254,7 +254,14 @@ jobs:
 
   deploy-prod:
     # Approval-gated via the `production` GitHub environment.
+    # NOTE: can't rely on the default success() here — it evaluates the whole transitive needs
+    # chain, and `build` (a dependency of deploy-dev) is legitimately skipped on a redeploy of
+    # already-published images. Mirror deploy-dev's explicit result check instead.
     needs: [compute-version, deploy-dev]
+    if: |
+      always() &&
+      needs.compute-version.result == 'success' &&
+      needs.deploy-dev.result == 'success'
     runs-on: ubuntu-latest
     environment: production
     env:
