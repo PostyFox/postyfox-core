@@ -1,0 +1,142 @@
+{{- if .Values.otelCollector.enabled }}
+# Edge otel-collector: receives OTLP from the apps + fluent-bit (gateway logs), scrapes infra
+# Prometheus endpoints, stamps deployment.environment/cluster, and forwards to a central Data
+# Prepper/OpenSearch backend (otelCollector.centralHost). Disable and set config.otelEndpoint to
+# point the apps at your own collector instead.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "postyfox.fullname" . }}-otel-config
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc: { endpoint: 0.0.0.0:4317 }
+          http: { endpoint: 0.0.0.0:4318 }
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: rabbitmq
+              scrape_interval: 30s
+              static_configs: [{ targets: ["{{ include "postyfox.fullname" . }}-rabbitmq:15692"] }]
+            - job_name: oauth2-proxy
+              scrape_interval: 30s
+              static_configs: [{ targets: ["{{ include "postyfox.fullname" . }}-oauth2-proxy:44180"] }]
+      otlp/nginx:
+        protocols:
+          http: { endpoint: 0.0.0.0:4319 }
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      resource/env:
+        attributes:
+          - { key: deployment.environment, value: "${env:DEPLOY_ENV:-{{ .Values.otelCollector.deployEnv }}}", action: upsert }
+          - { key: deployment.cluster, value: "${env:DEPLOY_CLUSTER:-{{ .Values.otelCollector.deployCluster }}}", action: upsert }
+      resource/nginx:
+        attributes:
+          - { key: service.name, value: "gateway", action: upsert }
+      filter/healthchecks:
+        error_mode: ignore
+        traces:
+          span:
+            - 'attributes["http.route"] == "/healthz"'
+            - 'attributes["http.route"] == "/readyz"'
+            - 'attributes["http.route"] == "/health"'
+      filter/health_metrics:
+        error_mode: ignore
+        metrics:
+          datapoint:
+            - 'attributes["http.route"] == "/healthz"'
+            - 'attributes["http.route"] == "/readyz"'
+            - 'attributes["http.route"] == "/health"'
+      filter/health_logs:
+        error_mode: ignore
+        logs:
+          log_record:
+            - 'attributes["http.route"] == "/healthz"'
+            - 'attributes["http.route"] == "/readyz"'
+            - 'attributes["http.route"] == "/health"'
+            - 'attributes["url.path"] == "/healthz"'
+            - 'attributes["url.path"] == "/readyz"'
+            - 'attributes["url.path"] == "/health"'
+      batch:
+        timeout: 5s
+        send_batch_size: 1024
+        send_batch_max_size: 2048
+    exporters:
+      otlp/central-traces:
+        endpoint: "${env:OTEL_CENTRAL_HOST}:21890"
+        compression: gzip
+        tls: { insecure: true }
+      otlp/central-metrics:
+        endpoint: "${env:OTEL_CENTRAL_HOST}:21891"
+        compression: gzip
+        tls: { insecure: true }
+      otlp/central-logs:
+        endpoint: "${env:OTEL_CENTRAL_HOST}:21892"
+        compression: gzip
+        tls: { insecure: true }
+      # Dedicated nginx-logs hop -> a separate Data Prepper OTLP-logs source (:21893) that writes
+      # to ss4o_logs-nginx-<env>, keeping nginx logs out of otel-logs / off direct OpenSearch access
+      # (mirrors deploy/otel/config.central.yaml).
+      otlp/central-nginx:
+        endpoint: "${env:OTEL_CENTRAL_HOST}:21893"
+        compression: gzip
+        tls: { insecure: true }
+    service:
+      pipelines:
+        traces:  { receivers: [otlp], processors: [memory_limiter, resource/env, filter/healthchecks, batch], exporters: [otlp/central-traces] }
+        metrics: { receivers: [otlp, prometheus], processors: [memory_limiter, resource/env, filter/health_metrics, batch], exporters: [otlp/central-metrics] }
+        logs:    { receivers: [otlp], processors: [memory_limiter, resource/env, filter/health_logs, batch], exporters: [otlp/central-logs] }
+        logs/nginx: { receivers: [otlp/nginx], processors: [memory_limiter, resource/env, resource/nginx, batch], exporters: [otlp/central-nginx] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "postyfox.fullname" . }}-otel-collector
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: postyfox-otel-collector }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: postyfox-otel-collector }
+    spec:
+      containers:
+        - name: otel-collector
+          image: {{ .Values.otelCollector.image }}
+          imagePullPolicy: IfNotPresent
+          args: ["--config=/etc/otelcol/config.yaml"]
+          env:
+            - { name: DEPLOY_ENV, value: {{ .Values.otelCollector.deployEnv | quote }} }
+            - { name: DEPLOY_CLUSTER, value: {{ .Values.otelCollector.deployCluster | quote }} }
+            - { name: OTEL_CENTRAL_HOST, value: {{ .Values.otelCollector.centralHost | quote }} }
+          ports:
+            - { containerPort: 4317, name: otlp-grpc }
+            - { containerPort: 4318, name: otlp-http }
+            - { containerPort: 4319, name: otlp-nginx }
+          volumeMounts:
+            - { mountPath: /etc/otelcol, name: config }
+          resources: {{- toYaml .Values.otelCollector.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "postyfox.fullname" . }}-otel-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "postyfox.fullname" . }}-otel-collector
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: postyfox-otel-collector }
+  ports:
+    - { name: otlp-grpc, port: 4317, targetPort: 4317 }
+    - { name: otlp-http, port: 4318, targetPort: 4318 }
+    - { name: otlp-nginx, port: 4319, targetPort: 4319 }
+{{- end }}

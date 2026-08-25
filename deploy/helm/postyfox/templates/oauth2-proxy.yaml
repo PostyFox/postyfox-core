@@ -1,0 +1,168 @@
+# The ONLY component intended to be reached via the Ingress — fronts the internal gateway with
+# OIDC login (any OIDC provider - Keycloak, Auth0, Entra ID, etc). Session store is this chart's
+# own Redis instance (or your external one, if redis.enabled is false and you point
+# oauth2Proxy.redisConnectionUrl elsewhere) — opaque cookie sessions avoid browser cookie-size
+# limits with the JWTs this stack passes through.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "postyfox.fullname" . }}-oauth2-proxy-conf
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+data:
+  oauth2-proxy.cfg: |
+    http_address = "0.0.0.0:4180"
+    metrics_address = "0.0.0.0:44180"
+    provider = "oidc"
+    skip_oidc_discovery = true
+    oidc_issuer_url = {{ .Values.oauth2Proxy.oidcIssuerUrl | quote }}
+    login_url = {{ .Values.oauth2Proxy.loginUrl | quote }}
+    redeem_url = {{ .Values.oauth2Proxy.redeemUrl | quote }}
+    oidc_jwks_url = {{ .Values.oauth2Proxy.jwksUrl | quote }}
+    client_id = {{ .Values.oauth2Proxy.clientId | quote }}
+    session_store_type = "redis"
+    email_domains = [{{ range $i, $d := .Values.oauth2Proxy.emailDomains }}{{ if $i }}, {{ end }}{{ $d | quote }}{{ end }}]
+    redirect_url = {{ .Values.oauth2Proxy.redirectUrl | quote }}
+
+    # Fronts the internal gateway (path-routes to core-api/post-api/frontend); the gateway itself
+    # is never exposed publicly — this proxy is the only public route.
+    upstreams = ["http://{{ include "postyfox.fullname" . }}-gateway:80/"]
+
+    skip_auth_routes = [
+        {{- range .Values.oauth2Proxy.skipAuthRoutes }}
+        {{ . | quote }},
+        {{- end }}
+    ]
+
+    # API callers get 401 instead of a redirect into the OIDC provider.
+    api_routes = [{{ range $i, $r := .Values.oauth2Proxy.apiRoutes }}{{ if $i }}, {{ end }}{{ $r | quote }}{{ end }}]
+
+    # Forward the validated OIDC ID token to the upstream as `Authorization: Bearer` so the APIs can
+    # validate it themselves (defence-in-depth) rather than trusting an injected identity header.
+    pass_authorization_header = true
+    pass_access_token = true
+    skip_provider_button = true
+
+    custom_templates_dir = "/etc/oauth2-proxy/templates"
+  error.html: |
+    {{ "{{" }}/*
+      Custom error.html for oauth2-proxy. Overrides ONLY this template (sign_in.html etc. still use
+      oauth2-proxy's embedded defaults — see pkg/app/pagewriter/templates.go: files that don't exist in
+      custom_templates_dir fall back automatically).
+
+      This renders for ALL oauth2-proxy error paths (auth failures, CSRF, etc.), not just an unreachable
+      upstream, so it keeps the standard Title/Message/RequestID fields for real diagnostics but reuses
+      the same maintenance-page look so a downed `gateway` (the internal router this proxy forwards to —
+      see deploy/gateway) reads as consistent "service unavailable" branding rather than a bare Go error.
+    */{{ "}}" }}
+    {{ "{{" }}define "error.html"{{ "}}" }}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>{{ "{{" }}.StatusCode{{ "}}" }} {{ "{{" }}.Title{{ "}}" }}</title>
+      <style>
+        body {
+          margin: 0;
+          height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #f5f5f5;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          color: #222;
+        }
+        .box {
+          max-width: 480px;
+          text-align: center;
+          padding: 2.5rem;
+          background: #fff;
+          border-radius: 8px;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 { margin: 0 0 0.5rem; font-size: 1.5rem; }
+        p { margin: 0.25rem 0; color: #555; }
+        .more-info { margin-top: 1.5rem; font-size: 0.85rem; color: #888; text-align: left; }
+      </style>
+    </head>
+    <body>
+      <div class="box">
+        {{ "{{" }} if or (eq .StatusCode 502) (eq .StatusCode 503) (eq .StatusCode 504) {{ "}}" }}
+        <h1>We'll be right back</h1>
+        <p>PostyFox is temporarily unavailable — this may be scheduled maintenance or a brief restart.</p>
+        <p>Please check back in a few minutes.</p>
+        {{ "{{" }} else {{ "}}" }}
+        <h1>{{ "{{" }}.StatusCode{{ "}}" }} {{ "{{" }}.Title{{ "}}" }}</h1>
+        {{ "{{" }} end {{ "}}" }}
+
+        {{ "{{" }} if or .Message .RequestID {{ "}}" }}
+        <div class="more-info">
+          {{ "{{" }} if .Message {{ "}}" }}<p>{{ "{{" }}.Message{{ "}}" }}</p>{{ "{{" }} end {{ "}}" }}
+          {{ "{{" }} if .RequestID {{ "}}" }}<p>Request ID: {{ "{{" }}.RequestID{{ "}}" }}</p>{{ "{{" }} end {{ "}}" }}
+        </div>
+        {{ "{{" }} end {{ "}}" }}
+
+        {{ "{{" }} if .Redirect {{ "}}" }}
+        <form method="GET" action="{{ "{{" }}.ProxyPrefix{{ "}}" }}/sign_in">
+          <input type="hidden" name="rd" value="{{ "{{" }}.Redirect{{ "}}" }}">
+          <button type="submit">Sign in</button>
+        </form>
+        {{ "{{" }} end {{ "}}" }}
+      </div>
+    </body>
+    </html>
+    {{ "{{" }}end{{ "}}" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "postyfox.fullname" . }}-oauth2-proxy
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: postyfox-oauth2-proxy }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: postyfox-oauth2-proxy }
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: {{ .Values.oauth2Proxy.image }}
+          imagePullPolicy: IfNotPresent
+          args: ["--config=/etc/oauth2-proxy/oauth2-proxy.cfg"]
+          env:
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: OAuth2ProxyClientSecret } }
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: OAuth2ProxyCookieSecret } }
+            - name: OAUTH2_PROXY_REDIS_PASSWORD_ENV
+              valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: OAuth2ProxyRedisPassword } }
+            - name: OAUTH2_PROXY_REDIS_CONNECTION_URL
+              value: "redis://:$(OAUTH2_PROXY_REDIS_PASSWORD_ENV)@{{ include "postyfox.fullname" . }}-redis:6379/0"
+          ports:
+            - { containerPort: 4180, name: http }
+            - { containerPort: 44180, name: metrics }
+          readinessProbe:
+            httpGet: { path: /ping, port: 4180 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - { mountPath: /etc/oauth2-proxy/oauth2-proxy.cfg, name: config, subPath: oauth2-proxy.cfg }
+            - { mountPath: /etc/oauth2-proxy/templates/error.html, name: config, subPath: error.html }
+          resources: {{- toYaml .Values.oauth2Proxy.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "postyfox.fullname" . }}-oauth2-proxy-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "postyfox.fullname" . }}-oauth2-proxy
+  labels: {{- include "postyfox.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: postyfox-oauth2-proxy }
+  ports:
+    - { name: http, port: 4180, targetPort: 4180 }
+    - { name: metrics, port: 44180, targetPort: 44180 }
