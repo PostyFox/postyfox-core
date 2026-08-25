@@ -1,7 +1,8 @@
 {{/*
-  Custom error.html for oauth2-proxy. Overrides ONLY this template (sign_in.html etc. still use
-  oauth2-proxy's embedded defaults — see pkg/app/pagewriter/templates.go: files that don't exist in
-  custom_templates_dir fall back automatically).
+  Custom error.html for oauth2-proxy. sign_in.html is also overridden (see ./sign_in.html); any
+  other template still falls back to oauth2-proxy's embedded defaults — see
+  pkg/app/pagewriter/templates.go: files that don't exist in custom_templates_dir fall back
+  automatically.
 
   This renders for ALL oauth2-proxy error paths (auth failures, CSRF, etc.), not just an unreachable
   upstream, so it keeps the standard Title/Message/RequestID fields for real diagnostics but reuses
