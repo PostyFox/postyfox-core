@@ -234,6 +234,13 @@ oauth2Proxy:
     - "POST=^/api/connectors/cookie-pairing/complete$"
     - "OPTIONS=^/api/connectors/cookie-pairing/complete$"
     - "GET=^/api/connectors/cookie-pairing/sites$"
+    # Privacy policy is a public SPA route (see postyfox-frontend's app.routes.ts) — readable
+    # without signing in, and linked from the oauth2-proxy sign_in page (see ./templates).
+    - "GET=^/privacy$"
+    # The SPA shell needed to render /privacy (and any other pre-auth route) — Angular's hashed
+    # JS/CSS bundles, fonts and icons, plus favicon.ico. These carry no user data, so skipping auth
+    # for them is safe; it just lets the app boot before a session exists.
+    - "GET=\\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$"
   apiRoutes:
     - "^/api/"
   resources:
