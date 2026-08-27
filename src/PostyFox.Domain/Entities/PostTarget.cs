@@ -41,5 +41,14 @@ public class PostTarget
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    /// <summary>
+    /// Set the moment <see cref="PostSchedulerService"/> claims this target and publishes its
+    /// <c>GenerateTargetCommand</c> (once <see cref="Post.PostAt"/> is due). Null while the target is
+    /// still waiting on its schedule (or was never scheduled — immediate posts publish straight away
+    /// at intake without going through the scheduler at all). Acts as a claim marker so concurrent
+    /// scheduler passes/replicas can't both publish the same due target.
+    /// </summary>
+    public DateTimeOffset? GenerationEnqueuedAt { get; set; }
+
     public Post? Post { get; set; }
 }

@@ -7,7 +7,15 @@ using RabbitMQ.Client;
 
 namespace PostyFox.Infrastructure.Messaging;
 
-/// <summary>Publishes messages to the delayed exchange, ensuring the target queue exists.</summary>
+/// <summary>
+/// Publishes messages to the direct exchange, ensuring the target queue exists. A non-null
+/// <paramref name="delay"/> is used only for short retry backoff (see
+/// <see cref="PostyFox.Application.Posting.DeliverTargetHandler"/>) — it routes the message to the
+/// queue's "retry" holding queue with a per-message TTL instead of the main queue, so no delayed-
+/// message-exchange plugin is required. Wider-range scheduling delay (user-scheduled posts) never
+/// goes through this bus at all; it's driven by <see cref="PostyFox.Application.Posting.PostSchedulerService"/>
+/// polling the database instead, to avoid head-of-line blocking a single delay queue would suffer.
+/// </summary>
 public sealed class RabbitMqMessageBus(RabbitMqConnection connection) : IMessageBus, IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -43,14 +51,24 @@ public sealed class RabbitMqMessageBus(RabbitMqConnection connection) : IMessage
                 await Topology.DeclareQueueAsync(channel, exchange, queue, ct);
 
             var props = new BasicProperties { Persistent = true, Headers = new Dictionary<string, object?>() };
-            var delayMs = delay is { TotalMilliseconds: > 0 } d ? (int)d.TotalMilliseconds : 0;
-            if (delayMs > 0)
-                props.Headers["x-delay"] = delayMs;
             // Carry the current trace context (traceparent/tracestate/baggage) with the message.
             MessagingTelemetry.Inject(activity, props.Headers);
 
-            await channel.BasicPublishAsync(exchange, routingKey: queue, mandatory: false,
-                basicProperties: props, body: body, cancellationToken: ct);
+            var delayMs = delay is { TotalMilliseconds: > 0 } d ? (int)d.TotalMilliseconds : 0;
+            if (delayMs > 0)
+            {
+                // Publish directly to the retry holding queue (default exchange, routing key = queue
+                // name) with a per-message TTL; it dead-letters back to the main exchange/queue once
+                // that elapses. Bypasses the main exchange entirely for this hop.
+                props.Expiration = delayMs.ToString();
+                await channel.BasicPublishAsync(exchange: "", routingKey: Topology.RetryQueue(queue),
+                    mandatory: false, basicProperties: props, body: body, cancellationToken: ct);
+            }
+            else
+            {
+                await channel.BasicPublishAsync(exchange, routingKey: queue, mandatory: false,
+                    basicProperties: props, body: body, cancellationToken: ct);
+            }
         }
         finally
         {

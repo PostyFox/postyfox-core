@@ -11,6 +11,7 @@ using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Messaging;
 using PostyFox.Application.Options;
+using PostyFox.Application.Posting;
 using PostyFox.Infrastructure.Connectors;
 using PostyFox.Infrastructure.Media;
 using PostyFox.Infrastructure.Messaging;
@@ -185,6 +186,8 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<RabbitMqSubscriber<GenerateTargetCommand>>();
         services.AddHostedService<RabbitMqSubscriber<DeliverTargetCommand>>();
         services.AddHostedService<PostRetentionSweeper>();
+        services.AddScoped<PostSchedulerService>();
+        services.AddHostedService<PostSchedulerSweeper>();
         return services;
     }
 }

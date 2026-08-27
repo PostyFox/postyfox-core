@@ -1,9 +1,7 @@
-FROM rabbitmq:3.13-management
-# Enables scheduled + retry-backoff delivery (x-delayed-message exchange).
-ARG PLUGIN_VERSION=3.13.0
-ADD https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v${PLUGIN_VERSION}/rabbitmq_delayed_message_exchange-${PLUGIN_VERSION}.ez /opt/rabbitmq/plugins/
-# `ADD` from a URL lands the file as root-only (0600); RabbitMQ runs as the `rabbitmq` user and
-# would otherwise fail to read it (invalid_ez, eacces). Make it world-readable before enabling.
+FROM rabbitmq:4.3.5-management
 # rabbitmq_prometheus (bundled) exposes metrics on :15692 for the otel-collector to scrape.
-RUN chmod 0644 /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-${PLUGIN_VERSION}.ez \
- && rabbitmq-plugins enable --offline rabbitmq_delayed_message_exchange rabbitmq_prometheus
+# Delayed scheduling/retry no longer uses rabbitmq_delayed_message_exchange (unmaintained, Mnesia-
+# based, incompatible with RabbitMQ 4.3+): post scheduling is now driven by PostSchedulerService
+# polling the database, and retry backoff uses a plain per-message-TTL + dead-letter-exchange queue —
+# see PostyFox.Infrastructure/Messaging/Topology.cs.
+RUN rabbitmq-plugins enable --offline rabbitmq_prometheus

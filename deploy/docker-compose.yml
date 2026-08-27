@@ -78,10 +78,12 @@ services:
       retries: 20
 
   redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    # Valkey is the drop-in, wire-protocol-compatible fork of Redis (Redis moved to a non-OSS
+    # license after 7.x) — same RESP protocol, same redis-cli/redis:// clients work unchanged.
+    image: valkey/valkey:9.1.1-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -231,7 +233,7 @@ services:
       post-api: { condition: service_healthy }
 
   oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:latest
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
     command: ["--config=/etc/oauth2-proxy.cfg"]
     volumes:
       - "./oauth2-proxy/oauth2-proxy.cfg:/etc/oauth2-proxy.cfg:ro"

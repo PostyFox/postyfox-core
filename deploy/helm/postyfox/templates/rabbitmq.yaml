@@ -1,7 +1,6 @@
 {{- if .Values.rabbitmq.enabled }}
-# Self-contained RabbitMQ instance, with the delayed-message-exchange + prometheus plugins
-# installed at container start (init container downloads the plugin, postStart hook enables both
-# and cycles the app to hot-load the exchange type) so the stock upstream image can be used as-is.
+# Self-contained RabbitMQ instance, with the prometheus plugin enabled at container start via
+# postStart so the stock upstream image can be used as-is.
 # Disable (rabbitmq.enabled: false) and point secrets.externalRabbitMq* at your own broker instead.
 apiVersion: apps/v1
 kind: StatefulSet
@@ -17,18 +16,6 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: postyfox-rabbitmq }
     spec:
-      initContainers:
-        - name: fetch-delayed-exchange-plugin
-          image: curlimages/curl:8.10.1
-          command: ["sh", "-c"]
-          args:
-            - |
-              set -eu
-              curl -fsSL -o /extra-plugins/rabbitmq_delayed_message_exchange-{{ .Values.rabbitmq.delayedMessageExchangeVersion }}.ez \
-                "https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v{{ .Values.rabbitmq.delayedMessageExchangeVersion }}/rabbitmq_delayed_message_exchange-{{ .Values.rabbitmq.delayedMessageExchangeVersion }}.ez"
-              chmod 0644 /extra-plugins/*.ez
-          volumeMounts:
-            - { mountPath: /extra-plugins, name: extra-plugins }
       containers:
         - name: rabbitmq
           image: {{ .Values.rabbitmq.image }}
@@ -37,7 +24,6 @@ spec:
             - { name: RABBITMQ_DEFAULT_USER, value: {{ .Values.rabbitmq.username | quote }} }
             - name: RABBITMQ_DEFAULT_PASS
               valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: RabbitMq__Password } }
-            - { name: RABBITMQ_PLUGINS_DIR, value: "/opt/rabbitmq/plugins:/extra-plugins" }
           ports:
             - { containerPort: 5672, name: amqp }
             - { containerPort: 15672, name: management }
@@ -50,13 +36,7 @@ spec:
                   - -c
                   - |
                     until rabbitmqctl status >/dev/null 2>&1; do sleep 2; done
-                    rabbitmq-plugins enable --offline rabbitmq_delayed_message_exchange rabbitmq_prometheus || true
-                    # `--offline` only rewrites the enabled_plugins file; it does not hot-load an
-                    # exchange-type plugin into the already-running node. A stop_app/start_app
-                    # cycle (cheap: reloads the Erlang app, not the whole container) is required
-                    # so rabbitmq_delayed_message_exchange actually registers x-delayed-message.
-                    rabbitmqctl stop_app || true
-                    rabbitmqctl start_app || true
+                    rabbitmq-plugins enable --offline rabbitmq_prometheus || true
           readinessProbe:
             exec: { command: ["rabbitmq-diagnostics", "-q", "check_running"] }
             initialDelaySeconds: 10
@@ -67,10 +47,7 @@ spec:
             periodSeconds: 30
           volumeMounts:
             - { mountPath: /var/lib/rabbitmq, name: rabbitmqdata }
-            - { mountPath: /extra-plugins, name: extra-plugins }
           resources: {{- toYaml .Values.rabbitmq.resources | nindent 12 }}
-      volumes:
-        - { name: extra-plugins, emptyDir: {} }
   volumeClaimTemplates:
     - metadata:
         name: rabbitmqdata

@@ -77,7 +77,7 @@ public class PostIntakeServiceTests
     }
 
     [Fact]
-    public async Task Future_schedule_publishes_with_delay()
+    public async Task Future_schedule_does_not_publish_immediately()
     {
         using var db = TestDbContext.Create();
         var connectorId = await SeedConnectorAsync(db, "u1");
@@ -88,9 +88,9 @@ public class PostIntakeServiceTests
         await svc.CreateAsync("u1", new CreatePostRequest(
             [connectorId], "t", "b", null, null, null, null, null, now.AddHours(2)));
 
-        var published = Assert.Single(bus.Messages);
-        Assert.NotNull(published.Delay);
-        Assert.Equal(TimeSpan.FromHours(2), published.Delay!.Value);
+        // Scheduled posts are left for PostSchedulerService to enqueue once PostAt is due, rather
+        // than publishing a delayed message here (RabbitMQ no longer carries scheduling delay).
+        Assert.Empty(bus.Messages);
     }
 
     [Fact]

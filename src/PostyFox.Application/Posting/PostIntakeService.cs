@@ -69,8 +69,12 @@ public sealed class PostIntakeService(
         await PersistPayloadAsync(post, ct);
 
         var delay = request.PostAt is { } at && at > now ? at - now : (TimeSpan?)null;
-        foreach (var target in post.Targets)
-            await bus.PublishAsync(new GenerateTargetCommand { PostId = post.Id, TargetId = target.Id }, delay, ct);
+        // Scheduled posts are left for PostSchedulerService to enqueue when PostAt is actually due
+        // (see its doc comment for why: RabbitMQ's delay mechanism can't safely hold an arbitrary,
+        // out-of-order delay). Immediate posts publish straight away, same as before.
+        if (delay is null)
+            foreach (var target in post.Targets)
+                await bus.PublishAsync(new GenerateTargetCommand { PostId = post.Id, TargetId = target.Id }, ct: ct);
 
         return new CreatePostResponse(post.Id, post.RootStatus);
     }
@@ -157,8 +161,11 @@ public sealed class PostIntakeService(
         await db.SaveChangesAsync(ct);
 
         var delay = post.PostAt is { } at && at > now ? at - now : (TimeSpan?)null;
-        foreach (var target in targets)
-            await bus.PublishAsync(new GenerateTargetCommand { PostId = post.Id, TargetId = target.Id }, delay, ct);
+        // See CreateAsync: scheduled posts are picked up by PostSchedulerService when due instead of
+        // publishing a delayed message here.
+        if (delay is null)
+            foreach (var target in targets)
+                await bus.PublishAsync(new GenerateTargetCommand { PostId = post.Id, TargetId = target.Id }, ct: ct);
 
         return new PublishDraftResult(DraftActionOutcome.Success, new CreatePostResponse(post.Id, post.RootStatus));
     }

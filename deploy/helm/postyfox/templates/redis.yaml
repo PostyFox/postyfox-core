@@ -1,8 +1,10 @@
 {{- if .Values.redis.enabled }}
-# Self-contained Redis instance — session store for oauth2-proxy only (opaque cookie, avoids
-# browser cookie-size limits). No persistence by design (matches docker-compose: --save ""
-# --appendonly no). Disable (redis.enabled: false) and point oauth2-proxy at your own instance
-# instead (the connection URL is only built from this chart's own Service when enabled).
+# Self-contained Redis-protocol instance — session store for oauth2-proxy only (opaque cookie,
+# avoids browser cookie-size limits). Runs Valkey, the drop-in wire-protocol-compatible fork of
+# Redis (Redis moved to a non-OSS license after 7.x) — same RESP protocol, clients unaffected.
+# No persistence by design (matches docker-compose: --save "" --appendonly no). Disable
+# (redis.enabled: false) and point oauth2-proxy at your own instance instead (the connection URL
+# is only built from this chart's own Service when enabled).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +28,7 @@ spec:
               valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: RedisPassword } }
           ports: [{ containerPort: 6379 }]
           readinessProbe:
-            exec: { command: ["sh", "-c", "redis-cli -a \"$REDIS_PASSWORD\" ping"] }
+            exec: { command: ["sh", "-c", "valkey-cli -a \"$REDIS_PASSWORD\" ping"] }
             initialDelaySeconds: 5
             periodSeconds: 10
           resources: {{- toYaml .Values.redis.resources | nindent 12 }}

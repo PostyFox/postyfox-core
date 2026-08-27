@@ -118,15 +118,15 @@ postgres:
 
 # ---------------------------------------------------------------------------------------------
 # RabbitMQ - toggleable. Disable and point `secrets.externalRabbitMqHost/-User/-Password` at your
-# own broker instead. When enabled, the delayed-message-exchange + prometheus plugins (baked into
-# the project's own image via deploy/rabbitmq/Dockerfile for docker-compose) are installed at
-# container start via an init container + postStart hook, so this chart can use the stock upstream
-# image rather than requiring a custom one to be published.
+# own broker instead. When enabled, the prometheus plugin is installed at container start via a
+# postStart hook, so this chart can use the stock upstream image rather than requiring a custom
+# one to be published. Scheduling/retry delay no longer depends on any plugin (see
+# PostyFox.Infrastructure/Messaging/Topology.cs + PostSchedulerService), so the image can track
+# upstream RabbitMQ releases freely.
 # ---------------------------------------------------------------------------------------------
 rabbitmq:
   enabled: true
-  image: "rabbitmq:3.13-management"
-  delayedMessageExchangeVersion: "3.13.0"
+  image: "rabbitmq:4.3.5-management"
   username: "postyfox"
   password: "change-me"
   storage:
@@ -138,12 +138,14 @@ rabbitmq:
 
 # ---------------------------------------------------------------------------------------------
 # Redis - session store for oauth2-proxy only (opaque cookie, avoids browser cookie-size limits).
+# Runs Valkey, the drop-in wire-protocol-compatible fork of Redis (Redis moved to a non-OSS
+# license after 7.x) — same RESP protocol, existing redis:// clients/tools work unchanged.
 # No persistence by design (matches docker-compose: --save "" --appendonly no). Toggleable;
 # disable and point `oauth2Proxy.redisConnectionUrl` at your own instance instead.
 # ---------------------------------------------------------------------------------------------
 redis:
   enabled: true
-  image: "redis:7-alpine"
+  image: "valkey/valkey:9.1.1-alpine"
   password: "change-me"
   resources:
     requests: { cpu: "50m", memory: "64Mi" }
@@ -157,7 +159,7 @@ redis:
 # ---------------------------------------------------------------------------------------------
 vault:
   enabled: true
-  image: "hashicorp/vault:1.18"
+  image: "hashicorp/vault:2.0.4"
   keyShares: 5
   keyThreshold: 3
   appRoleName: "postyfox"
@@ -216,7 +218,7 @@ gateway:
 # Keycloak specifically beyond the default URL shapes in the examples below).
 # ---------------------------------------------------------------------------------------------
 oauth2Proxy:
-  image: "quay.io/oauth2-proxy/oauth2-proxy:v7.6.0"
+  image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.4"
   # OIDC provider endpoints. Fill these in for your own provider; skipOidcDiscovery lets front/back
   # -channel URLs differ (e.g. a public login URL vs an in-cluster token/JWKS endpoint) while the
   # token issuer stays constant - see comments in templates/oauth2-proxy-configmap.yaml.
