@@ -351,10 +351,13 @@ services:
       OAUTH2_PROXY_UPSTREAMS: "http://gateway:80/"
       # Anonymous, HMAC-signed inbound webhook — external senders can't do an OIDC login. Also:
       # public cookie-pairing metadata (read pre-session by the browser extension); the SPA's
-      # public /privacy route; and the static JS/CSS/font/icon assets it needs to boot pre-auth
+      # public /privacy route; the static JS/CSS/font/icon assets it needs to boot pre-auth; and
+      # /deployment-config.json, fetched by DeploymentConfigService on EVERY app bootstrap
       # (see ../postyfox-frontend/src/app/app.routes.ts and deploy/oauth2-proxy/oauth2-proxy.cfg
-      # for the matching entries used in local dev).
-      OAUTH2_PROXY_SKIP_AUTH_ROUTES: 'POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$,GET=^/api/connectors/cookie-pairing/sites$,GET=^/privacy$,GET=\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$'
+      # for the matching entries used in local dev). Without the last one, an unauthenticated
+      # visitor to any public route (e.g. /privacy) gets a 401 from this call, which the SPA's
+      # global authInterceptor treats as "session expired" and bounces to sign-in.
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: 'POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$,GET=^/api/connectors/cookie-pairing/sites$,GET=^/privacy$,GET=\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$,GET=^/deployment-config\.json$'
       # Forward the validated ID token to upstreams as `Authorization: Bearer` (APIs re-validate it).
       OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
