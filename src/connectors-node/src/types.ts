@@ -20,6 +20,13 @@ export interface PostMedia {
   contentType: string;
   /** Alternative text describing the media, or null when not provided. */
   alt: string | null;
+  /**
+   * Author-chosen "primary" item among several attachments. Platforms limited to a single image
+   * (FurAffinity) use this one instead of rejecting the post; platforms that accept multiple images
+   * ignore it and attach everything. Undefined/false for every item means "no explicit choice" — a
+   * single-image connector then falls back to the first item.
+   */
+  isDefault?: boolean;
 }
 
 export interface Post {

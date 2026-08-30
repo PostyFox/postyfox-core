@@ -52,6 +52,20 @@ public class HttpConnectorTests
     }
 
     [Fact]
+    public async Task Deliver_sends_the_authors_chosen_default_image_flag()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":true}");
+        var post = Post([
+            new MediaRef("media", "u1/x/pic.png", "image/png", "a cat"),
+            new MediaRef("media", "u1/y/pic2.png", "image/png", "a dog", IsDefault: true),
+        ]);
+        await New(handler).DeliverAsync(Ctx(), post);
+
+        Assert.Contains("\"isDefault\":false", handler.LastBody);
+        Assert.Contains("\"isDefault\":true", handler.LastBody);
+    }
+
+    [Fact]
     public async Task Deliver_sends_content_rating_as_a_stable_string()
     {
         var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":true}");

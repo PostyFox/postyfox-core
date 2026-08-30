@@ -181,6 +181,104 @@ test("furaffinity rejects a missing rating before making requests", async () => 
   assert.equal(session.requests.length, 0);
 });
 
+test("furaffinity requires at least one image", async () => {
+  const session = new FakeSession([]);
+  const result = await connectorWith(session).deliver(context, { ...post, media: [] });
+
+  assert.equal(result.success, false);
+  assert.match(result.error ?? "", /require an image/);
+  assert.equal(session.requests.length, 0);
+});
+
+test("furaffinity submits the author's chosen default when several images are attached", async () => {
+  const session = new FakeSession([
+    response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),
+    response(
+      '<form id="upload_form"><input name="key" value="upload-key"></form>',
+      "https://www.furaffinity.net/submit/",
+    ),
+    response(
+      '<form id="myform"><input name="key" value="finalize-key"></form>',
+      "https://www.furaffinity.net/submit/upload",
+    ),
+    response(
+      "<html>done</html>",
+      "https://www.furaffinity.net/submit/finalize",
+      302,
+      { location: "/view/12345/?upload-successful" },
+    ),
+  ]);
+  const fetched: { container: string; key: string }[] = [];
+  const connector = connectorWith(session, {
+    async fetch(container, key) {
+      fetched.push({ container, key });
+      return imageBytes();
+    },
+  });
+
+  const multiImagePost: Post = {
+    ...post,
+    media: [
+      { container: "media", key: "user/first.png", contentType: "image/png", alt: null },
+      {
+        container: "media",
+        key: "user/second.png",
+        contentType: "image/png",
+        alt: "chosen default",
+        isDefault: true,
+      },
+      { container: "media", key: "user/third.png", contentType: "image/png", alt: null },
+    ],
+  };
+
+  const result = await connector.deliver(context, multiImagePost);
+
+  assert.equal(result.success, true);
+  // The rest of the post's attachments (destined for platforms that support multiple images) are
+  // silently dropped rather than blocking the FurAffinity submission.
+  assert.deepEqual(fetched, [{ container: "media", key: "user/second.png" }]);
+});
+
+test("furaffinity falls back to the first image when several are attached with no default chosen", async () => {
+  const session = new FakeSession([
+    response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),
+    response(
+      '<form id="upload_form"><input name="key" value="upload-key"></form>',
+      "https://www.furaffinity.net/submit/",
+    ),
+    response(
+      '<form id="myform"><input name="key" value="finalize-key"></form>',
+      "https://www.furaffinity.net/submit/upload",
+    ),
+    response(
+      "<html>done</html>",
+      "https://www.furaffinity.net/submit/finalize",
+      302,
+      { location: "/view/12345/?upload-successful" },
+    ),
+  ]);
+  const fetched: { container: string; key: string }[] = [];
+  const connector = connectorWith(session, {
+    async fetch(container, key) {
+      fetched.push({ container, key });
+      return imageBytes();
+    },
+  });
+
+  const multiImagePost: Post = {
+    ...post,
+    media: [
+      { container: "media", key: "user/first.png", contentType: "image/png", alt: null },
+      { container: "media", key: "user/second.png", contentType: "image/png", alt: null },
+    ],
+  };
+
+  const result = await connector.deliver(context, multiImagePost);
+
+  assert.equal(result.success, true);
+  assert.deepEqual(fetched, [{ container: "media", key: "user/first.png" }]);
+});
+
 test("furaffinity surfaces the account CAPTCHA restriction", async () => {
   const session = new FakeSession([
     response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),

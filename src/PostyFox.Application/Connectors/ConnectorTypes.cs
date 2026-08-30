@@ -141,8 +141,11 @@ public sealed record RenderedPost(
 /// Reference to a stored media object (carried on the post / in the manifest and passed to
 /// connectors). Connectors fetch the bytes from the object store themselves; media is never
 /// shipped inline. <see cref="Alt"/> is optional accessibility text used where platforms support it.
+/// <see cref="IsDefault"/> marks the author's chosen "primary" image when a post carries several —
+/// platforms limited to a single attachment (FurAffinity) submit this one instead of rejecting a
+/// multi-image post; platforms that accept multiple images ignore the flag and send everything.
 /// </summary>
-public sealed record MediaRef(string Container, string Key, string ContentType, string? Alt = null);
+public sealed record MediaRef(string Container, string Key, string ContentType, string? Alt = null, bool IsDefault = false);
 
 /// <summary>Media bytes resolved from the object store by a connector at delivery time.</summary>
 public sealed record MediaContent(string FileName, string ContentType, byte[] Data, string? Alt = null);
