@@ -198,9 +198,15 @@ export class FurAffinityConnector implements Connector {
     if (!post.rating) throw new Error("FurAffinity requires an explicit content rating");
     if (!["general", "mature", "adult", "extreme"].includes(post.rating))
       throw new Error(`unsupported FurAffinity content rating '${post.rating}'`);
-    if (post.media.length !== 1) throw new Error("FurAffinity gallery submissions require exactly one file");
+    if (post.media.length === 0) throw new Error("FurAffinity gallery submissions require an image");
 
-    const contentType = post.media[0].contentType.toLowerCase();
+    // FurAffinity's gallery form takes exactly one file. A post authored for several multi-image
+    // platforms at once may carry more than one attachment here; rather than rejecting the whole
+    // post, submit the author's chosen default (falling back to the first attachment when none was
+    // marked default) and silently drop the rest.
+    const media = post.media.find((item) => item.isDefault) ?? post.media[0];
+
+    const contentType = media.contentType.toLowerCase();
     if (!["image/jpeg", "image/jpg", "image/png", "image/gif"].includes(contentType))
       throw new Error("FurAffinity integration currently supports JPEG, PNG, and GIF gallery submissions");
 
@@ -215,7 +221,7 @@ export class FurAffinityConnector implements Connector {
       if (candidate.length > MAX_KEYWORDS_LENGTH) break;
       accepted.push(tag);
     }
-    return { title, keywords: accepted.join(" "), media: post.media[0] };
+    return { title, keywords: accepted.join(" "), media };
   }
 
   private async normalizeImage(bytes: Buffer, contentType: string): Promise<{ bytes: Buffer; contentType: string }> {
