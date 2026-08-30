@@ -22,6 +22,18 @@ namespace PostyFox.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
+    // Same field-descriptor format as ServiceDefinition.ConfigSchema (see ServiceDefinitionSeeder).
+    // A blank/omitted value means "no content warning" — the connector never falls back to the post
+    // title or anything else authored elsewhere.
+    private const string FediversePostOptionsSchema = """
+        { "ContentWarning": {
+            "label": "Content warning",
+            "placeholder": "Leave blank to post without one",
+            "help": "Hides the post body behind a click-to-reveal warning showing this text. Independent of the post title.",
+            "maxLength": 500
+        } }
+        """;
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         services.Configure<S3Options>(config.GetSection(S3Options.SectionName));
@@ -118,7 +130,13 @@ public static class ServiceCollectionExtensions
         void AddFediverse(string platform, string displayName, int? maxContentLength) =>
             services.AddSingleton<IConnector>(sp => new HttpConnector(
                 platform,
-                new ConnectorDescriptor(platform, displayName, SupportsTitle: false, SupportsMedia: true, SupportsThreads: false, MaxContentLength: maxContentLength, SupportsOAuth: true, SupportsTags: false),
+                new ConnectorDescriptor(
+                    platform, displayName, SupportsTitle: false, SupportsMedia: true, SupportsThreads: false,
+                    MaxContentLength: maxContentLength, SupportsOAuth: true, SupportsTags: false,
+                    // The content warning is authored per submission (like FurAffinity's category etc.)
+                    // rather than assumed from the post title — see megalodon.ts's use of this field.
+                    PostOptionsSchema: FediversePostOptionsSchema,
+                    SupportsContentWarning: true),
                 sp.GetRequiredService<IHttpClientFactory>(),
                 sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),

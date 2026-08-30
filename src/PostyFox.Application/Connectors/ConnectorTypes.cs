@@ -67,7 +67,15 @@ public sealed record ConnectorDescriptor(
     /// every post to this platform — the compose UI cannot turn it off, and intake rejects a post
     /// with no tags for a target that requires them.
     /// </summary>
-    bool RequiresTags = false)
+    bool RequiresTags = false,
+    /// <summary>
+    /// True when the platform can hide a post's body behind a click-to-reveal warning (Mastodon-style
+    /// "content warning" / "CW", surfaced as <c>spoiler_text</c> by every Fediverse driver this app
+    /// uses). Purely informational — drives the "Content warning" capability badge in the connector
+    /// list; the actual per-submission text lives in <see cref="PostOptionsSchema"/> like FurAffinity's
+    /// category/species/gender, so it is authored per post rather than assumed from the title.
+    /// </summary>
+    bool SupportsContentWarning = false)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;

@@ -66,14 +66,23 @@ site metadata at `/cookie-pairing/sites`) remains as a fallback for a browser th
 PostyFox session. See [`clients/postyfox-connect`](./clients/postyfox-connect/README.md).
 
 **Per-submission platform options.** Some platforms take choices that describe the *submission* rather
-than the account — FurAffinity's category, theme, species, gender and gallery folders. A connector
-declares these as field descriptors on `ConnectorDescriptor.PostOptionsSchema` (surfaced as
-`postOptionsSchema` on `GET /api/services`); the compose form renders them once per selected target and
-sends them as `targetOptions` on `POST /api/posts`, keyed by connector id. They are validated against
-the same schema at intake, stored on the `PostTarget`, and applied over the connector's config when
-delivery builds its `ConnectorContext` — so connectors keep reading a single config object. Options
-lists too large for a C# literal live in
-[`Persistence/Schemas`](./src/PostyFox.Infrastructure/Persistence/Schemas/README.md).
+than the account — FurAffinity's category, theme, species, gender and gallery folders; every Fediverse
+platform's content warning. A connector declares these as field descriptors on
+`ConnectorDescriptor.PostOptionsSchema` (surfaced as `postOptionsSchema` on `GET /api/services`); the
+compose form renders them once per selected target and sends them as `targetOptions` on
+`POST /api/posts`, keyed by connector id. They are validated against the same schema at intake, stored
+on the `PostTarget`, and applied over the connector's config when delivery builds its
+`ConnectorContext` — so connectors keep reading a single config object. Options lists too large for a
+C# literal live in [`Persistence/Schemas`](./src/PostyFox.Infrastructure/Persistence/Schemas/README.md).
+
+**Content warnings (Fediverse).** Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial,
+Hometown and Pixelfed all support a click-to-reveal content warning (Mastodon's API calls this
+`spoiler_text`; megalodon maps it to Misskey's `cw` for the Firefish/Iceshrimp driver) — declared via
+`ConnectorDescriptor.SupportsContentWarning` and surfaced as the "Content warning" capability badge on
+`GET /api/services`. It is an explicit, optional per-submission field (`ContentWarning` in
+`PostOptionsSchema`) — **never** derived from the post title, which is an unrelated field most of these
+platforms don't even render. No other connector (Bluesky, Tumblr, FurAffinity, Discord, Telegram) has an
+equivalent mechanism.
 
 **Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }` — sizes in bytes) — fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 

@@ -40,7 +40,13 @@ public sealed record ServiceDefinitionDto(
     /// compose UI lists each of the connector's exposed <c>ConnectorDestination</c>s as its own
     /// selectable target instead of the connector itself.
     /// </summary>
-    bool SupportsMultipleTargets = false);
+    bool SupportsMultipleTargets = false,
+    /// <summary>
+    /// True when the platform supports a click-to-reveal content warning (see
+    /// <see cref="Connectors.ConnectorDescriptor.SupportsContentWarning"/>). Drives the "Content
+    /// warning" capability badge; the field itself (when present) travels in <see cref="PostOptionsSchema"/>.
+    /// </summary>
+    bool SupportsContentWarning = false);
 
 public sealed record UserConnectorDto(Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled);
 

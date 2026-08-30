@@ -135,6 +135,12 @@ function scopesForSns(sns: MegalodonSns): string[] {
 
 interface MegalodonConfig {
   InstanceUrl: string;
+  /**
+   * Author-chosen content warning text for this submission (per-submission choice — see
+   * `ConnectorDescriptor.PostOptionsSchema`), not the post title. Blank/absent means no CW: the
+   * status posts without one rather than falling back to anything else.
+   */
+  ContentWarning?: string;
 }
 
 interface MegalodonSecret {
@@ -290,14 +296,21 @@ export class MegalodonConnector implements Connector {
     return { secretJson: JSON.stringify(secret) };
   }
 
-  private parse(ctx: ConnectorContext): { instanceUrl: string; token: string; sns: MegalodonSns } {
+  private parse(
+    ctx: ConnectorContext,
+  ): { instanceUrl: string; token: string; sns: MegalodonSns; contentWarning?: string } {
     const config = JSON.parse(ctx.configJson) as MegalodonConfig;
     const instanceUrl = normalizeInstanceUrl(config?.InstanceUrl);
     if (!instanceUrl) throw new Error("missing InstanceUrl in config");
     if (ctx.secretJson === null) throw new Error("missing access token — reconnect the account");
     const secret = JSON.parse(ctx.secretJson) as MegalodonSecret;
     if (!secret?.AccessToken) throw new Error("missing access token — reconnect the account");
-    return { instanceUrl, token: secret.AccessToken, sns: secret.Sns ?? this.defaultSns };
+    return {
+      instanceUrl,
+      token: secret.AccessToken,
+      sns: secret.Sns ?? this.defaultSns,
+      contentWarning: config?.ContentWarning,
+    };
   }
 
   async isAuthenticated(ctx: ConnectorContext): Promise<IsAuthenticatedResult> {
@@ -371,7 +384,7 @@ export class MegalodonConnector implements Connector {
 
   async deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {
     try {
-      const { instanceUrl, token, sns } = this.parse(ctx);
+      const { instanceUrl, token, sns, contentWarning } = this.parse(ctx);
       const client = this.clientFactory(sns, instanceUrl, token);
 
       // Enforce the instance's real limits up front and fail clearly — before uploading media or
@@ -395,9 +408,11 @@ export class MegalodonConnector implements Connector {
       // fails the whole delivery cleanly rather than leaving orphaned uploads on the instance.
       const resolved = await this.resolveMedia(media, limits);
       const mediaIds = await this.uploadResolved(client, resolved);
+      // The content warning is an author-chosen, per-submission opt-in (see MegalodonConfig) — the
+      // post title is a distinct, unrelated field and must never be used as a stand-in for one.
       const result = await client.postStatus(status, {
         media_ids: mediaIds.length > 0 ? mediaIds : undefined,
-        spoiler_text: post.title ?? undefined,
+        spoiler_text: contentWarning?.trim() || undefined,
         visibility: "public",
       });
 
