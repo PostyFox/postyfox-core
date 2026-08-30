@@ -34,6 +34,14 @@ const ctx: ConnectorContext = {
 
 const post: Post = { title: "CW", body: "hello world", tags: ["cats", "#dogs"], media: [] };
 
+/** Context with an author-chosen content warning set alongside the instance URL. */
+function ctxWithContentWarning(contentWarning: string): ConnectorContext {
+  return {
+    ...ctx,
+    configJson: JSON.stringify({ InstanceUrl: "https://shrimp.example", ContentWarning: contentWarning }),
+  };
+}
+
 function fakeClient(over: Partial<MegalodonClientLike> = {}): MegalodonClientLike {
   return {
     async registerApp() {
@@ -133,8 +141,39 @@ test("megalodon deliver appends tags as hashtags and returns id + url", async ()
   assert.ok(receivedStatus?.includes("hello world"));
   assert.ok(receivedStatus?.includes("#cats"));
   assert.ok(receivedStatus?.includes("#dogs"));
-  assert.equal(receivedOptions?.spoiler_text, "CW");
+  // The post's title ("CW") must never be used as the content warning — only an explicit
+  // ContentWarning config value (see the test below) should ever populate spoiler_text.
+  assert.equal(receivedOptions?.spoiler_text, undefined);
   assert.equal(receivedOptions?.media_ids, undefined);
+});
+
+test("megalodon deliver sends the author's chosen content warning, never the post title", async () => {
+  let receivedOptions: { spoiler_text?: string } | undefined;
+  const result = await build(
+    fakeClient({
+      async postStatus(_status, options) {
+        receivedOptions = options;
+        return { data: { id: "42", url: "https://shrimp.example/notes/42" } };
+      },
+    }),
+  ).deliver(ctxWithContentWarning("Discussion of spiders"), post);
+
+  assert.equal(result.success, true);
+  assert.equal(receivedOptions?.spoiler_text, "Discussion of spiders");
+});
+
+test("megalodon deliver treats a blank content warning as none", async () => {
+  let receivedOptions: { spoiler_text?: string } | undefined;
+  await build(
+    fakeClient({
+      async postStatus(_status, options) {
+        receivedOptions = options;
+        return { data: { id: "42", url: "https://shrimp.example/notes/42" } };
+      },
+    }),
+  ).deliver(ctxWithContentWarning("   "), post);
+
+  assert.equal(receivedOptions?.spoiler_text, undefined);
 });
 
 test("megalodon deliver uploads media and attaches ids", async () => {

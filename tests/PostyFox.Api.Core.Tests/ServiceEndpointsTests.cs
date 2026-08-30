@@ -32,6 +32,8 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.True(bluesky.SupportsRating);
         Assert.False(bluesky.RequiresRating);
         Assert.Null(bluesky.PostOptionsSchema); // nothing to choose per submission
+        // Bluesky has no click-to-reveal content warning mechanism.
+        Assert.False(bluesky.SupportsContentWarning);
 
         var furAffinity = Assert.Single(defs!, d => d.Id == "FurAffinity");
         Assert.True(furAffinity.SupportsCookiePairing);
@@ -43,6 +45,14 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.Equal("{}", furAffinity.ConfigSchema);
         Assert.NotNull(furAffinity.PostOptionsSchema);
         Assert.Contains("\"Species\"", furAffinity.PostOptionsSchema);
+        Assert.False(furAffinity.SupportsContentWarning);
+
+        // Every Fediverse platform supports a click-to-reveal content warning, authored per submission
+        // (never the post title) — see megalodon.ts.
+        var mastodon = Assert.Single(defs!, d => d.Id == "Mastodon");
+        Assert.True(mastodon.SupportsContentWarning);
+        Assert.NotNull(mastodon.PostOptionsSchema);
+        Assert.Contains("\"ContentWarning\"", mastodon.PostOptionsSchema);
     }
 
     [Fact]
