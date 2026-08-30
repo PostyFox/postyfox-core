@@ -58,6 +58,8 @@ public sealed class GenerateTargetHandler(
             maxContentLength = descriptor.MaxContentLength;
         }
 
+        var textTemplateValues = await ResolveTextTemplatesAsync(post.UserId, target.ConnectorId, ct);
+
         var rendered = engine.Render(new RenderRequest(
             target.Platform,
             string.IsNullOrEmpty(post.Title) ? null : post.Title,
@@ -68,7 +70,8 @@ public sealed class GenerateTargetHandler(
             post.Rating,
             target.IncludeTags,
             supportsTags,
-            maxContentLength));
+            maxContentLength,
+            textTemplateValues));
 
         target.RenderedContentJson = Json.Serialize(rendered);
         target.Status = TargetStatus.Ready;
@@ -77,6 +80,30 @@ public sealed class GenerateTargetHandler(
         await db.SaveChangesAsync(ct);
 
         await bus.PublishAsync(new DeliverTargetCommand { PostId = post.Id, TargetId = target.Id }, ct: ct);
+    }
+
+    /// <summary>
+    /// Resolves every one of the user's text templates (see <c>{{tt:name}}</c>,
+    /// <see cref="ITemplateEngine"/>) to a single value for this specific target: its connector's
+    /// override when one is set, else the template's default, else an empty string. Resolved fresh at
+    /// generate time (not stored on the post), so editing a template after a post is scheduled but
+    /// before it fires picks up the newer value.
+    /// </summary>
+    private async Task<Dictionary<string, string>> ResolveTextTemplatesAsync(
+        string userId, Guid? connectorId, CancellationToken ct)
+    {
+        var templates = await db.TextTemplates.Where(t => t.UserId == userId).ToListAsync(ct);
+        var connectorKey = connectorId?.ToString();
+        var resolved = new Dictionary<string, string>(templates.Count, StringComparer.OrdinalIgnoreCase);
+        foreach (var t in templates)
+        {
+            var overrides = Json.Deserialize<Dictionary<string, string>>(t.ConnectorValuesJson);
+            resolved[t.Name] = connectorKey is not null && overrides is not null
+                && overrides.TryGetValue(connectorKey, out var overrideValue)
+                ? overrideValue
+                : t.DefaultValue;
+        }
+        return resolved;
     }
 
     private async Task UpdateRootStatusAsync(Guid postId, CancellationToken ct)

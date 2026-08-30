@@ -17,6 +17,7 @@ public interface IAppDbContext
     DbSet<ConnectorDestination> ConnectorDestinations { get; }
     DbSet<Template> Templates { get; }
     DbSet<TagPreset> TagPresets { get; }
+    DbSet<TextTemplate> TextTemplates { get; }
     DbSet<ExternalTrigger> ExternalTriggers { get; }
     DbSet<ExternalInterest> ExternalInterests { get; }
     DbSet<Post> Posts { get; }
