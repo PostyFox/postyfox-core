@@ -177,7 +177,10 @@ public sealed class PostIntakeService(
         post.Description = request.Description ?? string.Empty;
         post.HtmlDescription = request.HtmlDescription ?? string.Empty;
         post.TagsJson = Json.Serialize(request.Tags ?? []);
-        post.MediaManifestJson = Json.Serialize(request.Media ?? []);
+        var media = request.Media ?? [];
+        if (media.Any(m => !m.IsOwnedBy(post.UserId)))
+            throw new ConnectorValidationException("Invalid media reference.");
+        post.MediaManifestJson = Json.Serialize(media);
         post.VariablesJson = Json.Serialize(request.Variables ?? new Dictionary<string, string>());
         post.Rating = request.Rating;
         post.TemplateId = request.TemplateId;

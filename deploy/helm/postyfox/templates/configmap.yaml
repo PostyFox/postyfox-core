@@ -6,6 +6,7 @@ metadata:
 data:
   ObjectStore__ServiceUrl: {{ .Values.config.objectStoreServiceUrl | quote }}
   ObjectStore__Bucket: {{ .Values.config.objectStoreBucket | quote }}
+  ObjectStore__TelegramBucket: {{ .Values.config.objectStoreTelegramBucket | quote }}
   RabbitMq__Host: {{ include "postyfox.rabbitMqHost" . | quote }}
   RabbitMq__User: {{ include "postyfox.rabbitMqUser" . | quote }}
   Auth__UserHeader: {{ .Values.config.authUserHeader | quote }}

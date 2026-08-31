@@ -32,6 +32,7 @@ config:
   # S3-compatible object store (RustFS/MinIO/managed S3). Never deployed by this chart.
   objectStoreServiceUrl: "http://rustfs:9000"
   objectStoreBucket: "postyfox"
+  objectStoreTelegramBucket: "postyfox-telegram"
   authUserHeader: "X-Auth-Request-User"
   # In-app OIDC bearer validation. The APIs trust NO injected header - only the validated JWT the
   # edge forwards (or an API key). This MUST stay enabled. Point issuer/JWKS at YOUR OIDC provider
@@ -241,8 +242,10 @@ oauth2Proxy:
     - "GET=^/privacy$"
     # The SPA shell needed to render /privacy (and any other pre-auth route) — Angular's hashed
     # JS/CSS bundles, fonts and icons, plus favicon.ico. These carry no user data, so skipping auth
-    # for them is safe; it just lets the app boot before a session exists.
-    - "GET=\\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$"
+    # for them is safe; it just lets the app boot before a session exists. Anchored to a single
+    # root-level path segment (Angular's build output has no subdirectory) so it can't also match
+    # an API path that happens to end in one of these extensions.
+    - "GET=^/[^/]+\\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$"
     # Fetched by DeploymentConfigService on EVERY app bootstrap (any route, including /privacy) —
     # see postyfox-frontend's app.config.ts provideAppInitializer. Without this, an unauthenticated
     # visitor gets a 401 here, which the global authInterceptor treats as "session expired" and

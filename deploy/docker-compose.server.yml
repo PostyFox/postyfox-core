@@ -13,6 +13,7 @@ x-dotnet-env: &dotnet-env
   ObjectStore__AccessKey: "${RUSTFS_ACCESS_KEY}"
   ObjectStore__SecretKey: "${RUSTFS_SECRET_KEY}"
   ObjectStore__Bucket: "${RUSTFS_BUCKET:-postyfox}"
+  ObjectStore__TelegramBucket: "${RUSTFS_TELEGRAM_BUCKET:-postyfox-telegram}"
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "${RABBITMQ_USER}"
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
@@ -359,7 +360,7 @@ services:
       # for the matching entries used in local dev). Without the last one, an unauthenticated
       # visitor to any public route (e.g. /privacy) gets a 401 from this call, which the SPA's
       # global authInterceptor treats as "session expired" and bounces to sign-in.
-      OAUTH2_PROXY_SKIP_AUTH_ROUTES: 'POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$,GET=^/api/connectors/cookie-pairing/sites$,GET=^/privacy$,GET=\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$,GET=^/deployment-config\.json$'
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: 'POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$,GET=^/api/connectors/cookie-pairing/sites$,GET=^/privacy$,GET=^/[^/]+\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$,GET=^/deployment-config\.json$'
       # Forward the validated ID token to upstreams as `Authorization: Bearer` (APIs re-validate it).
       OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"

@@ -17,6 +17,7 @@ locals {
   common_env = [
     { name = "ObjectStore__ServiceUrl", value = var.object_store_service_url },
     { name = "ObjectStore__Bucket", value = var.object_store_bucket },
+    { name = "ObjectStore__TelegramBucket", value = var.object_store_telegram_bucket },
     { name = "RabbitMq__Host", value = var.rabbitmq_host },
     { name = "RabbitMq__User", value = var.rabbitmq_user },
     { name = "Auth__UserHeader", value = "X-Auth-Request-User" },

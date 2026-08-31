@@ -121,8 +121,17 @@ public class ExternalTriggerServiceTests
     public async Task Challenge_body_is_echoed()
     {
         var h = Build(DateTimeOffset.UnixEpoch);
-        var result = await h.Svc.HandleWebhookAsync("generic", new Dictionary<string, string>(), "{\"challenge\":\"echo-me\"}");
+        var body = "{\"challenge\":\"echo-me\"}";
+        var result = await h.Svc.HandleWebhookAsync("generic", Signed(body, "m1"), body);
         Assert.Equal(WebhookOutcome.Challenge, result.Outcome);
         Assert.Equal("echo-me", result.Challenge);
+    }
+
+    [Fact]
+    public async Task Unsigned_challenge_is_rejected()
+    {
+        var h = Build(DateTimeOffset.UnixEpoch);
+        var result = await h.Svc.HandleWebhookAsync("generic", new Dictionary<string, string>(), "{\"challenge\":\"echo-me\"}");
+        Assert.Equal(WebhookOutcome.Unauthorized, result.Outcome);
     }
 }

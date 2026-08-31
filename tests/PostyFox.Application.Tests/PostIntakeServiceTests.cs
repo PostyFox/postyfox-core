@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Messaging;
 using PostyFox.Application.Options;
@@ -323,6 +324,49 @@ public class PostIntakeServiceTests
         await Assert.ThrowsAsync<PostyFox.Application.Connectors.ConnectorValidationException>(() =>
             svc.CreateAsync("u1", new CreatePostRequest(
                 [connectorId], "Title", "Body", null, null, null, null, null, null)));
+    }
+
+    [Fact]
+    public async Task Create_rejects_a_media_ref_outside_the_media_container()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        await Assert.ThrowsAsync<PostyFox.Application.Connectors.ConnectorValidationException>(() =>
+            svc.CreateAsync("u1", new CreatePostRequest(
+                [connectorId], "Title", "Body", null, null,
+                [new MediaRef("telegram", "u1/x", "image/png")], null, null, null)));
+    }
+
+    [Fact]
+    public async Task Create_rejects_a_media_ref_owned_by_another_user()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        await Assert.ThrowsAsync<PostyFox.Application.Connectors.ConnectorValidationException>(() =>
+            svc.CreateAsync("u1", new CreatePostRequest(
+                [connectorId], "Title", "Body", null, null,
+                [new MediaRef("media", "u2/victim/pic.png", "image/png")], null, null, null)));
+    }
+
+    [Fact]
+    public async Task Create_accepts_a_media_ref_the_caller_owns()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null,
+            [new MediaRef("media", "u1/abc/pic.png", "image/png")], null, null, null));
+
+        Assert.NotNull(result);
     }
 
     [Fact]

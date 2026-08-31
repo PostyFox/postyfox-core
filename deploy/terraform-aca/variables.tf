@@ -38,6 +38,10 @@ variable "object_store_bucket" {
   type    = string
   default = "postyfox"
 }
+variable "object_store_telegram_bucket" {
+  type    = string
+  default = "postyfox-telegram"
+}
 variable "rabbitmq_host" { type = string }
 variable "rabbitmq_user" {
   type    = string

@@ -53,6 +53,20 @@ test("401 when token wrong", async () => {
   await app.close();
 });
 
+test("401 when token has a different length than expected", async () => {
+  // Exercises the length-mismatch branch of the constant-time comparison, which crypto's own
+  // timingSafeEqual would throw on if called directly on unequal-length buffers.
+  const app = buildServer({ internalToken: "secret", registry: registryWith("bluesky") });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/bluesky/is-authenticated",
+    headers: { "x-internal-token": "s" },
+    payload: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null },
+  });
+  assert.equal(res.statusCode, 401);
+  await app.close();
+});
+
 test("passes when token correct", async () => {
   const app = buildServer({ internalToken: "secret", registry: registryWith("bluesky") });
   const res = await app.inject({
