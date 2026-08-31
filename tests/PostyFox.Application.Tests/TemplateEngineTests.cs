@@ -143,4 +143,72 @@ public class TemplateEngineTests
         Assert.Equal("Body #aaaaaaaaaa #bbbbbbbbbb #cccccccccc", rendered.Body);
         Assert.Equal(0, rendered.TagsOmitted);
     }
+
+    [Fact]
+    public void Render_substitutes_text_template_tokens_in_title_and_body()
+    {
+        var req = new RenderRequest("DiscordWH", "Hi {{tt:mention}}", "See you there, {{tt:mention}}!",
+            new Dictionary<string, string>(), [], [],
+            TextTemplateValues: new Dictionary<string, string> { ["mention"] = "@alice" });
+        var rendered = _engine.Render(req);
+        Assert.Equal("Hi @alice", rendered.Title);
+        Assert.Equal("See you there, @alice!", rendered.Body);
+    }
+
+    [Fact]
+    public void Render_text_template_lookup_is_case_insensitive()
+    {
+        var req = new RenderRequest("DiscordWH", null, "{{tt:Mention}}", new Dictionary<string, string>(), [], [],
+            TextTemplateValues: new Dictionary<string, string> { ["mention"] = "@alice" });
+        Assert.Equal("@alice", _engine.Render(req).Body);
+    }
+
+    [Fact]
+    public void Render_unknown_text_template_name_resolves_to_blank_not_a_raw_token()
+    {
+        var req = new RenderRequest("DiscordWH", null, "Body {{tt:typo}} end", new Dictionary<string, string>(), [], []);
+        Assert.Equal("Body  end", _engine.Render(req).Body);
+    }
+
+    [Fact]
+    public void Render_text_template_values_never_reference_another_text_template()
+    {
+        // {{tt:...}} substitution runs exactly once, at the start of Render(), so a value containing
+        // {{tt:other}} can never expand it — one template can't reference another, so no cycles.
+        var req = new RenderRequest("DiscordWH", null, "{{tt:snippet}}", new Dictionary<string, string>(), [], [],
+            TextTemplateValues: new Dictionary<string, string> { ["snippet"] = "{{tt:other}}", ["other"] = "REAL" });
+        Assert.Equal("{{tt:other}}", _engine.Render(req).Body);
+    }
+
+    [Fact]
+    public void Render_text_template_values_still_pass_through_ordinary_variable_substitution()
+    {
+        // A text-template value is spliced into the body like any other author-controlled text — it
+        // is not shielded from the post's own {variable} substitution that runs immediately after.
+        var req = new RenderRequest("DiscordWH", null, "{{tt:snippet}}",
+            new Dictionary<string, string> { ["name"] = "Sam" }, [], [],
+            TextTemplateValues: new Dictionary<string, string> { ["snippet"] = "Hi {name}" });
+        Assert.Equal("Hi Sam", _engine.Render(req).Body);
+    }
+
+    [Fact]
+    public void Render_blank_title_after_text_template_substitution_omits_the_title()
+    {
+        var req = new RenderRequest("DiscordWH", "{{tt:blank}}", "Body", new Dictionary<string, string>(), [], [],
+            TextTemplateValues: new Dictionary<string, string> { ["blank"] = "" });
+        Assert.Null(_engine.Render(req).Title);
+    }
+
+    [Fact]
+    public void Render_text_template_substitution_counts_toward_the_tag_trim_budget()
+    {
+        // The resolved value's length must be accounted for before the hashtag budget is computed —
+        // substituting after would let a long value silently blow the platform's character limit.
+        var req = new RenderRequest("BlueSky", null, "{{tt:long}} {tags}", new Dictionary<string, string>(),
+            ["aaaaaaaaaa", "bbbbbbbbbb"], [], SupportsTags: false, MaxContentLength: 25,
+            TextTemplateValues: new Dictionary<string, string> { ["long"] = "0123456789" });
+        var rendered = _engine.Render(req);
+        Assert.Equal("0123456789 #aaaaaaaaaa", rendered.Body);
+        Assert.Equal(1, rendered.TagsOmitted);
+    }
 }

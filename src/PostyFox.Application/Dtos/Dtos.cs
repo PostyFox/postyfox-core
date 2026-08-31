@@ -109,6 +109,28 @@ public sealed record TemplateUpsertRequest(Guid? Id, string Title, string Markdo
 public sealed record TagPresetDto(Guid Id, string Name, IReadOnlyList<string> Tags);
 public sealed record TagPresetUpsertRequest(Guid? Id, string Name, IReadOnlyList<string> Tags);
 
+/// <summary>
+/// A reusable, named text snippet (see <see cref="Domain.Entities.TextTemplate"/>), referenced inline
+/// in a post's title/description as <c>{{tt:Name}}</c> and resolved per delivery target: the entry in
+/// <see cref="ConnectorValues"/> for that target's connector, falling back to <see cref="DefaultValue"/>,
+/// falling back to an empty string. <c>{{tt:...}}</c> substitution runs exactly once, so a resolved
+/// value can never reference another text template (no cycles); it is otherwise spliced into the post
+/// like any other author text, so it still passes through ordinary <c>{variable}</c> substitution and
+/// platform formatting.
+/// </summary>
+public sealed record TextTemplateDto(
+    Guid Id,
+    string Name,
+    string DefaultValue,
+    /// <summary>Per-connector override values, keyed by <see cref="Domain.Entities.UserConnector"/> id.</summary>
+    IReadOnlyDictionary<Guid, string> ConnectorValues);
+
+public sealed record TextTemplateUpsertRequest(
+    Guid? Id,
+    string Name,
+    string DefaultValue,
+    IReadOnlyDictionary<Guid, string> ConnectorValues);
+
 public sealed record CreatePostRequest(
     /// <summary>
     /// Ids of the destinations to deliver to. Each entry is either a <see cref="Domain.Entities.UserConnector"/> id

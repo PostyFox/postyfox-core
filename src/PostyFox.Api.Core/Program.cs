@@ -62,6 +62,7 @@ app.MapAdminEndpoints();
 app.MapServiceEndpoints();
 app.MapTemplateEndpoints();
 app.MapTagPresetEndpoints();
+app.MapTextTemplateEndpoints();
 app.MapTriggerEndpoints();
 app.MapMediaEndpoints();
 

@@ -14,6 +14,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ConnectorDestination> ConnectorDestinations => Set<ConnectorDestination>();
     public DbSet<Template> Templates => Set<Template>();
     public DbSet<TagPreset> TagPresets => Set<TagPreset>();
+    public DbSet<TextTemplate> TextTemplates => Set<TextTemplate>();
     public DbSet<ExternalTrigger> ExternalTriggers => Set<ExternalTrigger>();
     public DbSet<ExternalInterest> ExternalInterests => Set<ExternalInterest>();
     public DbSet<Post> Posts => Set<Post>();
@@ -86,6 +87,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         b.Entity<TagPreset>(e =>
         {
             e.ToTable("tag_presets");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.UserId);
+        });
+
+        // Name uniqueness (case-insensitive, per user) is enforced in TextTemplateService rather than
+        // a DB constraint — same approach as the rest of this app's validation.
+        b.Entity<TextTemplate>(e =>
+        {
+            e.ToTable("text_templates");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.UserId);
         });

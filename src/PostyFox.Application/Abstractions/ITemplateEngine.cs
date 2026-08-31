@@ -21,7 +21,16 @@ public sealed record RenderRequest(
     /// </summary>
     bool SupportsTags = true,
     /// <summary>Static character-limit hint used to trim inline hashtags so the body stays under it.</summary>
-    int? MaxContentLength = null);
+    int? MaxContentLength = null,
+    /// <summary>
+    /// Resolved text-template values for this specific delivery target, keyed by template name
+    /// (case-insensitive) — already picked per this target's connector (its override, or the
+    /// template's default) by the caller. Substituted into <c>{{tt:name}}</c> tokens in the title and
+    /// body before anything else runs, so unlike <see cref="Variables"/> (one value shared by every
+    /// target on the post) this can — and typically does — differ per target. An unrecognized name
+    /// resolves to an empty string, same as an unknown <c>{variable}</c>.
+    /// </summary>
+    IReadOnlyDictionary<string, string>? TextTemplateValues = null);
 
 /// <summary>
 /// Renders template bodies: variable substitution, conditionals, and per-platform formatting.

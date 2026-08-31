@@ -38,7 +38,16 @@ public sealed partial class TemplateEngine : ITemplateEngine
 
     public RenderedPost Render(RenderRequest request)
     {
-        var title = string.IsNullOrEmpty(request.Title) ? null : Substitute(request.Title, request.Variables);
+        // Text-template tokens resolve first — before variables, tag interpolation or platform
+        // formatting — so the character-limit budget below is computed against the final text. This
+        // regex runs exactly once, so a resolved value can never reference (or cycle through) another
+        // template; it is otherwise spliced in like any other author text, so a stray {variable} left
+        // inside one still gets substituted normally by the passes below — same as anywhere else in
+        // the post.
+        var rawTitle = SubstituteTextTemplates(request.Title, request.TextTemplateValues);
+        var rawBody = SubstituteTextTemplates(request.MarkdownBody, request.TextTemplateValues);
+
+        var title = string.IsNullOrEmpty(rawTitle) ? null : Substitute(rawTitle, request.Variables);
         var tags = request.IncludeTags ? request.Tags : [];
 
         int tagsOmitted;
@@ -51,18 +60,33 @@ public sealed partial class TemplateEngine : ITemplateEngine
             deliveredTags = tags;
             tagsOmitted = 0;
             var vars = WithTagsVariable(request.Variables, string.Empty);
-            bodyWithTags = Substitute(request.MarkdownBody, vars);
+            bodyWithTags = Substitute(rawBody, vars);
         }
         else
         {
             // No native tags field: tags can only reach this platform woven into the text, at an
             // author-placed {tags} token or, failing that, appended to the end.
             deliveredTags = [];
-            (bodyWithTags, tagsOmitted) = InterpolateTags(request.MarkdownBody, request.Variables, tags, request.MaxContentLength);
+            (bodyWithTags, tagsOmitted) = InterpolateTags(rawBody, request.Variables, tags, request.MaxContentLength);
         }
 
         var body = FormatForPlatform(request.Platform, bodyWithTags);
         return new RenderedPost(title, body, deliveredTags, request.Media, request.Rating, tagsOmitted);
+    }
+
+    /// <summary>
+    /// Replaces every <c>{{tt:name}}</c> token with its resolved per-target value (already picked by
+    /// the caller — see <see cref="RenderRequest.TextTemplateValues"/>), case-insensitively. An
+    /// unrecognized name resolves to an empty string rather than leaving the raw token in the post.
+    /// </summary>
+    private static string SubstituteTextTemplates(string? body, IReadOnlyDictionary<string, string>? values)
+    {
+        if (string.IsNullOrEmpty(body)) return body ?? string.Empty;
+
+        var lookup = new Dictionary<string, string>(
+            values ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+        return TextTemplateRegex().Replace(body, m =>
+            lookup.TryGetValue(m.Groups["name"].Value, out var v) ? v : string.Empty);
     }
 
     /// <summary>
@@ -150,6 +174,12 @@ public sealed partial class TemplateEngine : ITemplateEngine
 
     [GeneratedRegex(@"\{(?<name>[A-Za-z0-9_]+)\}")]
     private static partial Regex VariableRegex();
+
+    // Deliberately distinct (double braces + "tt:" prefix) from VariableRegex's single-brace {name},
+    // so an author's own {variable} tokens and text-template references can never collide. Keep the
+    // character class in sync with TextTemplateService's name validation.
+    [GeneratedRegex(@"\{\{tt:(?<name>[A-Za-z0-9_-]+)\}\}")]
+    private static partial Regex TextTemplateRegex();
 
     [GeneratedRegex(@"\[(?<text>[^\]]+)\]\((?<url>[^)]+)\)")]
     private static partial Regex LinkRegex();
