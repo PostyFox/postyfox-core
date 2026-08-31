@@ -39,12 +39,14 @@ spec:
                     rabbitmq-plugins enable --offline rabbitmq_prometheus || true
           readinessProbe:
             exec: { command: ["rabbitmq-diagnostics", "-q", "check_running"] }
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 15
+            timeoutSeconds: 10
           livenessProbe:
             exec: { command: ["rabbitmq-diagnostics", "-q", "ping"] }
             initialDelaySeconds: 30
             periodSeconds: 30
+            timeoutSeconds: 10
           volumeMounts:
             - { mountPath: /var/lib/rabbitmq, name: rabbitmqdata }
           resources: {{- toYaml .Values.rabbitmq.resources | nindent 12 }}
