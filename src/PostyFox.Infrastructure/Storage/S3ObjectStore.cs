@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -11,31 +12,36 @@ public sealed class S3ObjectStore : IObjectStore, IDisposable
 {
     private readonly IAmazonS3 _client;
     private readonly string _bucket;
-    private int _bucketReady;
+    private readonly string _telegramBucket;
+    private readonly ConcurrentDictionary<string, byte> _bucketsReady = new();
 
     public S3ObjectStore(IOptions<S3Options> options)
     {
         var o = options.Value;
         _bucket = o.Bucket;
+        _telegramBucket = string.IsNullOrEmpty(o.TelegramBucket) ? o.Bucket : o.TelegramBucket;
         var config = new AmazonS3Config { ServiceURL = o.ServiceUrl, ForcePathStyle = o.ForcePathStyle };
         _client = new AmazonS3Client(o.AccessKey, o.SecretKey, config);
     }
 
+    private string BucketFor(string container) => container == "telegram" ? _telegramBucket : _bucket;
+
     private static string ObjectKey(string container, string key) => $"{container}/{key}";
 
-    private async Task EnsureBucketAsync(CancellationToken ct)
+    private async Task EnsureBucketAsync(string bucket, CancellationToken ct)
     {
-        if (Interlocked.CompareExchange(ref _bucketReady, 1, 0) == 1) return;
-        try { await _client.PutBucketAsync(new PutBucketRequest { BucketName = _bucket }, ct); }
+        if (!_bucketsReady.TryAdd(bucket, 0)) return;
+        try { await _client.PutBucketAsync(new PutBucketRequest { BucketName = bucket }, ct); }
         catch (AmazonS3Exception ex) when (ex.ErrorCode is "BucketAlreadyOwnedByYou" or "BucketAlreadyExists") { }
     }
 
     public async Task PutAsync(string container, string key, Stream content, string contentType, CancellationToken ct = default)
     {
-        await EnsureBucketAsync(ct);
+        var bucket = BucketFor(container);
+        await EnsureBucketAsync(bucket, ct);
         await _client.PutObjectAsync(new PutObjectRequest
         {
-            BucketName = _bucket,
+            BucketName = bucket,
             Key = ObjectKey(container, key),
             InputStream = content,
             ContentType = contentType,
@@ -51,7 +57,7 @@ public sealed class S3ObjectStore : IObjectStore, IDisposable
 
     public async Task<Stream> GetAsync(string container, string key, CancellationToken ct = default)
     {
-        var response = await _client.GetObjectAsync(_bucket, ObjectKey(container, key), ct);
+        var response = await _client.GetObjectAsync(BucketFor(container), ObjectKey(container, key), ct);
         var ms = new MemoryStream();
         await response.ResponseStream.CopyToAsync(ms, ct);
         ms.Position = 0;
@@ -69,7 +75,7 @@ public sealed class S3ObjectStore : IObjectStore, IDisposable
     {
         try
         {
-            await _client.GetObjectMetadataAsync(_bucket, ObjectKey(container, key), ct);
+            await _client.GetObjectMetadataAsync(BucketFor(container), ObjectKey(container, key), ct);
             return true;
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -79,7 +85,7 @@ public sealed class S3ObjectStore : IObjectStore, IDisposable
     }
 
     public Task DeleteAsync(string container, string key, CancellationToken ct = default) =>
-        _client.DeleteObjectAsync(_bucket, ObjectKey(container, key), ct);
+        _client.DeleteObjectAsync(BucketFor(container), ObjectKey(container, key), ct);
 
     public void Dispose() => _client.Dispose();
 }

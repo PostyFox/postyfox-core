@@ -12,6 +12,9 @@ public sealed class MediaCopier(IObjectStore store)
 {
     public async Task<MediaRef> CopyAsync(string userId, MediaRef source, CancellationToken ct = default)
     {
+        if (!source.IsOwnedBy(userId))
+            throw new ConnectorValidationException("Invalid media reference.");
+
         // Mirror the upload key scheme ({userId}/{guid}/{filename}) so the copy is owned exactly like a
         // fresh upload and is cleaned up with the post that references it.
         var fileName = source.Key.Split('/').LastOrDefault() ?? "file";

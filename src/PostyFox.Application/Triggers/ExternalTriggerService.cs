@@ -60,13 +60,13 @@ public sealed class ExternalTriggerService(
         if (!sources.TryGet(sourceType, out var source))
             return new WebhookResult(WebhookOutcome.UnknownSource);
 
-        var parsed = source.Parse(headers, rawBody);
-        if (parsed.IsChallenge)
-            return new WebhookResult(WebhookOutcome.Challenge, parsed.Challenge);
-
         var signingSecret = await secrets.GetSecretAsync($"trigger-{sourceType}-signing", ct);
         if (!source.VerifySignature(headers, rawBody, signingSecret))
             return new WebhookResult(WebhookOutcome.Unauthorized);
+
+        var parsed = source.Parse(headers, rawBody);
+        if (parsed.IsChallenge)
+            return new WebhookResult(WebhookOutcome.Challenge, parsed.Challenge);
 
         if (string.IsNullOrEmpty(parsed.ExternalAccount))
             return new WebhookResult(WebhookOutcome.Processed, FiredCount: 0);

@@ -158,6 +158,18 @@ public sealed record MediaRef(string Container, string Key, string ContentType, 
 /// <summary>Media bytes resolved from the object store by a connector at delivery time.</summary>
 public sealed record MediaContent(string FileName, string ContentType, byte[] Data, string? Alt = null);
 
+public static class MediaContainers
+{
+    public const string Media = "media";
+}
+
+public static class MediaRefValidation
+{
+    /// <summary>True when a <see cref="MediaRef"/> points at an object this user actually owns.</summary>
+    public static bool IsOwnedBy(this MediaRef media, string userId) =>
+        media.Container == MediaContainers.Media && media.Key.StartsWith($"{userId}/", StringComparison.Ordinal);
+}
+
 /// <summary>Outcome of a delivery attempt.</summary>
 public sealed record DeliveryResult(bool Success, string? ExternalId, string? ExternalUrl, string? Error)
 {

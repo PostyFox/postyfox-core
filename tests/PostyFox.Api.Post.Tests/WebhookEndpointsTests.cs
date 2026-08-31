@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,17 +48,25 @@ public class WebhookEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     {
         var resp = await _client.SendAsync(Signed("{\"account\":\"acme\",\"variables\":{}}", "wh1"));
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        Assert.Contains("processed", await resp.Content.ReadAsStringAsync());
+        var payload = await resp.Content.ReadFromJsonAsync<Dictionary<string, int>>();
+        Assert.Equal(1, payload!["processed"]);
     }
 
     [Fact]
     public async Task Challenge_is_echoed()
     {
+        var resp = await _client.SendAsync(Signed("{\"challenge\":\"hello-echo\"}", "wh-challenge"));
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("hello-echo", await resp.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Unsigned_challenge_is_unauthorized()
+    {
         var req = new HttpRequestMessage(HttpMethod.Post, "/api/webhooks/generic")
         { Content = new StringContent("{\"challenge\":\"hello-echo\"}", Encoding.UTF8, "application/json") };
         var resp = await _client.SendAsync(req);
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        Assert.Equal("hello-echo", await resp.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
 
     [Fact]

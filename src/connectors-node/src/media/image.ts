@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type Metadata, type Sharp } from "sharp";
 import type { ImageSpec, NormalizedMedia } from "./types.js";
 
 const MIN_QUALITY = 40;
@@ -17,7 +17,7 @@ export async function normalizeImage(
   contentType: string,
   spec: ImageSpec,
 ): Promise<NormalizedMedia> {
-  let meta: sharp.Metadata;
+  let meta: Metadata;
   try {
     meta = await sharp(bytes).metadata();
   } catch {
@@ -79,7 +79,7 @@ export async function normalizeImage(
   throw new Error(`image cannot be reduced below this platform's ${budget}-byte limit`);
 }
 
-function encode(pipeline: sharp.Sharp, mime: string, quality: number): Promise<Buffer> {
+function encode(pipeline: Sharp, mime: string, quality: number): Promise<Buffer> {
   switch (mime) {
     case "image/jpeg":
       return pipeline.jpeg({ quality }).toBuffer();

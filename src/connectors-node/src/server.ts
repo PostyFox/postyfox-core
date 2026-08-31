@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import {
   createDefaultRegistry,
@@ -6,12 +7,20 @@ import {
 } from "./connectors/index.js";
 import type { ConnectorContext, Post } from "./types.js";
 
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+}
+
 export interface BuildServerOptions {
   /** Connector registry. Defaults to the real Bluesky + Tumblr connectors. */
   registry?: ConnectorRegistry;
   /**
-   * Expected internal token. If undefined, auth is disabled (dev mode).
-   * Pass `process.env.INTERNAL_TOKEN` from the entrypoint.
+   * Expected internal token. If undefined, auth is disabled — a deliberate escape hatch for tests
+   * that build a server directly without wiring one up. The real entrypoint (index.ts) always
+   * passes one and refuses to start otherwise; nothing should rely on this default reaching a
+   * running process.
    */
   internalToken?: string;
   /** Fastify logger toggle. */
@@ -34,7 +43,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (internalToken === undefined || internalToken === "") return;
 
     const provided = request.headers["x-internal-token"];
-    if (provided !== internalToken) {
+    if (typeof provided !== "string" || !safeEqual(provided, internalToken)) {
       reply.code(401).send({ error: "unauthorized" });
     }
   });

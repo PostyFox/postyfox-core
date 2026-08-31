@@ -147,7 +147,7 @@ public class PipelineTests
             var intake = scope.ServiceProvider.GetRequiredService<PostIntakeService>();
             await intake.CreateAsync("u1", new CreatePostRequest(
                 [cid], "T", "body", null, null,
-                [new MediaRef("post", "k1", "image/png")], null, null, null));
+                [new MediaRef("media", "u1/k1", "image/png")], null, null, null));
         }
 
         Assert.Equal(1, connector.LastMediaCount);

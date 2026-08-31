@@ -12,6 +12,7 @@ x-dotnet-env: &dotnet-env
   ObjectStore__AccessKey: "rustfsadmin"
   ObjectStore__SecretKey: "rustfsadmin"
   ObjectStore__Bucket: "postyfox"
+  ObjectStore__TelegramBucket: "postyfox-telegram"
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "guest"
   RabbitMq__Password: "guest"

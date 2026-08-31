@@ -10,7 +10,7 @@ namespace PostyFox.Api.Core.Endpoints;
 
 public static class MediaEndpoints
 {
-    public const string Container = "media";
+    public const string Container = MediaContainers.Media;
 
     public static void MapMediaEndpoints(this IEndpointRouteBuilder app)
     {
