@@ -5,6 +5,7 @@ metadata:
   labels: {{- include "postyfox.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.services.worker.replicas }}
+  revisionHistoryLimit: 2
   selector:
     matchLabels: { app.kubernetes.io/name: postyfox-worker }
   template:

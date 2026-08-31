@@ -196,6 +196,24 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: postyfox-vault }
     spec:
+      initContainers:
+        # Fixes ownership of both PVCs before the non-root vault/vault-init containers touch them.
+        # The vault and vault-init containers run as the image's non-root user (uid 100, gid 1000)
+        # and have no permission to chown their own volumes — a freshly-provisioned PVC (or one
+        # whose replica was reattached to a different node, or a volume replaced by hand) starts
+        # root-owned, and Vault fails to boot ("permission denied" reading/writing under
+        # /vault/file or /vault/init) until it's fixed. Runs as root once per pod start; idempotent
+        # and cheap (a no-op chown) once ownership is already correct.
+        - name: fix-volume-ownership
+          image: {{ .Values.vault.image }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command: ["sh", "-c", "chown -R 100:1000 /vault/file /vault/init"]
+          volumeMounts:
+            - { mountPath: /vault/file, name: vaultdata }
+            - { mountPath: /vault/init, name: vaultkeys }
       containers:
         - name: vault
           image: {{ .Values.vault.image }}
