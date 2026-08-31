@@ -30,12 +30,8 @@ public static class ServiceDefinitionSeeder
             "label": "Phone number", "type": "tel", "required": true,
             "placeholder": "+1234567890",
             "help": "The phone number of the Telegram account to post as."
-          },
-          "DefaultPostingTarget": {
-            "label": "Default posting target",
-            "placeholder": "@mychannel or chat id",
-            "help": "The chat/channel posts go to by default."
-        } }
+          } 
+        }
         """;
 
     // Bluesky handles must NOT carry a leading "@" — the AT Protocol handle resolver rejects it.
