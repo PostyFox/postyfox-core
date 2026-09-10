@@ -1,4 +1,4 @@
-# Internal nginx path router sitting behind oauth2-proxy — not published (only oauth2-proxy's
+# Internal nginx path router sitting behind oauth2-proxy: not published (only oauth2-proxy's
 # Service is fronted by the Ingress). Composed from conf.d fragments so each concern owns its own
 # file; the "/" catch-all proxies to a separately-deployed frontend Service when
 # gateway.frontend.enabled is set, else falls back to core-api. Ships a fluent-bit sidecar shipping
@@ -10,11 +10,11 @@ metadata:
   labels: {{- include "postyfox.labels" . | nindent 4 }}
 data:
   nginx.conf: |
-    # Internal path router sitting behind oauth2-proxy. Not published — only oauth2-proxy is public.
+    # Internal path router sitting behind oauth2-proxy. Not published: only oauth2-proxy is public.
     #
     # The router is composed from fragments in conf.d so each concern owns its own file:
-    #   conf.d/upstreams/*.conf  — backend upstreams (http context)
-    #   conf.d/routes/*.conf     — location blocks (server context), applied in filename order
+    #   conf.d/upstreams/*.conf  : backend upstreams (http context)
+    #   conf.d/routes/*.conf     : location blocks (server context), applied in filename order
     #
     # This lets a companion deployment (e.g. the PostyFox frontend) drop in its own upstream and a
     # routes/90-root.conf that re-points the catch-all at the SPA, without this repo owning that
@@ -30,7 +30,7 @@ data:
       client_max_body_size 10m;
       # oauth2-proxy already forwards the real scheme (https) from the public TLS edge, but this
       # listener is plain HTTP internally, so $scheme is always "http" and must NOT overwrite an
-      # inbound X-Forwarded-Proto — only fill it in when it's genuinely absent (e.g. gateway hit
+      # inbound X-Forwarded-Proto: only fill it in when it's absent (e.g. gateway hit
       # directly, such as in local dev without the oauth2-proxy/gateway chain).
       map $http_x_forwarded_proto $forwarded_proto {
         default $http_x_forwarded_proto;
@@ -61,12 +61,12 @@ data:
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
         # Serve the maintenance page (conf.d/routes/05-maintenance.conf) instead of a raw error whenever
-        # a backend is unreachable/mid-restart. No "=" here — that preserves the original 502/503/504
+        # a backend is unreachable/mid-restart. No "=" here. That preserves the original 502/503/504
         # status on the response rather than remapping it.
         proxy_intercept_errors on;
         error_page 502 503 504 @maintenance;
 
-        # Gateway's own liveness (for the container healthcheck) — not routed to a backend.
+        # Gateway's own liveness (for the container healthcheck), not routed to a backend.
         location = /healthz { access_log off; return 200 "ok\n"; }
 
         # Route fragments, loaded in filename order (…/routes/90-root.conf owns the catch-all).
@@ -131,7 +131,7 @@ data:
   {{- if .Values.gateway.frontend.enabled }}
   frontend.conf: |
     # `set` is only valid in server/location/if context, but this file is included at the http
-    # level (see nginx.conf) — use `map` instead, which is an http-context directive and gives us
+    # level (see nginx.conf): use `map` instead, which is an http-context directive and gives us
     # the same "$frontend_upstream is always defined" variable for the resolver + proxy_pass in
     # routes/90-root.conf.
     map $host $frontend_upstream {
@@ -155,7 +155,7 @@ data:
     }
 
     # Serves the maintenance page for the flag above AND for automatic 502/503/504s raised when
-    # core-api/post-api are unreachable (e.g. mid-restart during a rolling update) — see
+    # core-api/post-api are unreachable (e.g. mid-restart during a rolling update): see
     # proxy_intercept_errors/error_page in nginx.conf.
     location @maintenance {
         root /etc/nginx/maintenance;

@@ -19,7 +19,7 @@ x-dotnet-env: &dotnet-env
   # Secret store (Neillans.Adapters.Secrets). The base local stack bundles no vault, so use the
   # in-process store. Switch to a persistent backend by setting Secrets__Provider (HashiCorpVault |
   # BitWarden | AzureKeyVault | Infisical) + that provider's Secrets__<Provider>__* options. (The
-  # dev/prod stacks add a bundled HashiCorp Vault and default to it — see docker-compose.dev/prod.yml.)
+  # dev/prod stacks add a bundled HashiCorp Vault and default to it: see docker-compose.dev/prod.yml.)
   Secrets__Provider: "InMemory"
   Auth__UserHeader: "X-Auth-Request-User"
   # In-app OIDC bearer validation. Issuer is the browser-facing Keycloak URL (matches the token `iss`);
@@ -80,7 +80,7 @@ services:
 
   redis:
     # Valkey is the drop-in, wire-protocol-compatible fork of Redis (Redis moved to a non-OSS
-    # license after 7.x) — same RESP protocol, same redis-cli/redis:// clients work unchanged.
+    # license after 7.x): same RESP protocol, same redis-cli/redis:// clients work unchanged.
     image: valkey/valkey:9.1.1-alpine
     command: ["valkey-server", "--save", "", "--appendonly", "no"]
     healthcheck:
@@ -112,7 +112,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
       OTEL_LOGS_EXPORTER: "otlp"
-      # Skip cloud resource detectors — avoids metadata-lookup timeouts at startup.
+      # Skip cloud resource detectors: avoids metadata-lookup timeouts at startup.
       OTEL_NODE_RESOURCE_DETECTORS: "env,host,os,serviceinstance,process"
     ports: ["8090:8090"]
     depends_on:
@@ -127,6 +127,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: final
       args:
         PROJECT: src/PostyFox.Api.Core/PostyFox.Api.Core.csproj
         ASSEMBLY: PostyFox.Api.Core.dll
@@ -157,6 +158,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: final
       args:
         PROJECT: src/PostyFox.Api.Post/PostyFox.Api.Post.csproj
         ASSEMBLY: PostyFox.Api.Post.dll
@@ -179,6 +181,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: with-ffmpeg
       args:
         PROJECT: src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj
         ASSEMBLY: PostyFox.Worker.Posting.dll
@@ -238,7 +241,7 @@ services:
     command: ["--config=/etc/oauth2-proxy.cfg"]
     volumes:
       - "./oauth2-proxy/oauth2-proxy.cfg:/etc/oauth2-proxy.cfg:ro"
-      # Custom error.html (see oauth2-proxy.cfg's custom_templates_dir) — shown when the gateway
+      # Custom error.html (see oauth2-proxy.cfg's custom_templates_dir), shown when the gateway
       # itself is unreachable/restarting.
       - "./oauth2-proxy/templates:/etc/oauth2-proxy/templates:ro"
     ports: ["4180:4180"]

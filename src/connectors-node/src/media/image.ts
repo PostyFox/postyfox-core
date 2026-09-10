@@ -21,9 +21,9 @@ export async function normalizeImage(
   try {
     meta = await sharp(bytes).metadata();
   } catch {
-    return { bytes, contentType }; // not a decodable raster image — leave it untouched
+    return { bytes, contentType }; // not a decodable raster image, leave it untouched
   }
-  if ((meta.pages ?? 1) > 1) return { bytes, contentType }; // animated — handled by the video path
+  if ((meta.pages ?? 1) > 1) return { bytes, contentType }; // animated, handled by the video path
   if (!meta.width || !meta.height) return { bytes, contentType };
 
   const mayHaveAlpha = /(png|webp|gif)/i.test(contentType);

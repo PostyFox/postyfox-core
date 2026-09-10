@@ -1,4 +1,4 @@
-# PostyFox Platform — Architecture (as built)
+# PostyFox Platform: Architecture (as built)
 
 This describes the **containerised PostyFox platform**.
 For the key decisions and their rationale see [`DECISIONS.md`](./DECISIONS.md);
@@ -17,14 +17,14 @@ event arrives. This repo is the backend + infrastructure only (the control-panel
 
 ### Design principles
 
-- **Cloud-agnostic** — no hard dependency on any single cloud; every external concern (DB, object
+- **Cloud-agnostic**: no hard dependency on any single cloud; every external concern (DB, object
   store, message bus, secrets, auth edge, telemetry) sits behind an abstraction with a swappable
   implementation.
-- **Stateless services, async pipeline** — APIs are stateless and horizontally scalable; delivery
+- **Stateless services, async pipeline**: APIs are stateless and horizontally scalable; delivery
   is decoupled through a message bus so it scales on queue depth and survives restarts.
-- **Uniform extensibility** — adding a platform means implementing one connector contract; adding an
+- **Uniform extensibility**: adding a platform means implementing one connector contract; adding an
   event source means implementing one trigger-source contract.
-- **Two language stacks by fit** — C# for the bulk; Node/TypeScript where its libraries or web-form
+- **Two language stacks by fit**: C# for the bulk; Node/TypeScript where its libraries or web-form
   tooling are materially better (Bluesky, Tumblr, FurAffinity), behind the same connector contract.
 
 ---
@@ -80,12 +80,12 @@ flowchart TB
 | **post-api** | ASP.NET Core (.NET 10) | Post intake + status; inbound external-trigger webhook callbacks. Publishes pipeline commands. |
 | **posting-worker** | .NET Worker | Consumes `generate`/`deliver` queues; renders + delivers each target; owns retries/backoff/DLQ + status rollup. |
 | **connectors-node** | Node 24 / Fastify | Bluesky (`@atproto/api`), Tumblr (`tumblr.js`), FurAffinity (authenticated HTML forms), and Fediverse connectors behind an `IConnector`-shaped HTTP contract; internal-token auth; stateless. |
-| PostgreSQL | — | System of record. |
-| S3 / MinIO | — | Media, post payloads, Telegram MTProto sessions. |
-| RabbitMQ | — | Pipeline queues; delayed-message exchange for scheduling + retry backoff. |
-| Secret store | — | Per-user connector secrets, platform secrets, trigger signing secrets. Pluggable provider (BitWarden/VaultWarden, Azure Key Vault, Infisical, or in-memory) via the `adapters-secrets` library. |
-| oauth2-proxy + Keycloak | — | OIDC edge (opt-in `auth` compose profile); injects the trusted identity header. |
-| OTel Collector | — | Traces + metrics sink (OTLP). |
+| PostgreSQL | n/a | System of record. |
+| S3 / MinIO | n/a | Media, post payloads, Telegram MTProto sessions. |
+| RabbitMQ | n/a | Pipeline queues; delayed-message exchange for scheduling + retry backoff. |
+| Secret store | n/a | Per-user connector secrets, platform secrets, trigger signing secrets. Pluggable provider (BitWarden/VaultWarden, Azure Key Vault, Infisical, or in-memory) via the `adapters-secrets` library. |
+| oauth2-proxy + Keycloak | n/a | OIDC edge (opt-in `auth` compose profile); injects the trusted identity header. |
+| OTel Collector | n/a | Traces + metrics sink (OTLP). |
 
 ---
 
@@ -215,7 +215,7 @@ Notes:
   platform secrets (e.g. `TelegramApiID`/`TelegramApiHash` and
   `TumblrConsumerKey`/`TumblrConsumerSecret`) under their own names. The store is a
   pluggable `ISecretsProvider` (`adapters-secrets` library): in-memory for local/dev, and
-  BitWarden/VaultWarden, Azure Key Vault, or Infisical for deployments — selected via
+  BitWarden/VaultWarden, Azure Key Vault, or Infisical for deployments, selected via
   `Secrets:Provider`. There is no database table backing it. The fixed platform-secret catalog is
   managed through `/api/admin/operational-secrets`, protected by the `postyfox-admin` Keycloak role;
   API responses expose configured status only, never values.
@@ -239,13 +239,13 @@ flowchart LR
 - A **policy scheme** (`PostyFox`) forwards by credential: `X-API-Key` → ApiKey; else an
   `Authorization: Bearer` token (when OIDC is enabled) → JWT; otherwise the Header scheme.
 - **JWT scheme** validates the OIDC bearer token the oauth2-proxy edge forwards, in-app, against the
-  realm's JWKS (issuer + lifetime + optional audience). This is the production path — the APIs trust
+  realm's JWKS (issuer + lifetime + optional audience). This is the production path: the APIs trust
   **no** injected identity header.
 - **Header scheme** authenticates as `Auth:DevUserId` only when `Auth:DevMode=true` (a test-only
-  in-process switch; no shipped configuration enables it). Otherwise it rejects — a raw
+  in-process switch; no shipped configuration enables it). Otherwise it rejects: a raw
   `X-Auth-Request-User` header is never trusted.
 - **API-key scheme** validates the presented key against a PBKDF2 hash (constant-time), for
-  external/machine callers — the retained requirement. Keys are prefix-indexed; the secret is never
+  external/machine callers (the retained requirement). Keys are prefix-indexed; the secret is never
   stored.
 - Webhook callbacks are anonymous at the auth layer and instead authenticated per-source by
   **signature verification** (see point 8).
@@ -269,7 +269,7 @@ the connector-ops endpoints never hard-code a platform.
 The C# **`HttpConnector`** adapter fulfils `IConnector` for Node-hosted platforms by forwarding to
 connectors-node over HTTP (`POST /connectors/{platform}/{is-authenticated|list-targets|deliver}`),
 passing the resolved config + secret in the request body. All internal calls carry a shared
-`X-Internal-Token`. **Media is passed by reference** (`{container, key, contentType, alt}`) — the
+`X-Internal-Token`. **Media is passed by reference** (`{container, key, contentType, alt}`). The
 Node service fetches the bytes from the shared object store itself (its own S3 client), so no media
 bytes cross the internal hop. The Node service holds no session state.
 
@@ -350,10 +350,10 @@ Target states: `Queued → Generating → Ready → Delivering → Delivered | F
 are left as-is, so a partially-sent post keeps what went out. Cancellation is status-based, not a
 queue purge: a delayed generate/deliver message for a cancelled target no-ops when it fires (the
 handlers skip `Cancelled`). `DELETE /api/posts/{id}` hard-deletes a single post (row + cascade
-targets + stored payload/media via the shared `PostPayloadCleaner`) — for history entries and for
+targets + stored payload/media via the shared `PostPayloadCleaner`): for history entries and for
 stale/orphaned queued rows; removing the row means any pending queue message for it finds no target
 and no-ops. `POST /api/posts/{id}/duplicate` returns the authored content so the compose form can
-recreate a past post ("post again") — its media is copied to fresh, user-owned blobs (via
+recreate a past post ("post again"): its media is copied to fresh, user-owned blobs (via
 `MediaCopier`) so the recreated post is fully self-contained and deleting/expiring the original never
 pulls a blob out from under the copy.
 
@@ -401,7 +401,7 @@ posts get the same rendering, delivery, retry and status behaviour.
 
 ## 9. Messaging topology
 
-- One durable **`x-delayed-message`** exchange (`postyfox`, delegate type `direct`) — the delay
+- One durable **`x-delayed-message`** exchange (`postyfox`, delegate type `direct`). The delay
   header powers both scheduled posts and retry backoff.
 - Queues `generate` and `deliver`, each bound by routing key = queue name, each dead-lettering to
   `postyfox.dlx` → `{queue}.dlq`.
@@ -417,13 +417,13 @@ posts get the same rendering, delivery, retry and status behaviour.
   to any collector/backend. `/healthz` (liveness) and `/readyz` (DB connectivity) on both APIs.
 - **Security hardening**: a global fixed-window **rate limiter** (config-driven, partitioned by
   user/IP, HTTP 429) and conservative **security response headers** on both APIs.
-- **Deployment** — three modes, all consuming the same published images
+- **Deployment**: three modes, all consuming the same published images
   (`{registry}/{repository}-{service}:{tag}`):
-  1. **docker-compose** (`deploy/docker-compose.yml`) — full local stack; `auth` profile
+  1. **docker-compose** (`deploy/docker-compose.yml`): full local stack; `auth` profile
      adds Keycloak + oauth2-proxy.
-  2. **Helm chart** (`deploy/helm/postyfox`) — the 4 services + config/secret/ingress for
+  2. **Helm chart** (`deploy/helm/postyfox`): the 4 services + config/secret/ingress for
      any Kubernetes; backing services provided externally.
-  3. **Terraform → Azure Container Apps** (`deploy/terraform-aca`) — deploys the published
+  3. **Terraform → Azure Container Apps** (`deploy/terraform-aca`): deploys the published
      images to ACA (external ingress for the APIs, internal for connectors-node, no ingress for the
      worker).
 
@@ -432,9 +432,9 @@ posts get the same rendering, delivery, retry and status behaviour.
   builds + tests both stacks, lints the IaC, and builds/pushes images.
 - **Config**: 12-factor env vars, nested with `__` (see [`../README.md`](../README.md#configuration-env-vars)).
 - **Testing**: unit + integration tests per layer using in-memory SQLite / EF-InMemory and fakes for
-  I/O — no Docker required. The pipeline is covered end-to-end via an in-process bus that drives the
+  I/O. No Docker required. The pipeline is covered end-to-end via an in-process bus that drives the
   real handlers. Not covered: the live MTProto gateway and the live external-platform calls (need
-  real credentials) — the logic around them is tested via seams.
+  real credentials). The logic around them is tested via seams.
 
 ---
 
@@ -444,7 +444,7 @@ See [FOLLOWUPS.md](./FOLLOWUPS.md) for the full list. Headlines:
 
 - Media delivery is fully implemented, including per-platform resize/transcode normalization for images
   and video. Remaining omissions are around documents (pass-through), a normalized-variant cache, and
-  pre-signed uploads — see [FOLLOWUPS.md](./FOLLOWUPS.md).
+  pre-signed uploads. See [FOLLOWUPS.md](./FOLLOWUPS.md).
 - Telegram MTProto is stateful (single-writer routing) and not integration-tested (needs live creds).
 - No admin endpoint yet for platform-level secrets (Telegram api id/hash, trigger signing secrets).
 - Scheduling relies on the RabbitMQ delayed-message plugin; a durable scheduler is a follow-up.

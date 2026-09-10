@@ -7,7 +7,7 @@ namespace PostyFox.Application.Telemetry;
 /// downstream logs are searchable by post. Lives in Application (the layer that owns these ids) so
 /// both the API intake and the worker's message consumer can set them; the log enricher in the
 /// Infrastructure layer reads the same keys. Baggage flows across async, child spans, and the
-/// RabbitMQ hop, and — unlike an ILogger scope — doesn't trip the disabled-scopes/duplicate-key issue.
+/// RabbitMQ hop, and (unlike an ILogger scope) doesn't trip the disabled-scopes/duplicate-key issue.
 /// </summary>
 public static class PostTelemetry
 {

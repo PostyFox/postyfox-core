@@ -14,7 +14,7 @@ public static class ServiceDefinitionSeeder
     // carrying both presentation (label/help/placeholder/type/link) and validation (required/pattern/
     // message/min-maxLength) metadata. The frontend renders + pre-validates from these; the server
     // enforces the validation keys authoritatively (see ConfigSchemaValidator). Adding/changing a
-    // field's behaviour is a server-only change — the client needs no edits.
+    // field's behaviour is a server-only change: the client needs no edits.
 
     private const string DiscordSchema = """
         { "Webhook": {
@@ -34,7 +34,7 @@ public static class ServiceDefinitionSeeder
         }
         """;
 
-    // Bluesky handles must NOT carry a leading "@" — the AT Protocol handle resolver rejects it.
+    // Bluesky handles must NOT carry a leading "@": the AT Protocol handle resolver rejects it.
     private const string BlueSkyConfigSchema = """
         { "Handle": {
             "label": "Handle", "required": true,
@@ -61,7 +61,7 @@ public static class ServiceDefinitionSeeder
         } }
         """;
 
-    // FurAffinity's connector holds nothing but the account itself — it authenticates from a browser
+    // FurAffinity's connector holds nothing but the account itself: it authenticates from a browser
     // session handed over by PostyFox Connect, and its category/species/gender/folder choices belong
     // to an individual submission, not the account. Those live on the connector descriptor's
     // PostOptionsSchema and are chosen in the compose form (see ConnectorDescriptor.PostOptionsSchema).
@@ -87,12 +87,12 @@ public static class ServiceDefinitionSeeder
         new() { Id = "BlueSky", Name = "BlueSky", Platform = "BlueSky", Enabled = true,
                 ConfigSchema = BlueSkyConfigSchema, SecureConfigSchema = BlueSkySecureSchema },
         // Tumblr credentials are obtained via the OAuth "connect" flow (SupportsOAuth), not entered
-        // by hand — so there is no user-facing secure config schema.
+        // by hand, so there is no user-facing secure config schema.
         new() { Id = "Tumblr", Name = "Tumblr", Platform = "Tumblr", Enabled = true,
                 ConfigSchema = TumblrSchema, SecureConfigSchema = null },
         new() { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true,
                 ConfigSchema = FurAffinityConfigSchema, SecureConfigSchema = null },
-        // Fediverse platforms — credentials come from the OAuth/MiAuth "connect" flow (SupportsOAuth),
+        // Fediverse platforms: credentials come from the OAuth/MiAuth "connect" flow (SupportsOAuth),
         // not entered by hand, so there is no user-facing secure config schema. All share one config
         // schema (just the instance URL); the connector auto-detects the server software at connect.
         new() { Id = "Mastodon", Name = "Mastodon", Platform = "Mastodon", Enabled = true,

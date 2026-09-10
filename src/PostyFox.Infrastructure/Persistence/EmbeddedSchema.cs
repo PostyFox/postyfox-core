@@ -5,7 +5,7 @@ namespace PostyFox.Infrastructure.Persistence;
 
 /// <summary>
 /// Reads the field-descriptor schemas that ship as embedded resources under
-/// <c>Persistence/Schemas</c>. A schema lands there instead of a C# string literal when its option
+/// <c>Persistence/Schemas</c>. A schema goes there instead of a C# string literal when its option
 /// lists are too large to stay readable inline (see that folder's README).
 /// </summary>
 public static class EmbeddedSchema

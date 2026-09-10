@@ -1,9 +1,9 @@
 {{- if .Values.ingress.enabled }}
 # Fronts the OIDC edge (oauth2-proxy) ONLY. core-api/post-api are ClusterIP and intentionally have
-# no rule here — exposing them directly would bypass authentication at the network layer.
+# no rule here: exposing them directly would bypass authentication at the network layer.
 #
 # className/annotations are left for the deployer to set (e.g. className: nginx|contour|traefik,
-# annotations: { cert-manager.io/cluster-issuer: ... }) — nothing here assumes a specific ingress
+# annotations: { cert-manager.io/cluster-issuer: ... }), nothing here assumes a specific ingress
 # controller or certificate issuer.
 apiVersion: networking.k8s.io/v1
 kind: Ingress

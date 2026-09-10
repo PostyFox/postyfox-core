@@ -4,9 +4,9 @@ Deploys the four PostyFox core services as Azure Container Apps, **consuming pre
 (built + pushed by CI as `{registry}/{repository}-{service}:{tag}`). Backing services (PostgreSQL,
 RabbitMQ, object storage) are expected to be managed/external and supplied via variables.
 
-- `core-api`, `post-api` — external ingress (`:8080`)
-- `connectors-node` — internal ingress (`:8090`)
-- `worker` — no ingress
+- `core-api`, `post-api`: external ingress (`:8080`)
+- `connectors-node`: internal ingress (`:8090`)
+- `worker`: no ingress
 - `core-api` owns migrations + catalogue seeding
 
 ## Usage

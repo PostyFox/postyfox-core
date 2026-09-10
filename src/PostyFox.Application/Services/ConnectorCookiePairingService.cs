@@ -57,7 +57,7 @@ public sealed partial class ConnectorCookiePairingService(
     /// <summary>
     /// The cookie-authenticated sites this deployment supports, with no user context: which cookies to
     /// collect and where to log in. Lets a browser client stay useful (and drive the token handshake)
-    /// before the user has a PostyFox session. Carries only platform metadata — nothing user-specific.
+    /// before the user has a PostyFox session. Carries only platform metadata, nothing user-specific.
     /// </summary>
     public async Task<IReadOnlyList<CookiePairingTargetDto>> ListSitesAsync(CancellationToken ct = default)
     {
@@ -73,7 +73,7 @@ public sealed partial class ConnectorCookiePairingService(
 
     /// <summary>
     /// Every site the user could hand a session to, with the cookie details a browser client needs.
-    /// A platform the user has no connector for still appears, with a null connector id — pairing it
+    /// A platform the user has no connector for still appears, with a null connector id: pairing it
     /// creates the connector. This is the extension's one discovery call: it resolves the connector,
     /// the cookie names, and the site's login URL in a single authenticated round trip.
     /// </summary>
@@ -106,7 +106,7 @@ public sealed partial class ConnectorCookiePairingService(
     /// <summary>
     /// Stores a website session against the user's connector for the platform. Called by a browser
     /// client that already holds the user's PostyFox session, so the caller's identity is the
-    /// authorization — there is no token to mint or redeem.
+    /// authorization: there is no token to mint or redeem.
     /// </summary>
     /// <param name="connectorId">
     /// The connector to update. When null the platform's sole connector is used, or one is created if
@@ -154,7 +154,7 @@ public sealed partial class ConnectorCookiePairingService(
             if (connector is null)
             {
                 // First run: the browser client knows the site but there is nothing to attach the
-                // session to yet. Creating the obvious connector here is what keeps this one click —
+                // session to yet. Creating the obvious connector here is what keeps this one click:
                 // the alternative is bouncing the user into PostyFox to add it by hand first. Every
                 // field on the platform's config schema is optional, so defaults are valid.
                 connector = new UserConnector

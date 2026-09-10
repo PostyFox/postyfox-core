@@ -12,7 +12,7 @@ namespace PostyFox.Infrastructure.Messaging;
 /// instrumentation), but a queue is opaque to that machinery: the producer must <see cref="Inject"/>
 /// the current context into the message headers and the consumer must <see cref="Extract"/> it and
 /// start a span parented to it. With a span active, every log emitted during handling inherits its
-/// traceId/spanId — which is why worker logs were previously orphaned (empty traceId).
+/// traceId/spanId, which is why worker logs were previously orphaned (empty traceId).
 /// </summary>
 public static class MessagingTelemetry
 {

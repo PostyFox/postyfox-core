@@ -173,7 +173,7 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
 
         var target = Assert.Single(targets!);
         Assert.Equal("FurAffinity", target.Platform);
-        Assert.Null(target.ConnectorId); // nothing configured yet — pairing will create it
+        Assert.Null(target.ConnectorId); // nothing configured yet: pairing will create it
         Assert.Equal(["a", "b"], target.CookieNames);
         Assert.Equal("https://www.furaffinity.net/", target.SiteUrl);
         Assert.Equal("https://www.furaffinity.net/login", target.LoginUrl);

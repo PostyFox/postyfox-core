@@ -38,11 +38,11 @@ public sealed partial class TemplateEngine : ITemplateEngine
 
     public RenderedPost Render(RenderRequest request)
     {
-        // Text-template tokens resolve first — before variables, tag interpolation or platform
-        // formatting — so the character-limit budget below is computed against the final text. This
+        // Text-template tokens resolve first (before variables, tag interpolation or platform
+        // formatting) so the character-limit budget below is computed against the final text. This
         // regex runs exactly once, so a resolved value can never reference (or cycle through) another
         // template; it is otherwise spliced in like any other author text, so a stray {variable} left
-        // inside one still gets substituted normally by the passes below — same as anywhere else in
+        // inside one still gets substituted normally by the passes below, same as anywhere else in
         // the post.
         var rawTitle = SubstituteTextTemplates(request.Title, request.TextTemplateValues);
         var rawBody = SubstituteTextTemplates(request.MarkdownBody, request.TextTemplateValues);
@@ -76,7 +76,7 @@ public sealed partial class TemplateEngine : ITemplateEngine
 
     /// <summary>
     /// Replaces every <c>{{tt:name}}</c> token with its resolved per-target value (already picked by
-    /// the caller — see <see cref="RenderRequest.TextTemplateValues"/>), case-insensitively. An
+    /// the caller, see <see cref="RenderRequest.TextTemplateValues"/>), case-insensitively. An
     /// unrecognized name resolves to an empty string rather than leaving the raw token in the post.
     /// </summary>
     private static string SubstituteTextTemplates(string? body, IReadOnlyDictionary<string, string>? values)
@@ -94,7 +94,7 @@ public sealed partial class TemplateEngine : ITemplateEngine
     /// template contains a <c>{tags}</c> token, the hashtag line replaces it in place; otherwise it is
     /// appended after a blank line (matching the historical Fediverse behaviour). Tags are dropped
     /// from the end, one at a time, until the result fits <paramref name="maxContentLength"/> (no
-    /// trimming when null — most platforms only report a cap live, at delivery time).
+    /// trimming when null: most platforms only report a cap live, at delivery time).
     /// </summary>
     private (string Body, int TagsOmitted) InterpolateTags(
         string markdownBody,

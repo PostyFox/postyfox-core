@@ -47,7 +47,7 @@ config:
   # Secret store (Neillans.Adapters.Secrets): HashiCorpVault | BitWarden | AzureKeyVault | Infisical
   # | InMemory. Non-secret provider options go here; credentials live under `secrets` below.
   secretsProvider: "HashiCorpVault"
-  # Only used when vault.enabled=false (bring-your-own Vault) — this chart's own Vault address is
+  # Only used when vault.enabled=false (bring-your-own Vault), this chart's own Vault address is
   # derived automatically when vault.enabled=true.
   hashiCorpVaultAddress: "https://vault.example.com:8200"
   hashiCorpVaultMountPoint: "secret"
@@ -140,7 +140,7 @@ rabbitmq:
 # ---------------------------------------------------------------------------------------------
 # Redis - session store for oauth2-proxy only (opaque cookie, avoids browser cookie-size limits).
 # Runs Valkey, the drop-in wire-protocol-compatible fork of Redis (Redis moved to a non-OSS
-# license after 7.x) — same RESP protocol, existing redis:// clients/tools work unchanged.
+# license after 7.x): same RESP protocol, existing redis:// clients/tools work unchanged.
 # No persistence by design (matches docker-compose: --save "" --appendonly no). Toggleable;
 # disable and point `oauth2Proxy.redisConnectionUrl` at your own instance instead.
 # ---------------------------------------------------------------------------------------------
@@ -237,19 +237,19 @@ oauth2Proxy:
     - "POST=^/api/connectors/cookie-pairing/complete$"
     - "OPTIONS=^/api/connectors/cookie-pairing/complete$"
     - "GET=^/api/connectors/cookie-pairing/sites$"
-    # Privacy policy is a public SPA route (see postyfox-frontend's app.routes.ts) — readable
+    # Privacy policy is a public SPA route (see postyfox-frontend's app.routes.ts), readable
     # without signing in, and linked from the oauth2-proxy sign_in page (see ./templates).
     - "GET=^/privacy$"
-    # The SPA shell needed to render /privacy (and any other pre-auth route) — Angular's hashed
+    # The SPA shell needed to render /privacy (and any other pre-auth route), Angular's hashed
     # JS/CSS bundles, fonts and icons, plus favicon.ico. These carry no user data, so skipping auth
     # for them is safe; it just lets the app boot before a session exists. Anchored to a single
     # root-level path segment (Angular's build output has no subdirectory) so it can't also match
     # an API path that happens to end in one of these extensions.
     - "GET=^/[^/]+\\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$"
-    # Fetched by DeploymentConfigService on EVERY app bootstrap (any route, including /privacy) —
+    # Fetched by DeploymentConfigService on EVERY app bootstrap (any route, including /privacy):
     # see postyfox-frontend's app.config.ts provideAppInitializer. Without this, an unauthenticated
     # visitor gets a 401 here, which the global authInterceptor treats as "session expired" and
-    # bounces to sign-in even on public routes. Static, operator-only config — no user data.
+    # bounces to sign-in even on public routes. Static, operator-only config: no user data.
     - "GET=^/deployment-config\\.json$"
   apiRoutes:
     - "^/api/"

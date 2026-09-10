@@ -50,7 +50,7 @@ public class TextTemplatePipelineTests
     public async Task Editing_a_text_template_after_scheduling_is_picked_up_at_generation_time()
     {
         // Generation (not intake) resolves the token, so a value changed after the post was authored
-        // but before it fires reflects the newer value — same principle as {variable} resolving fresh
+        // but before it fires reflects the newer value: same principle as {variable} resolving fresh
         // per target, just scoped to the connector instead.
         var connector = new ProgrammableConnector("DiscordWH", succeed: true);
         using var h = new PipelineHarness(connector);

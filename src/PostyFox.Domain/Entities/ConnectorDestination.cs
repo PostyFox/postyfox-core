@@ -2,7 +2,7 @@ namespace PostyFox.Domain.Entities;
 
 /// <summary>
 /// A specific destination within a connected account that the user has chosen to expose for
-/// posting — e.g. one Telegram chat/channel reachable from a single MTProto login. Lets a
+/// posting: e.g. one Telegram chat/channel reachable from a single MTProto login. Lets a
 /// connector that authenticates once (<see cref="UserConnector"/>) fan out to several delivery
 /// destinations without the user creating a duplicate connector/login per destination.
 /// <see cref="ExternalId"/> is the platform's own identifier for the destination (a Telegram chat

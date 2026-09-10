@@ -8,12 +8,12 @@ post on their behalf.
 
 Opening the popup does the detection; the single button does the work.
 
-1. `GET /api/connectors/cookie-pairing/targets` — sent with the user's PostyFox session cookie
+1. `GET /api/connectors/cookie-pairing/targets`: sent with the user's PostyFox session cookie
    (Chrome treats extension-initiated requests as same-site, so it rides along). One call resolves
    which connector to update, which cookies to collect, and where the site's login page is.
 2. The popup reads exactly those cookies for the site.
 3. `POST /api/connectors/cookie-pairing/pair` sends them back. The server stores only the cookie
-   names the platform declares, against the user's connector for that site — creating that connector
+   names the platform declares, against the user's connector for that site, creating that connector
    if they have none yet.
 
 There is nothing to type: the target is `https://cp.postyfox.com`, or `https://dev.postyfox.com` with
@@ -23,7 +23,7 @@ If the user is not signed in to PostyFox, or not logged in to the website, the p
 and its button opens the right page. Nothing else is asked of them.
 
 Site knowledge lives on the server (`CookiePairingSpec` on the connector's descriptor), not in the
-extension — a newly supported site needs no extension release, only a host permission if it is not
+extension. A newly supported site needs no extension release, only a host permission if it is not
 already covered.
 
 ### Pairing tokens (fallback)
@@ -31,7 +31,7 @@ already covered.
 `POST /api/connectors/{connectorId}/cookie-pairing/start` still mints a five-minute, one-use token,
 and the popup's **Use a pairing token instead** section still redeems it through the anonymous
 `POST /api/connectors/cookie-pairing/complete`. That route exists for a browser that cannot present a
-PostyFox session — a different profile, or a Safari build where the session cookie does not reach the
+PostyFox session: a different profile, or a Safari build where the session cookie does not reach the
 extension. It reads site metadata from the anonymous `GET /api/connectors/cookie-pairing/sites`, so it
 works while signed out.
 
@@ -65,13 +65,13 @@ source so Chrome/Edge/Safari behavior stays aligned.
 
 - Site and PostyFox access are declared explicitly in `host_permissions`; a site PostyFox supports
   that is not covered statically is requested interactively, from the button press.
-- Only the two published HTTPS origins are ever contacted — there is no user-supplied URL to redirect
+- Only the two published HTTPS origins are ever contacted: there is no user-supplied URL to redirect
   the cookies to.
 - Only the cookie names the platform's descriptor declares are read, sent, or stored. Values are
   never displayed or persisted by the extension.
 - `/cookie-pairing/pair` is authorized by the caller's own PostyFox session, so a browser that is not
   signed in cannot connect anything.
-- `/cookie-pairing/sites` is anonymous but carries platform metadata only — no user context.
+- `/cookie-pairing/sites` is anonymous but carries platform metadata only: no user context.
 - Pairing tokens expire after five minutes, are single-use, and are persisted server-side only as a
   SHA-256 hash.
 - The public OIDC edge bypasses login only for the pairing completion and site-metadata routes.

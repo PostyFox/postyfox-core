@@ -8,7 +8,7 @@ namespace PostyFox.Application.Services;
 
 /// <summary>
 /// Manages the destinations a user exposes for posting under one connector login (see
-/// <see cref="ConnectorDestination"/>) — e.g. picking which Telegram chats reachable from a single
+/// <see cref="ConnectorDestination"/>): e.g. picking which Telegram chats reachable from a single
 /// MTProto login should show up as individually selectable targets in the compose form. Only
 /// meaningful for connectors that declare
 /// <see cref="ConnectorDescriptor.SupportsMultipleTargets"/>; live discovery of what can
@@ -32,7 +32,7 @@ public sealed class ConnectorDestinationService(IAppDbContext db, IClock clock, 
 
     /// <summary>
     /// Every destination the user has exposed across all their connectors, flattened with the owning
-    /// connector's identity — what the compose form needs to build its full set of selectable targets
+    /// connector's identity: what the compose form needs to build its full set of selectable targets
     /// (single-destination connectors plus each exposed destination of multi-target ones).
     /// </summary>
     public async Task<IReadOnlyList<ConnectorDestinationSummaryDto>> ListAllAsync(string userId, CancellationToken ct = default) =>

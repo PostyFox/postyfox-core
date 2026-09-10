@@ -14,7 +14,7 @@ sudo nano /opt/postyfox/prod/.env     # Configure prod stack
 ```
 
 ### 3. GitHub Secrets
-Add to repository → Settings → Secrets. Split by GitHub Environment — `development` needs none of
+Add to repository → Settings → Secrets. Split by GitHub Environment: `development` needs none of
 these (the self-hosted runner deploys locally); `production` needs the Kubernetes/Helm secrets:
 
 **`production` environment secrets** (Kubernetes/Helm deploy):
@@ -22,14 +22,14 @@ these (the self-hosted runner deploys locally); `production` needs the Kubernete
   to the `postyfox` namespace is strongly recommended over a personal/admin credential)
 - `DB_PASSWORD`, `RABBITMQ_PASSWORD`, `REDIS_PASSWORD`: passwords for the chart's own
   Postgres/RabbitMQ/Redis (only needed if you leave `postgres.enabled`/etc `true` in
-  `values-prod.yaml` — see that file)
+  `values-prod.yaml`, see that file)
 - `EXTERNAL_POSTGRES_CONNECTION`: full connection string, only used if `postgres.enabled: false`
 - `VAULT_ROLE_ID` / `VAULT_SECRET_ID`: AppRole credentials pinned into the bundled Vault
 - `INTERNAL_TOKEN`: shared token between core/worker and connectors-node
 - `RUSTFS_ACCESS_KEY` / `RUSTFS_SECRET_KEY`: object store credentials
 - `OIDC_CLIENT_SECRET`, `OAUTH2_PROXY_COOKIE_SECRET`: OIDC edge secrets
 
-These are rendered into a workflow-local, gitignored values file at deploy time (never committed —
+These are rendered into a workflow-local, gitignored values file at deploy time (never committed,
 see the "Render secret overrides" step in `release.yml`/`deploy-manual.yml`) and layered on top of
 `deploy/helm/postyfox/values-prod.yaml`, which holds the non-secret cluster configuration
 (hostnames, ingress class, replica counts, toggles).
@@ -60,7 +60,7 @@ release.yml (manual dispatch, semver)
     └─→ Prod: wait for approval → helm upgrade --install (Kubernetes) ⏳
 ```
 
-Production is a **separate Kubernetes deployment target** from dev — dev stays on docker-compose
+Production is a **separate Kubernetes deployment target** from dev: dev stays on docker-compose
 (self-hosted runner, single host); prod is a Helm chart (`deploy/helm/postyfox`) deployed into a
 `postyfox` namespace on a real cluster. See [Kubernetes / Helm (Production)](#kubernetes--helm-production) below.
 
@@ -77,7 +77,7 @@ Production is a **separate Kubernetes deployment target** from dev — dev stays
 | `deploy/vault/config/vault.hcl` | Vault server config (file backend, Shamir seal; also ported into the Helm chart's vault ConfigMap) |
 | `deploy/vault/bootstrap.sh` | Vault init + auto-unseal sidecar script (also ported into the Helm chart) |
 | `deploy/helm/postyfox/` | Production Helm chart (full stack: apps + optional Postgres/RabbitMQ/Redis/Vault/otel-collector/gateway/oauth2-proxy) |
-| `deploy/helm/postyfox/values.yaml` | Chart defaults — generic, reusable by any deployer |
+| `deploy/helm/postyfox/values.yaml` | Chart defaults (generic, reusable by any deployer) |
 | `deploy/helm/postyfox/values-prod.yaml` | Non-secret overlay for the real PostyFox cluster |
 | `deploy/DEPLOYMENT.md` | Full deployment guide |
 
@@ -94,10 +94,10 @@ Production is a **separate Kubernetes deployment target** from dev — dev stays
 
 ### Production
 - Manual approval before deploy (`production` GitHub Environment)
-- **Kubernetes deployment via Helm** (`deploy/helm/postyfox`), not docker-compose — see
+- **Kubernetes deployment via Helm** (`deploy/helm/postyfox`), not docker-compose: see
   [Kubernetes / Helm (Production)](#kubernetes--helm-production) below
 - Replicated core-api/post-api (HA)
-- Shared cluster Postgres (toggleable — disable the chart's own and point at yours), shared
+- Shared cluster Postgres (toggleable: disable the chart's own and point at yours), shared
   Keycloak + RustFS
 - Bundled RabbitMQ/Redis/Vault (each independently toggleable for bring-your-own)
 - Production resource limits and health checks
@@ -137,7 +137,7 @@ ssh deploy@server "cd /opt/postyfox/dev && \
 The stack shows a maintenance page instead of a raw error in three situations. The first is a
 manual toggle for planned deploys; the other two are automatic and need no action:
 
-- **Planned maintenance (manual)** — the `gateway` service checks for
+- **Planned maintenance (manual)**: the `gateway` service checks for
   `deploy/gateway/maintenance/maintenance.flag` on every request (no reload needed). Create it
   before a deploy and remove it after:
   ```bash
@@ -148,13 +148,13 @@ manual toggle for planned deploys; the other two are automatic and need no actio
   ssh deploy@server "rm /opt/postyfox/dev/gateway/maintenance/maintenance.flag"
   ```
   This returns a `503` with the maintenance page for all traffic, regardless of backend health.
-- **Backend outage (automatic)** — if core-api/post-api are unreachable (e.g. mid-restart), the
+- **Backend outage (automatic)**: if core-api/post-api are unreachable (e.g. mid-restart), the
   `gateway` service's `error_page` directive serves the same maintenance page for the resulting
   `502`/`503`/`504`, with the original status code preserved.
-- **Gateway outage (automatic)** — if `gateway` itself is unreachable, oauth2-proxy's own custom
+- **Gateway outage (automatic)**: if `gateway` itself is unreachable, oauth2-proxy's own custom
   `error.html` (`deploy/oauth2-proxy/templates/`) renders the same maintenance branding.
 
-The maintenance page content lives at `deploy/gateway/maintenance/maintenance.html` — edit it to
+The maintenance page content lives at `deploy/gateway/maintenance/maintenance.html`. Edit it to
 change the wording/branding shown to users.
 
 ### Production (Kubernetes)
@@ -173,20 +173,20 @@ gateway's ConfigMap by the chart.
 ## Ports
 
 ### Development (docker-compose)
-Only the OIDC edge (oauth2-proxy) publishes a host port — the APIs, gateway, and connectors-node stay
+Only the OIDC edge (oauth2-proxy) publishes a host port: the APIs, gateway, and connectors-node stay
 on the internal network and are reached through the edge. The edge port is configured per stack in
 `.env`:
 
-- `EDGE_PORT` (default `4180`) — put your TLS terminator / load balancer in front of it.
+- `EDGE_PORT` (default `4180`): put your TLS terminator / load balancer in front of it.
 
 All public traffic goes to `http://<host>:${EDGE_PORT}`, which authenticates via Keycloak and
 path-routes `/api/posts` + `/api/webhooks` to post-api and everything else to core-api.
 
 ### Production (Kubernetes)
-Only oauth2-proxy is reachable at all — via the chart's `Ingress` resource (`ingress.enabled: true`
+Only oauth2-proxy is reachable at all, via the chart's `Ingress` resource (`ingress.enabled: true`
 in `values-prod.yaml`), terminated by whatever ingress controller/TLS setup your cluster already
 has (cert-manager annotation + `ingress.className` are both configurable). core-api/post-api/
-connectors-node/gateway/backing services are all `ClusterIP`-only — no other host ports or
+connectors-node/gateway/backing services are all `ClusterIP`-only. No other host ports or
 NodePorts are opened by the chart.
 
 ## External Dependencies
@@ -203,7 +203,7 @@ Ensure these are:
 - Properly secured and backed up
 
 ### Production (Kubernetes)
-The Helm chart never deploys Keycloak or RustFS — point `config.authOidc*`/`oauth2Proxy.*` and
+The Helm chart never deploys Keycloak or RustFS: point `config.authOidc*`/`oauth2Proxy.*` and
 `config.objectStoreServiceUrl` (in `values-prod.yaml`) at your existing in-cluster or external
 instances. Postgres/RabbitMQ/Redis/Vault are each optionally bundled by the chart
 (`*.enabled` toggles) or can likewise point at your own existing infrastructure.
@@ -220,7 +220,7 @@ not a database. The backend is selected with `SECRETS_PROVIDER` (→ `Secrets__P
 | Azure Key Vault | `AzureKeyVault` | Default for the **Terraform / ACA** deployment (pairs with the Container App's managed identity). |
 | BitWarden / VaultWarden | `BitWarden` | Selectable everywhere. **Delete is unsupported** (best-effort cleanup only). |
 | Infisical | `Infisical` | Selectable everywhere. |
-| In-memory | `InMemory` | Non-persistent — secrets are lost on restart. Default for the base `docker-compose.yml` and bare local runs. |
+| In-memory | `InMemory` | Non-persistent: secrets are lost on restart. Default for the base `docker-compose.yml` and bare local runs. |
 
 Per-deployment defaults:
 
@@ -271,7 +271,7 @@ intentionally disabled: losing it signs users out but does not lose application 
 Both the dev docker-compose stack AND the production Helm chart include a self-managing HashiCorp
 Vault (docker-compose: `vault` service in `docker-compose.server.yml`; Helm: `templates/vault.yaml`,
 ported near-verbatim from the same `vault.hcl`/`bootstrap.sh`). It uses the file storage backend
-with the default Shamir seal and stays on the internal network — like the APIs, it never publishes
+with the default Shamir seal and stays on the internal network. Like the APIs, it never publishes
 a host port / has no Ingress rule.
 
 Both default to this bundled Vault as their secret store (`SECRETS_PROVIDER=HashiCorpVault` /
@@ -280,12 +280,12 @@ no manual step, identically in both deployments:
 
 1. On first boot it runs `vault operator init` and writes the generated **unseal keys + root token**
    to `init.json` on the `vaultkeys` volume.
-2. It then watches Vault and re-applies those saved keys whenever it is found sealed — first boot,
-   after a `docker compose restart`, or after a crash — so the stack always comes up unsealed.
+2. It then watches Vault and re-applies those saved keys whenever it is found sealed (first boot,
+   after a `docker compose restart`, or after a crash), so the stack always comes up unsealed.
 3. Once unsealed it **provisions the app's secret store**: a KV v2 mount (`VAULT_MOUNT`, default
    `secret`), a scoped policy over `VAULT_BASE_PATH` (default `postyfox`), and an **AppRole** whose
    RoleId/SecretId are *pinned* to `VAULT_ROLE_ID` / `VAULT_SECRET_ID`. The API/worker containers
-   authenticate with those same two values (`Secrets__HashiCorpVault__RoleId`/`SecretId`) — so no
+   authenticate with those same two values (`Secrets__HashiCorpVault__RoleId`/`SecretId`), so no
    token has to be handed off at runtime. The app services wait on `vault-init` being healthy before
    they start.
 
@@ -302,15 +302,15 @@ Tunables (in `.env`):
 VAULT_VERSION=2.0.4     # Vault image tag
 VAULT_KEY_SHARES=5       # Shamir key shares generated on first init
 VAULT_KEY_THRESHOLD=3    # shares required to unseal
-VAULT_ROLE_ID=...        # AppRole RoleId — pinned by vault-init, used by the app
-VAULT_SECRET_ID=...      # AppRole SecretId — pinned by vault-init, used by the app (keep secret)
+VAULT_ROLE_ID=...        # AppRole RoleId, pinned by vault-init, used by the app
+VAULT_SECRET_ID=...      # AppRole SecretId, pinned by vault-init, used by the app (keep secret)
 VAULT_MOUNT=secret       # KV v2 mount the app's secrets live under
 VAULT_BASE_PATH=postyfox # path prefix within the mount
 ```
 
 > Set `VAULT_ROLE_ID` + `VAULT_SECRET_ID` to strong random values (e.g. `openssl rand -hex 24`)
 > before first boot. To point the stack at a different store instead, set `SECRETS_PROVIDER` to
-> another provider and leave the AppRole vars empty — provisioning then becomes a no-op (the `vault`
+> another provider and leave the AppRole vars empty: provisioning then becomes a no-op (the `vault`
 > service still runs, just unused).
 
 Reach it from another container (e.g. the root token / status):
@@ -321,7 +321,7 @@ docker compose -f docker-compose.server.yml -f docker-compose.dev.yml exec vault
 ```
 
 > ⚠️ **Security trade-off.** Storing the unseal keys next to the server is what makes unattended
-> unsealing possible — it trades Shamir key-splitting for convenience. Back up and tightly restrict
+> unsealing possible. It trades Shamir key-splitting for convenience. Back up and tightly restrict
 > the `vaultkeys` volume. For a stronger posture, switch Vault to a Transit / cloud-KMS auto-unseal
 > seal and remove the `vault-init` sidecar.
 
@@ -357,7 +357,7 @@ helm -n postyfox uninstall postyfox
 ```
 
 `--atomic` means a failed `helm upgrade` (e.g. a container that never becomes ready) automatically
-rolls back to the previous working release — the pipeline's "Helm upgrade" step already fails loud
+rolls back to the previous working release. The pipeline's "Helm upgrade" step already fails loud
 if this happens.
 
 See [`deploy/helm/postyfox/values.yaml`](./helm/postyfox/values.yaml) for every configurable
@@ -365,7 +365,7 @@ option (all backing services are individually toggleable for self-contained vs b
 and [`values-prod.yaml`](./helm/postyfox/values-prod.yaml) for this project's own overlay.
 
 The frontend SPA (`postyfox-frontend` repo) deploys as its **own, independent** Helm release
-(`deploy/helm/postyfox-frontend` in that repo) into the same `postyfox` namespace — see that
+(`deploy/helm/postyfox-frontend` in that repo) into the same `postyfox` namespace: see that
 repo's README for details. This chart's gateway proxies `/` to it when
 `gateway.frontend.enabled: true`, degrading gracefully to the maintenance page if that Service
 isn't present/ready yet.
@@ -391,7 +391,7 @@ ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.serv
 
 ### Production (Kubernetes) deploy fails
 1. Check GitHub Actions logs (the `production` environment's approval gate + the `Helm upgrade`
-   step's output — `--atomic` auto-rolls-back and reports the failure reason).
+   step's output: `--atomic` auto-rolls-back and reports the failure reason).
 2. `kubectl -n postyfox get events --sort-by=.lastTimestamp | tail -30`
 3. `kubectl -n postyfox describe pod <pod-name>` for a specific failing container (image pull
    errors, readiness probe failures, missing ConfigMap/Secret keys, etc.)
@@ -399,7 +399,7 @@ ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.serv
    actually applied.
 
 ### Production rollback
-See [Kubernetes / Helm (Production)](#kubernetes--helm-production) above — `helm rollback` is the
+See [Kubernetes / Helm (Production)](#kubernetes--helm-production) above: `helm rollback` is the
 production equivalent of the dev `git log` + redeploy-by-SHA flow.
 
 ## See Also

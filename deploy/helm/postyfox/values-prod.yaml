@@ -1,5 +1,5 @@
 # Production overlay for the postyfox-core Helm chart.
-# Secret values are NOT set here — they are rendered at deploy time from GitHub Environment
+# Secret values are NOT set here: they are rendered at deploy time from GitHub Environment
 # secrets into a gitignored values-secrets.yaml and passed as an extra -f to `helm upgrade`
 # (see .github/workflows/release.yml). This file only carries non-sensitive configuration.
 
@@ -60,7 +60,7 @@ otelCollector:
   deployEnv: production
   enabled: true
 
-# External, centrally-managed Postgres cluster — the chart-managed instance is disabled and the
+# External, centrally-managed Postgres cluster: the chart-managed instance is disabled and the
 # connection string (with credentials) is supplied via values-secrets.yaml (EXTERNAL_POSTGRES_CONNECTION).
 postgres:
   enabled: false

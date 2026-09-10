@@ -40,7 +40,7 @@ public sealed record ConnectorDescriptor(
     bool RequiresRating = false,
     /// <summary>
     /// Field-descriptor JSON (same format as <see cref="Domain.Entities.ServiceDefinition.ConfigSchema"/>)
-    /// for choices the platform takes <em>per submission</em> rather than per account — FurAffinity's
+    /// for choices the platform takes <em>per submission</em> rather than per account: FurAffinity's
     /// category, species, gender and gallery folders. The compose form renders these per selected
     /// target; the values are stored on the <see cref="Domain.Entities.PostTarget"/> and applied over
     /// the connector's config at delivery. Null when the platform has no per-submission choices.
@@ -48,7 +48,7 @@ public sealed record ConnectorDescriptor(
     string? PostOptionsSchema = null,
     /// <summary>
     /// True when a single connector login can fan out to several independently selectable delivery
-    /// destinations (e.g. one Telegram MTProto login reaching many chats/channels) — see
+    /// destinations (e.g. one Telegram MTProto login reaching many chats/channels): see
     /// <see cref="Domain.Entities.ConnectorDestination"/>. The compose UI then lets the author pick
     /// individual exposed destinations rather than the connector itself. False (the default) keeps
     /// the legacy 1:1 connector-to-destination behaviour every other platform uses.
@@ -56,7 +56,7 @@ public sealed record ConnectorDescriptor(
     bool SupportsMultipleTargets = false,
     /// <summary>
     /// True when the platform has a native tags field/mechanism the connector sends tags through
-    /// directly (Tumblr, FurAffinity). False means the platform has no such field — tags can only
+    /// directly (Tumblr, FurAffinity). False means the platform has no such field: tags can only
     /// reach it by being woven into the body text, either at an author-placed <c>{tags}</c> template
     /// token or, failing that, appended to the end. The default (true) matches most platforms having
     /// been built with an assumed tags field; every connector explicitly declares this.
@@ -64,14 +64,14 @@ public sealed record ConnectorDescriptor(
     bool SupportsTags = true,
     /// <summary>
     /// True when a delivery must include at least one tag (FurAffinity). Forces "include tags" on for
-    /// every post to this platform — the compose UI cannot turn it off, and intake rejects a post
+    /// every post to this platform: the compose UI cannot turn it off, and intake rejects a post
     /// with no tags for a target that requires them.
     /// </summary>
     bool RequiresTags = false,
     /// <summary>
     /// True when the platform can hide a post's body behind a click-to-reveal warning (Mastodon-style
     /// "content warning" / "CW", surfaced as <c>spoiler_text</c> by every Fediverse driver this app
-    /// uses). Purely informational — drives the "Content warning" capability badge in the connector
+    /// uses). Purely informational: drives the "Content warning" capability badge in the connector
     /// list; the actual per-submission text lives in <see cref="PostOptionsSchema"/> like FurAffinity's
     /// category/species/gender, so it is authored per post rather than assumed from the title.
     /// </summary>
@@ -149,7 +149,7 @@ public sealed record RenderedPost(
 /// Reference to a stored media object (carried on the post / in the manifest and passed to
 /// connectors). Connectors fetch the bytes from the object store themselves; media is never
 /// shipped inline. <see cref="Alt"/> is optional accessibility text used where platforms support it.
-/// <see cref="IsDefault"/> marks the author's chosen "primary" image when a post carries several —
+/// <see cref="IsDefault"/> marks the author's chosen "primary" image when a post carries several:
 /// platforms limited to a single attachment (FurAffinity) submit this one instead of rejecting a
 /// multi-image post; platforms that accept multiple images ignore the flag and send everything.
 /// </summary>

@@ -308,7 +308,7 @@ public class PostEndpointsTests(CustomWebApplicationFactory factory) : IClassFix
     /// <summary>
     /// JSON dictionary keys are untouched by naming policies, so a client serialising with camelCase
     /// web defaults sends `category` for a declared `Category`. That must land on the field rather
-    /// than being dropped — a dropped choice silently becomes the platform's default.
+    /// than being dropped: a dropped choice silently becomes the platform's default.
     /// </summary>
     [Fact]
     public async Task Option_field_names_are_matched_regardless_of_casing()

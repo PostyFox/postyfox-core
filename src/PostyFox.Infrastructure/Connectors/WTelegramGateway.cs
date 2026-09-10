@@ -110,7 +110,7 @@ public sealed class WTelegramGateway(
                 // Client.SendMediaAsync only auto-detects photo-vs-document from the filename
                 // extension when its mimeType parameter is null; passing our resolved content type
                 // (as we did before) skips that check entirely and always sends an
-                // InputMediaUploadedDocument — i.e. every image arrived in Telegram as a "file"
+                // InputMediaUploadedDocument, i.e. every image arrived in Telegram as a "file"
                 // instead of a photo. Build the InputMedia ourselves instead, exactly as the album
                 // path below already (correctly) does.
                 InputMedia inputMedia = content[0].ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
@@ -153,7 +153,7 @@ public sealed class WTelegramGateway(
                 return new TelegramLoginStep(TelegramLoginStep.NeedsPassword, "value", "2FA Password");
             default:
                 // Session state is persisted eagerly by BlobSessionStore on every write (see its
-                // remarks) — Dispose here only tears down the client/network resources, it does not
+                // remarks). Dispose here only tears down the client/network resources, it does not
                 // itself trigger persistence.
                 if (_loginClients.TryRemove(userId, out var done)) done.Dispose();
                 logger.LogInformation("Telegram login completed for {User}", userId);

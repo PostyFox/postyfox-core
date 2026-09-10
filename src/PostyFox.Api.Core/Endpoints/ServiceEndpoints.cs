@@ -94,7 +94,7 @@ public static class ServiceEndpoints
                 ? Results.Ok(destinations)
                 : Results.BadRequest(new { error = "Unknown connector, or it does not support multiple targets" }))
         .WithSummary("Replace the destinations exposed for posting under a connector")
-        .WithDescription("Pass the full desired set (matched by ExternalId) — entries not included are removed, new ones are added, and names are refreshed.")
+        .WithDescription("Pass the full desired set (matched by ExternalId): entries not included are removed, new ones are added, and names are refreshed.")
         .Produces<IReadOnlyList<ConnectorDestinationDto>>()
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -113,7 +113,7 @@ public static class ServiceEndpoints
         connectors.MapPost("media-check", async (MediaCheckRequest body, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
             Results.Ok(await svc.CheckMediaAsync(user.UserId()!, body.ConnectorIds ?? [], body.FileSize, body.MimeType ?? "", ct)))
         .WithSummary("Check media file compatibility across connectors")
-        .WithDescription("Given a file's size and MIME type, returns per-connector analysis: whether the file exceeds the platform's size cap and will be resized/transcoded before delivery. Use this to surface 'file too large — will be resized' warnings in the compose UI before submitting a post.")
+        .WithDescription("Given a file's size and MIME type, returns per-connector analysis: whether the file exceeds the platform's size cap and will be resized/transcoded before delivery. Use this to surface 'file too large, will be resized' warnings in the compose UI before submitting a post.")
         .Produces<IReadOnlyList<MediaCheckResultItem>>();
 
         connectors.MapPost("{id:guid}/telegram/login", async (Guid id, TelegramLoginBody body, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
@@ -189,7 +189,7 @@ public static class ServiceEndpoints
         connectors.MapGet("oauth/callback", async (
             // OAuth1 (Tumblr): oauth_token/oauth_verifier. OAuth2 (Mastodon): state/code.
             // Firefish/Misskey MiAuth: the redirect echoes the session token (token/session) and
-            // there is no verifier — the stored session token is exchanged for the access token.
+            // there is no verifier: the stored session token is exchanged for the access token.
             [FromQuery(Name = "oauth_token")] string? oauthToken,
             [FromQuery(Name = "oauth_verifier")] string? oauthVerifier,
             [FromQuery(Name = "state")] string? state,
@@ -205,7 +205,7 @@ public static class ServiceEndpoints
                 && await svc.CompleteOAuthAsync(user.UserId()!, requestToken!, verifier, ct);
             return Results.Content(OAuthCallbackHtml(ok), "text/html");
         })
-        .WithSummary("OAuth provider callback — completes the connect flow and closes the popup");
+        .WithSummary("OAuth provider callback: completes the connect flow and closes the popup");
 
         // Anonymous companion to the token handshake below: a browser client with no PostyFox session
         // still needs to know which cookies to collect. Platform metadata only, no user context.
@@ -220,7 +220,7 @@ public static class ServiceEndpoints
         .AllowAnonymous()
         .WithTags("connectors")
         .WithSummary("List the cookie-authenticated sites this deployment supports")
-        .WithDescription("Public platform metadata — the site URL, login URL, and cookie names a browser client should collect. Use /cookie-pairing/targets instead when the caller has a PostyFox session.")
+        .WithDescription("Public platform metadata: the site URL, login URL, and cookie names a browser client should collect. Use /cookie-pairing/targets instead when the caller has a PostyFox session.")
         .Produces<IReadOnlyList<CookiePairingTargetDto>>();
 
         app.MapPost("/api/connectors/cookie-pairing/complete", async (

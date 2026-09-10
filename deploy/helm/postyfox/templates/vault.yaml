@@ -1,5 +1,5 @@
 {{- if .Values.vault.enabled }}
-# Self-contained HashiCorp Vault — file storage backend + Shamir seal, auto-initialised/unsealed
+# Self-contained HashiCorp Vault: file storage backend + Shamir seal, auto-initialised/unsealed
 # by the vault-init sidecar (ported from deploy/vault/bootstrap.sh), which also PINS the app's
 # AppRole RoleId/SecretId to config.hashiCorpVaultRoleId / secrets.hashiCorpVaultSecretId so the
 # apps can authenticate without a runtime token hand-off. Disable (vault.enabled: false) and set
@@ -19,7 +19,7 @@ data:
 
     listener "tcp" {
       address     = "0.0.0.0:8200"
-      # TLS is terminated at the edge / handled by a service mesh — Vault never publishes outside
+      # TLS is terminated at the edge / handled by a service mesh: Vault never publishes outside
       # the cluster. Front it with a TLS terminator if you expose it beyond this namespace.
       tls_disable = true
     }
@@ -33,7 +33,7 @@ data:
   bootstrap.sh: |
     #!/bin/sh
     # PostyFox Vault bootstrap + auto-unseal + app-auth provisioning sidecar (ported unchanged from
-    # deploy/vault/bootstrap.sh — see that file for full behavioural commentary).
+    # deploy/vault/bootstrap.sh, see that file for full behavioural commentary).
     set -u
 
     VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
@@ -199,7 +199,7 @@ spec:
       initContainers:
         # Fixes ownership of both PVCs before the non-root vault/vault-init containers touch them.
         # The vault and vault-init containers run as the image's non-root user (uid 100, gid 1000)
-        # and have no permission to chown their own volumes — a freshly-provisioned PVC (or one
+        # and have no permission to chown their own volumes: a freshly-provisioned PVC (or one
         # whose replica was reattached to a different node, or a volume replaced by hand) starts
         # root-owned, and Vault fails to boot ("permission denied" reading/writing under
         # /vault/file or /vault/init) until it's fixed. Runs as root once per pod start; idempotent

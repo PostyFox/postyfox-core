@@ -23,7 +23,7 @@ export interface PostMedia {
   /**
    * Author-chosen "primary" item among several attachments. Platforms limited to a single image
    * (FurAffinity) use this one instead of rejecting the post; platforms that accept multiple images
-   * ignore it and attach everything. Undefined/false for every item means "no explicit choice" — a
+   * ignore it and attach everything. Undefined/false for every item means "no explicit choice": a
    * single-image connector then falls back to the first item.
    */
   isDefault?: boolean;
@@ -90,9 +90,9 @@ export interface Connector {
 export interface OAuthStartResult {
   /** URL to send the user's browser to, to grant access. */
   authorizeUrl: string;
-  /** OAuth1 request token — echoed back by the provider on callback. */
+  /** OAuth1 request token, echoed back by the provider on callback. */
   requestToken: string;
-  /** OAuth1 request-token secret — the caller holds this between start and callback. */
+  /** OAuth1 request-token secret, the caller holds this between start and callback. */
   requestTokenSecret: string;
 }
 

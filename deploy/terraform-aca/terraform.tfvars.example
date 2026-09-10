@@ -14,7 +14,7 @@ auth_oidc_jwks_url = "https://keycloak.example/realms/PostyFox/protocol/openid-c
 auth_oidc_audience = "oauth2-proxy"
 
 # Secret store (Neillans.Adapters.Secrets): AzureKeyVault | BitWarden | InMemory | Infisical.
-# ACA defaults to Azure Key Vault — pairs naturally with the Container App's managed identity.
+# ACA defaults to Azure Key Vault: pairs naturally with the Container App's managed identity.
 secrets_provider    = "AzureKeyVault"
 azure_key_vault_uri = "https://my-vault.vault.azure.net/"
 # Leave tenant/client empty to authenticate via the Container App's managed identity; set all three
@@ -22,7 +22,7 @@ azure_key_vault_uri = "https://my-vault.vault.azure.net/"
 # azure_key_vault_tenant_id = "<tenant-id>"
 # azure_key_vault_client_id = "<client-id>"
 
-# Secrets — supply via TF_VAR_* env vars in CI, not this file.
+# Secrets: supply via TF_VAR_* env vars in CI, not this file.
 postgres_connection = "Host=...;Port=5432;Database=postyfox;Username=...;Password=..."
 # BitWarden (only when secrets_provider = "BitWarden"): supply EITHER bitwarden_api_key OR the
 # Organization API key pair.

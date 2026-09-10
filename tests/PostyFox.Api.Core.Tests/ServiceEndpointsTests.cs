@@ -48,7 +48,7 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.False(furAffinity.SupportsContentWarning);
 
         // Every Fediverse platform supports a click-to-reveal content warning, authored per submission
-        // (never the post title) — see megalodon.ts.
+        // (never the post title), see megalodon.ts.
         var mastodon = Assert.Single(defs!, d => d.Id == "Mastodon");
         Assert.True(mastodon.SupportsContentWarning);
         Assert.NotNull(mastodon.PostOptionsSchema);

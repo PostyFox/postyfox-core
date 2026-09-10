@@ -20,9 +20,9 @@ x-dotnet-env: &dotnet-env
   # Secret store (Neillans.Adapters.Secrets). Defaults to the bundled HashiCorp Vault (the `vault`
   # service, provisioned + AppRole-wired by `vault-init`). Switch backends by setting SECRETS_PROVIDER
   # (InMemory | BitWarden | AzureKeyVault | Infisical) and that provider's Secrets__<Provider>__*
-  # options — see README.
+  # options: see README.
   Secrets__Provider: "${SECRETS_PROVIDER:-HashiCorpVault}"
-  # HashiCorp Vault (bundled) — AppRole auth against the internal `vault` service. RoleId/SecretId
+  # HashiCorp Vault (bundled): AppRole auth against the internal `vault` service. RoleId/SecretId
   # are the same values vault-init pins on the AppRole, so the app authenticates with no hand-off.
   Secrets__HashiCorpVault__VaultAddress: "${VAULT_APP_ADDR:-http://vault:8200}"
   Secrets__HashiCorpVault__RoleId: "${VAULT_ROLE_ID:-}"
@@ -37,9 +37,9 @@ x-dotnet-env: &dotnet-env
   Secrets__BitWarden__IdentityUrl: "${BITWARDEN_IDENTITY_URL:-}"
   Auth__UserHeader: "${AUTH_USER_HEADER:-X-Auth-Request-User}"
   # In-app OIDC bearer validation: the edge forwards the validated token, the APIs re-validate it.
-  # This MUST be enabled — the APIs trust NO injected identity header, only the OIDC bearer / API key.
+  # This MUST be enabled: the APIs trust NO injected identity header, only the OIDC bearer / API key.
   # Issuer = the browser-facing Keycloak URL (token `iss`); JWKS is fetched over the in-cluster back
-  # channel — mirrors the oauth2-proxy split below.
+  # channel, mirrors the oauth2-proxy split below.
   Auth__Oidc__Enabled: "true"
   Auth__Oidc__Issuer: "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-PostyFox}"
   Auth__Oidc__JwksUrl: "${KEYCLOAK_PROTOCOL:-https}://${KEYCLOAK_HOST}:${KEYCLOAK_PORT:-8080}/realms/${KEYCLOAK_REALM:-PostyFox}/protocol/openid-connect/certs"
@@ -86,7 +86,7 @@ services:
   # session in this internal, non-persistent Redis-protocol instance.
   redis:
     # Valkey is the drop-in, wire-protocol-compatible fork of Redis (Redis moved to a non-OSS
-    # license after 7.x) — same RESP protocol, same redis-cli/redis:// clients work unchanged.
+    # license after 7.x): same RESP protocol, same redis-cli/redis:// clients work unchanged.
     image: valkey/valkey:9.1.1-alpine
     command:
       [
@@ -123,7 +123,7 @@ services:
       # - ./otel/certs:/etc/otel/certs:ro
     restart: unless-stopped
 
-  # HashiCorp Vault — file storage backend + Shamir seal. Stays on the internal network (never
+  # HashiCorp Vault: file storage backend + Shamir seal. Stays on the internal network (never
   # publishes a host port, same rule as the APIs). Initialised + auto-unsealed by `vault-init`.
   vault:
     image: "hashicorp/vault:${VAULT_VERSION:-2.0.4}"
@@ -137,7 +137,7 @@ services:
       - vaultdata:/vault/file
     healthcheck:
       # Healthy once the API answers, whether sealed (exit 2) or unsealed (exit 0); only an
-      # unreachable server (exit 1) is unhealthy — that lets vault-init run to unseal it.
+      # unreachable server (exit 1) is unhealthy. That lets vault-init run to unseal it.
       test: ["CMD-SHELL", "vault status >/dev/null 2>&1; s=$$?; [ $$s -eq 0 ] || [ $$s -eq 2 ]"]
       interval: 5s
       timeout: 3s
@@ -191,7 +191,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
       OTEL_LOGS_EXPORTER: "otlp"
-      # Skip cloud (GCP/AWS/Azure) resource detectors — avoids metadata-lookup timeouts at startup.
+      # Skip cloud (GCP/AWS/Azure) resource detectors: avoids metadata-lookup timeouts at startup.
       OTEL_NODE_RESOURCE_DETECTORS: "env,host,os,serviceinstance,process"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -215,10 +215,10 @@ services:
       connectors-node: { condition: service_healthy }
       # Order after the Vault provisioner, but DON'T gate on its health. vault-init reports healthy
       # only once Vault is fully unsealed; a slow or failed unseal (e.g. a wiped keys volume →
-      # bootstrap exits → restart loop) would otherwise hang `compose up` — and the whole deploy —
+      # bootstrap exits → restart loop) would otherwise hang `compose up` (and the whole deploy)
       # until vault-init's retry budget is exhausted. The app has its own start_period + restart
       # policy and the Vault secret adapter retries, so it converges once Vault is unsealed. Harmless
-      # when the stack is pointed at another secret store — vault/vault-init still run for both envs.
+      # when the stack is pointed at another secret store: vault/vault-init still run for both envs.
       vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
@@ -239,7 +239,7 @@ services:
       core-api: { condition: service_healthy }
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
-      # Started, not healthy — see core-api's vault-init note (don't hang the deploy on the unseal).
+      # Started, not healthy: see core-api's vault-init note (don't hang the deploy on the unseal).
       vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
@@ -257,7 +257,7 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
-      # Started, not healthy — see core-api's vault-init note (don't hang the deploy on the unseal).
+      # Started, not healthy: see core-api's vault-init note (don't hang the deploy on the unseal).
       vault-init: { condition: service_started }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
@@ -312,7 +312,7 @@ services:
 
   # Tails nginx (gateway) access/error logs and sends them to the local otel-collector via OTLP/HTTP
   # (:4319), which routes them to Data Prepper → ss4o_logs-nginx for the nginx integration. Holds
-  # NO OpenSearch creds — this host only talks to the collector.
+  # NO OpenSearch creds: this host only talks to the collector.
   fluent-bit:
     image: cr.fluentbit.io/fluent/fluent-bit:latest
     volumes:
@@ -322,12 +322,12 @@ services:
       - fluent-bit-db:/var/lib/fluent-bit
     depends_on:
       # Wait for nginx to be HEALTHY (up and writing to the log files) before tailing, not merely
-      # started — so the log files exist and fluent-bit attaches to the live inode from the start.
+      # started, so the log files exist and fluent-bit attaches to the live inode from the start.
       gateway: { condition: service_healthy }
       otel-collector: { condition: service_started }
     restart: unless-stopped
 
-  # The OIDC edge — the ONLY service that should publish a public port (done in the env overrides).
+  # The OIDC edge: the ONLY service that should publish a public port (done in the env overrides).
   # Configured entirely via OAUTH2_PROXY_* env vars (no config file). Split front/back-channel:
   #   - browser redirects use KEYCLOAK_PUBLIC_URL (the token `iss`)
   #   - server-side token/JWKS use the in-cluster KEYCLOAK_HOST back channel
@@ -352,7 +352,7 @@ services:
       OAUTH2_PROXY_REDIRECT_URL: "${PUBLIC_BASE_URL}/oauth2/callback"
       # Single root upstream → the internal nginx gateway (which does the path routing).
       OAUTH2_PROXY_UPSTREAMS: "http://gateway:80/"
-      # Anonymous, HMAC-signed inbound webhook — external senders can't do an OIDC login. Also:
+      # Anonymous, HMAC-signed inbound webhook: external senders can't do an OIDC login. Also:
       # public cookie-pairing metadata (read pre-session by the browser extension); the SPA's
       # public /privacy route; the static JS/CSS/font/icon assets it needs to boot pre-auth; and
       # /deployment-config.json, fetched by DeploymentConfigService on EVERY app bootstrap
@@ -366,7 +366,7 @@ services:
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
       OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
       # Without this, oauth2-proxy keeps forwarding the ID token captured at login until the cookie
-      # itself expires (default 168h), even after the token's own `exp` has passed — causing
+      # itself expires (default 168h), even after the token's own `exp` has passed, causing
       # upstream APIs (and Swagger's "Try it out", which rides on the same session) to reject it
       # with 401 "token expired" well before the user's session actually ends. This forces
       # oauth2-proxy to use the refresh token to mint a fresh one before it goes stale.
@@ -375,7 +375,7 @@ services:
       # cookies (set EDGE_COOKIE_SECURE=false only if you expose the edge over plain HTTP).
       OAUTH2_PROXY_REVERSE_PROXY: "true"
       OAUTH2_PROXY_COOKIE_SECURE: "${EDGE_COOKIE_SECURE:-true}"
-      # Custom sign_in.html — oauth2-proxy's default page with a "Privacy policy" footer link
+      # Custom sign_in.html: oauth2-proxy's default page with a "Privacy policy" footer link
       # added (reachable pre-auth, see the SKIP_AUTH_ROUTES entry above and
       # ./oauth2-proxy/templates/sign_in.html). error.html is also overridden for the
       # gateway-unreachable case; any other template still falls back to oauth2-proxy's defaults.
