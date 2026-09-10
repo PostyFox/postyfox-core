@@ -10,7 +10,7 @@ namespace PostyFox.Infrastructure.Messaging;
 /// <summary>
 /// Publishes messages to the direct exchange, ensuring the target queue exists. A non-null
 /// <paramref name="delay"/> is used only for short retry backoff (see
-/// <see cref="PostyFox.Application.Posting.DeliverTargetHandler"/>) — it routes the message to the
+/// <see cref="PostyFox.Application.Posting.DeliverTargetHandler"/>): it routes the message to the
 /// queue's "retry" holding queue with a per-message TTL instead of the main queue, so no delayed-
 /// message-exchange plugin is required. Wider-range scheduling delay (user-scheduled posts) never
 /// goes through this bus at all; it's driven by <see cref="PostyFox.Application.Posting.PostSchedulerService"/>

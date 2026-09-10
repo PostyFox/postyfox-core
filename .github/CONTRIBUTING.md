@@ -27,7 +27,7 @@ Note the comment at the top of the file;
 ```
 
 You will want to do a docker compose up --build to get the stack running.
-Log in and exercise the APIs through the edge at http://localhost:4180 — hitting the APIs directly
+Log in and exercise the APIs through the edge at http://localhost:4180; hitting the APIs directly
 (:8080 / :8081) requires a valid `Authorization: Bearer` token. Note that both of these address are NOT normally exposed
 on "real" deployments.
 

@@ -1,7 +1,7 @@
-# The ONLY component intended to be reached via the Ingress — fronts the internal gateway with
+# The ONLY component intended to be reached via the Ingress: fronts the internal gateway with
 # OIDC login (any OIDC provider - Keycloak, Auth0, Entra ID, etc). Session store is this chart's
 # own Redis instance (or your external one, if redis.enabled is false and you point
-# oauth2Proxy.redisConnectionUrl elsewhere) — opaque cookie sessions avoid browser cookie-size
+# oauth2Proxy.redisConnectionUrl elsewhere), opaque cookie sessions avoid browser cookie-size
 # limits with the JWTs this stack passes through.
 apiVersion: v1
 kind: ConfigMap
@@ -24,7 +24,7 @@ data:
     redirect_url = {{ .Values.oauth2Proxy.redirectUrl | quote }}
 
     # Fronts the internal gateway (path-routes to core-api/post-api/frontend); the gateway itself
-    # is never exposed publicly — this proxy is the only public route.
+    # is never exposed publicly: this proxy is the only public route.
     upstreams = ["http://{{ include "postyfox.fullname" . }}-gateway:80/"]
 
     skip_auth_routes = [
@@ -46,12 +46,12 @@ data:
   error.html: |
     {{ "{{" }}/*
       Custom error.html for oauth2-proxy. Overrides ONLY this template (sign_in.html etc. still use
-      oauth2-proxy's embedded defaults — see pkg/app/pagewriter/templates.go: files that don't exist in
+      oauth2-proxy's embedded defaults, see pkg/app/pagewriter/templates.go: files that don't exist in
       custom_templates_dir fall back automatically).
 
       This renders for ALL oauth2-proxy error paths (auth failures, CSRF, etc.), not just an unreachable
       upstream, so it keeps the standard Title/Message/RequestID fields for real diagnostics but reuses
-      the same maintenance-page look so a downed `gateway` (the internal router this proxy forwards to —
+      the same maintenance-page look so a downed `gateway` (the internal router this proxy forwards to,
       see deploy/gateway) reads as consistent "service unavailable" branding rather than a bare Go error.
     */{{ "}}" }}
     {{ "{{" }}define "error.html"{{ "}}" }}

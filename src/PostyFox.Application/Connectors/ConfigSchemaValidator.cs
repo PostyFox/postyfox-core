@@ -6,23 +6,23 @@ namespace PostyFox.Application.Connectors;
 /// <summary>
 /// Server-side enforcement of the field descriptors declared in a
 /// <see cref="Domain.Entities.ServiceDefinition"/> schema. The very same descriptors drive the
-/// frontend's rendering and inline validation; this is the authoritative gate — the client checks
+/// frontend's rendering and inline validation; this is the authoritative gate: the client checks
 /// are UX only and can be bypassed (scripted callers, stale tabs, …).
 ///
 /// A schema is a JSON object keyed by field name. Each value is either a legacy placeholder string
 /// (<c>""</c>, meaning "no rules") or a descriptor object. Only the validation keys are read here:
 /// <list type="bullet">
-///   <item><c>required</c> (bool) — value must be present and non-blank.</item>
-///   <item><c>pattern</c> (string) — .NET regex the value must match.</item>
-///   <item><c>message</c> (string) — error shown when <c>pattern</c> fails (else a generic one).</item>
+///   <item><c>required</c> (bool): value must be present and non-blank.</item>
+///   <item><c>pattern</c> (string): .NET regex the value must match.</item>
+///   <item><c>message</c> (string): error shown when <c>pattern</c> fails (else a generic one).</item>
 ///   <item><c>minLength</c> / <c>maxLength</c> (int).</item>
 ///   <item>
-///     <c>options</c> (array of <c>{ value, label, group? }</c>) — the value must be one of the
+///     <c>options</c> (array of <c>{ value, label, group? }</c>): the value must be one of the
 ///     declared <c>value</c>s. Fields with a fixed set of choices (FurAffinity's category, species,
 ///     …) declare these so the client can render a named dropdown instead of an ID box.
 ///   </item>
 /// </list>
-/// Presentation keys (label/help/placeholder/type/link) are ignored here — the client owns rendering.
+/// Presentation keys (label/help/placeholder/type/link) are ignored here: the client owns rendering.
 /// Field names starting with <c>$</c> are schema metadata (e.g. <c>$comment</c>), never fields.
 /// </summary>
 public static class ConfigSchemaValidator
@@ -46,7 +46,7 @@ public static class ConfigSchemaValidator
         }
         catch (JsonException)
         {
-            return null; // a malformed schema is an operator error, not the user's — don't block them.
+            return null; // a malformed schema is an operator error, not the user's: don't block them.
         }
 
         if (schema.ValueKind != JsonValueKind.Object) return null;

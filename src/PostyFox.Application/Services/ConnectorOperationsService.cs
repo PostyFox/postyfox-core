@@ -9,7 +9,7 @@ namespace PostyFox.Application.Services;
 
 /// <summary>
 /// Runs connector operations (auth check, target listing, Telegram login) for a user's
-/// configured connector — resolving its config + secret and dispatching to the connector impl.
+/// configured connector: resolving its config + secret and dispatching to the connector impl.
 /// </summary>
 public sealed class ConnectorOperationsService(
     IAppDbContext db,

@@ -23,7 +23,7 @@ namespace PostyFox.Infrastructure;
 public static class ServiceCollectionExtensions
 {
     // Same field-descriptor format as ServiceDefinition.ConfigSchema (see ServiceDefinitionSeeder).
-    // A blank/omitted value means "no content warning" — the connector never falls back to the post
+    // A blank/omitted value means "no content warning": the connector never falls back to the post
     // title or anything else authored elsewhere.
     private const string FediversePostOptionsSchema = """
         { "ContentWarning": {
@@ -66,11 +66,11 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient(nameof(DiscordWebhookConnector));
         services.AddSingleton<IConnector, DiscordWebhookConnector>();
 
-        // Telegram — MTProto user account via WTelegramClient (behind a gateway seam)
+        // Telegram: MTProto user account via WTelegramClient (behind a gateway seam)
         services.AddSingleton<ITelegramGateway, WTelegramGateway>();
         services.AddSingleton<IConnector, TelegramConnector>();
 
-        // Bluesky + Tumblr — delegated to the Node connectors service over HTTP
+        // Bluesky + Tumblr: delegated to the Node connectors service over HTTP
         services.Configure<NodeConnectorsOptions>(config.GetSection(NodeConnectorsOptions.SectionName));
         services.AddHttpClient(nameof(HttpConnector));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
@@ -104,7 +104,7 @@ public static class ServiceCollectionExtensions
                 SupportsMedia: true,
                 SupportsThreads: false,
                 MaxContentLength: null,
-                // FurAffinity has no API — delivery reuses the user's browser session, handed over by
+                // FurAffinity has no API: delivery reuses the user's browser session, handed over by
                 // the PostyFox Connect extension. `a`/`b` are its session cookie pair.
                 CookiePairing: new CookiePairingSpec(
                     SiteUrl: "https://www.furaffinity.net/",
@@ -116,14 +116,14 @@ public static class ServiceCollectionExtensions
                 RequiresTags: true,
                 // Category/theme/species/gender/folders are chosen per submission on FurAffinity's own
                 // form, so they belong to the post rather than the account. The lists run to ~500
-                // entries — see Persistence/Schemas/README.md for provenance and regeneration.
+                // entries, see Persistence/Schemas/README.md for provenance and regeneration.
                 PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json")),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
             sp.GetRequiredService<IServiceScopeFactory>()));
 
-        // Fediverse platforms — all delivered by the megalodon connector in the Node service, all via
+        // Fediverse platforms: all delivered by the megalodon connector in the Node service, all via
         // an instance-scoped OAuth/MiAuth connect flow. They differ only in display name and the
         // default max content length (a UI hint; instances configure their own limit). MaxContentLength
         // null means "no client-side cap".
@@ -134,7 +134,7 @@ public static class ServiceCollectionExtensions
                     platform, displayName, SupportsTitle: false, SupportsMedia: true, SupportsThreads: false,
                     MaxContentLength: maxContentLength, SupportsOAuth: true, SupportsTags: false,
                     // The content warning is authored per submission (like FurAffinity's category etc.)
-                    // rather than assumed from the post title — see megalodon.ts's use of this field.
+                    // rather than assumed from the post title, see megalodon.ts's use of this field.
                     PostOptionsSchema: FediversePostOptionsSchema,
                     SupportsContentWarning: true),
                 sp.GetRequiredService<IHttpClientFactory>(),

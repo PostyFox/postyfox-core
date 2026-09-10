@@ -56,7 +56,7 @@ public class PostStatusServiceGetContentTests
         {
             Id = connectorId, UserId = "u1", ServiceDefinitionId = "Telegram", DisplayName = "Telegram", Enabled = true
         });
-        // No ConnectorDestination seeded — it has since been un-exposed.
+        // No ConnectorDestination seeded: it has since been un-exposed.
         var post = new Post { Id = Guid.NewGuid(), UserId = "u1", Title = "t", RootStatus = PostRootStatus.Delivered, CreatedAt = Now, UpdatedAt = Now };
         post.Targets.Add(new PostTarget
         {

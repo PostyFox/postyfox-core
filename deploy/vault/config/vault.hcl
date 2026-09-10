@@ -13,7 +13,7 @@ storage "file" {
 
 listener "tcp" {
   address     = "0.0.0.0:8200"
-  # TLS is terminated at the edge / handled on the internal network only — Vault never publishes a
+  # TLS is terminated at the edge / handled on the internal network only: Vault never publishes a
   # host port (same rule as the APIs). Front it with a TLS terminator if you expose it.
   tls_disable = true
 }

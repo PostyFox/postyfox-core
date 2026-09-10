@@ -39,7 +39,7 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
 
     /// <summary>
     /// Returns a post's authored content (everything the compose form needs to recreate it), or null
-    /// if the post isn't the user's. Read straight from the row — the object-store copies are just a
+    /// if the post isn't the user's. Read straight from the row: the object-store copies are just a
     /// mirror of these columns.
     /// </summary>
     public async Task<PostContentDto?> GetContentAsync(string userId, Guid postId, CancellationToken ct = default)
@@ -50,8 +50,8 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             .FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
         if (post is null) return null;
 
-        // A draft has no PostTarget rows yet — its target selection lives in DraftTargetsJson/
-        // DraftTargetOptionsJson instead (see PostIntakeService) — until it's published.
+        // A draft has no PostTarget rows yet: its target selection lives in DraftTargetsJson/
+        // DraftTargetOptionsJson instead (see PostIntakeService), until it's published.
         if (post.RootStatus == PostRootStatus.Draft)
             return new PostContentDto(
                 string.IsNullOrEmpty(post.Title) ? null : post.Title,
@@ -68,7 +68,7 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 Json.Deserialize<Dictionary<Guid, bool>>(post.DraftTargetIncludeTagsJson ?? "{}") ?? new());
 
         // "Post again" must re-tick the exact same destination the post was originally sent to, not
-        // just its connector — for a multi-target platform (Telegram) that means resolving each
+        // just its connector: for a multi-target platform (Telegram) that means resolving each
         // target's chat id back to the ConnectorDestination the compose form originally selected.
         // Falls back to the connector itself if that destination is no longer exposed.
         var connectorIdsWithTarget = post.Targets
@@ -136,7 +136,7 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
 
         // Window (cutoff), order and limit client-side: SQLite cannot compare/ORDER BY
         // DateTimeOffset (see ApiKeyService), so the query stays provider-agnostic. The set is
-        // bounded by the retention window — older posts are purged by PostRetentionSweeper.
+        // bounded by the retention window: older posts are purged by PostRetentionSweeper.
         var rows = (await query
             .Select(p => new
             {

@@ -82,7 +82,7 @@ public sealed class DiscordWebhookConnector(IHttpClientFactory httpFactory, IMed
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
             if (doc.RootElement.TryGetProperty("id", out var idEl)) id = idEl.GetString();
         }
-        catch (JsonException) { /* empty body (204) — no id available */ }
+        catch (JsonException) { /* empty body (204), no id available */ }
 
         return DeliveryResult.Ok(id);
     }

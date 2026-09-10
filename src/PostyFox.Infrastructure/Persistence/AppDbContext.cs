@@ -92,7 +92,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         });
 
         // Name uniqueness (case-insensitive, per user) is enforced in TextTemplateService rather than
-        // a DB constraint — same approach as the rest of this app's validation.
+        // a DB constraint, same approach as the rest of this app's validation.
         b.Entity<TextTemplate>(e =>
         {
             e.ToTable("text_templates");

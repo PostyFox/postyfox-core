@@ -17,7 +17,7 @@ public static class SecretsProviderExtensions
         }
         catch (SecretsProviderException)
         {
-            // Provider does not support deletion — best-effort cleanup, nothing more to do.
+            // Provider does not support deletion: best-effort cleanup, nothing more to do.
         }
     }
 }

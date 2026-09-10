@@ -199,7 +199,7 @@ public class PipelineTests
         await CreatePostAsync(h, "u1", cid); // no target options at all
 
         var config = JsonDocument.Parse(connector.LastConfigJson!).RootElement;
-        // Not "1" — the field moved to the post, so the platform's own default applies instead.
+        // Not "1": the field moved to the post, so the platform's own default applies instead.
         Assert.False(config.TryGetProperty("Category", out _));
         Assert.Equal("keep-me", config.GetProperty("Account").GetString());
     }

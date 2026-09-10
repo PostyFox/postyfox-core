@@ -1,7 +1,7 @@
 {{- if .Values.redis.enabled }}
-# Self-contained Redis-protocol instance — session store for oauth2-proxy only (opaque cookie,
+# Self-contained Redis-protocol instance: session store for oauth2-proxy only (opaque cookie,
 # avoids browser cookie-size limits). Runs Valkey, the drop-in wire-protocol-compatible fork of
-# Redis (Redis moved to a non-OSS license after 7.x) — same RESP protocol, clients unaffected.
+# Redis (Redis moved to a non-OSS license after 7.x): same RESP protocol, clients unaffected.
 # No persistence by design (matches docker-compose: --save "" --appendonly no). Disable
 # (redis.enabled: false) and point oauth2-proxy at your own instance instead (the connection URL
 # is only built from this chart's own Service when enabled).

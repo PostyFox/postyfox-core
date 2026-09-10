@@ -4,7 +4,7 @@ import { TumblrConnector, type TumblrClientLike } from "../src/connectors/tumblr
 import type { MediaStore } from "../src/media-store.js";
 import type { ConnectorContext, Post } from "../src/types.js";
 
-/** Consumer (app) credentials — supplied explicitly in tests instead of from the environment. */
+/** Consumer (app) credentials, supplied explicitly in tests instead of from the environment. */
 const consumer = { consumerKey: "ck", consumerSecret: "cs" };
 
 /** Fake media store returning known bytes, recording the ref it was asked for. */

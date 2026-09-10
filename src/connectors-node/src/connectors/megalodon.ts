@@ -103,7 +103,7 @@ const MASTODON_SCOPES = ["read", "write"];
 /**
  * Misskey-family (Iceshrimp/Firefish) authorize *granular* permissions via MiAuth. The coarse
  * Mastodon "read"/"write" strings are not recognised as Misskey permissions, so an app registered
- * with them cannot create notes — /api/notes/create returns PERMISSION_DENIED. This mirrors
+ * with them cannot create notes: /api/notes/create returns PERMISSION_DENIED. This mirrors
  * megalodon's firefish DEFAULT_SCOPE (the permission set its endpoints expect); "write:notes" and
  * "read/write:drive" are what posting + media upload actually need.
  */
@@ -136,7 +136,7 @@ function scopesForSns(sns: MegalodonSns): string[] {
 interface MegalodonConfig {
   InstanceUrl: string;
   /**
-   * Author-chosen content warning text for this submission (per-submission choice — see
+   * Author-chosen content warning text for this submission (per-submission choice, see
    * `ConnectorDescriptor.PostOptionsSchema`), not the post title. Blank/absent means no CW: the
    * status posts without one rather than falling back to anything else.
    */
@@ -339,8 +339,8 @@ export class MegalodonConnector implements Connector {
   }
 
   /**
-   * Reports the instance's live limits (character + attachment caps). Only needs the instance URL —
-   * `/api/v1/instance` is public — so it works before the account is connected. The SNS driver is
+   * Reports the instance's live limits (character + attachment caps). Only needs the instance URL
+   * (`/api/v1/instance` is public), so it works before the account is connected. The SNS driver is
    * taken from the stored secret when present, else the fallback.
    */
   async getLimits(ctx: ConnectorContext): Promise<ConnectorLimits> {
@@ -387,8 +387,8 @@ export class MegalodonConnector implements Connector {
       const { instanceUrl, token, sns, contentWarning } = this.parse(ctx);
       const client = this.clientFactory(sns, instanceUrl, token);
 
-      // Enforce the instance's real limits up front and fail clearly — before uploading media or
-      // posting — so nothing is silently truncated or dropped.
+      // Enforce the instance's real limits up front and fail clearly (before uploading media or
+      // posting) so nothing is silently truncated or dropped.
       const media = post.media ?? [];
       const status = composeStatus(post);
       const limits = await this.fetchLimits(client, sns, instanceUrl);
@@ -408,7 +408,7 @@ export class MegalodonConnector implements Connector {
       // fails the whole delivery cleanly rather than leaving orphaned uploads on the instance.
       const resolved = await this.resolveMedia(media, limits);
       const mediaIds = await this.uploadResolved(client, resolved);
-      // The content warning is an author-chosen, per-submission opt-in (see MegalodonConfig) — the
+      // The content warning is an author-chosen, per-submission opt-in (see MegalodonConfig). The
       // post title is a distinct, unrelated field and must never be used as a stand-in for one.
       const result = await client.postStatus(status, {
         media_ids: mediaIds.length > 0 ? mediaIds : undefined,
@@ -446,7 +446,7 @@ export class MegalodonConnector implements Connector {
   }
 
   /**
-   * Stages each resolved item to a short-lived temp file and uploads it as a ReadStream — megalodon's
+   * Stages each resolved item to a short-lived temp file and uploads it as a ReadStream: megalodon's
    * multipart upload needs a filename, which a bare Buffer would not carry. Always cleaned up.
    */
   private async uploadResolved(
@@ -494,10 +494,10 @@ function assertMediaAllowed(item: PostMedia, bytes: Buffer, type: string, limits
 
 /**
  * Fediverse has no separate tags field. Core already interpolates tags into the body as hashtags
- * before it reaches here (see TemplateEngine — connectors declaring `SupportsTags: false` get
+ * before it reaches here (see TemplateEngine, connectors declaring `SupportsTags: false` get
  * an author-placed `{tags}` token replaced, or a hashtag line appended), so `post.tags` normally
  * arrives empty. This appends any tags reaching the connector directly (e.g. a caller bypassing
- * core) as a defensive fallback — it is a no-op for tags already woven into the body.
+ * core) as a defensive fallback: it is a no-op for tags already woven into the body.
  */
 function composeStatus(post: Post): string {
   const tagLine = (post.tags ?? [])

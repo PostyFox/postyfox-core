@@ -35,7 +35,7 @@ public sealed class PostSchedulerService(
         var now = clock.UtcNow;
 
         // Candidates: still waiting on generation and not already claimed by a previous (or
-        // concurrent, on another replica) pass — both translate fine on every provider. The PostAt
+        // concurrent, on another replica) pass, both translate fine on every provider. The PostAt
         // due-check is intentionally done client-side below: EF Core's SQLite provider can't
         // translate DateTimeOffset comparisons (Npgsql, used in production, handles it natively), and
         // this way the same code path is exercisable against either. The candidate set here is

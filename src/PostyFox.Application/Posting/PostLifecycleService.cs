@@ -65,7 +65,7 @@ public sealed class PostLifecycleService(IAppDbContext db, PostPayloadCleaner pa
 
         var mediaManifestJson = post.MediaManifestJson;
 
-        // Row first (cascade drops the targets); then best-effort the object store — an orphaned blob
+        // Row first (cascade drops the targets); then best-effort the object store: an orphaned blob
         // is harmless, an orphaned row is not.
         db.Posts.Remove(post);
         await db.SaveChangesAsync(ct);

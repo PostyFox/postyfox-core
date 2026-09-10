@@ -20,7 +20,7 @@ reference) · [docs/FOLLOWUPS.md](./docs/FOLLOWUPS.md) (deferred work).
 | Message bus | RabbitMQ (delayed-message exchange for scheduling + backoff)                                      | `IMessageBus` |
 | Secrets | Pluggable provider (`adapters-secrets`) | `ISecretsProvider` |
 | AuthN | oauth2-proxy → Keycloak, header identity; **or** `X-API-Key` (hashed)                             | `PostyFox.Web.Auth` |
-| Observability | OpenTelemetry → OTLP collector                                                                    | — |
+| Observability | OpenTelemetry → OTLP collector                                                                    | N/A |
 
 ### Projects
 
@@ -36,7 +36,7 @@ src/
   connectors-node/          Node/TS service: Bluesky + Tumblr + FurAffinity + Fediverse
 clients/
   postyfox-connect/         Chrome/Edge extension + Safari iPhone/iPad/macOS conversion scaffold
-tests/                      one project per layer (xUnit) — 99 C# tests (+18 in connectors-node)
+tests/                      one project per layer (xUnit), 99 C# tests (+18 in connectors-node)
 ```
 
 ### The connector contract
@@ -48,11 +48,11 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 |----------|-------|---------------------|
 | Discord | .NET in-process | webhook HTTP |
 | Telegram | .NET in-process | **MTProto user account** via WTelegramClient (blob-backed session; see §4.5 statefulness note) |
-| Bluesky | **Node** service | `@atproto/api` — via the `HttpConnector` adapter over internal HTTP (`X-Internal-Token`) |
-| Tumblr | **Node** service | `tumblr.js` — same adapter |
+| Bluesky | **Node** service | `@atproto/api`, via the `HttpConnector` adapter over internal HTTP (`X-Internal-Token`) |
+| Tumblr | **Node** service | `tumblr.js`, same adapter |
 | FurAffinity | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
-| Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon` — same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
-| ~~Twitch~~ | — | descoped |
+| Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon`, same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
+| ~~Twitch~~ | N/A | descoped |
 
 `connectors-node` exposes an `IConnector`-shaped HTTP contract (`/connectors/:platform/{is-authenticated,list-targets,limits,deliver}`); the C# `HttpConnector` forwards to it, passing the resolved config + secret in the request so the Node side stays stateless. Connector auth/target operations are exposed at `GET /api/connectors/{id}/authenticated`, `GET /api/connectors/{id}/targets`, and the Telegram login flow at `POST /api/connectors/{id}/telegram/login`.
 
@@ -66,25 +66,25 @@ site metadata at `/cookie-pairing/sites`) remains as a fallback for a browser th
 PostyFox session. See [`clients/postyfox-connect`](./clients/postyfox-connect/README.md).
 
 **Per-submission platform options.** Some platforms take choices that describe the *submission* rather
-than the account — FurAffinity's category, theme, species, gender and gallery folders; every Fediverse
+than the account: FurAffinity's category, theme, species, gender and gallery folders; every Fediverse
 platform's content warning. A connector declares these as field descriptors on
 `ConnectorDescriptor.PostOptionsSchema` (surfaced as `postOptionsSchema` on `GET /api/services`); the
 compose form renders them once per selected target and sends them as `targetOptions` on
 `POST /api/posts`, keyed by connector id. They are validated against the same schema at intake, stored
 on the `PostTarget`, and applied over the connector's config when delivery builds its
-`ConnectorContext` — so connectors keep reading a single config object. Options lists too large for a
+`ConnectorContext`, so connectors keep reading a single config object. Options lists too large for a
 C# literal live in [`Persistence/Schemas`](./src/PostyFox.Infrastructure/Persistence/Schemas/README.md).
 
 **Content warnings (Fediverse).** Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial,
 Hometown and Pixelfed all support a click-to-reveal content warning (Mastodon's API calls this
-`spoiler_text`; megalodon maps it to Misskey's `cw` for the Firefish/Iceshrimp driver) — declared via
+`spoiler_text`; megalodon maps it to Misskey's `cw` for the Firefish/Iceshrimp driver), declared via
 `ConnectorDescriptor.SupportsContentWarning` and surfaced as the "Content warning" capability badge on
 `GET /api/services`. It is an explicit, optional per-submission field (`ContentWarning` in
-`PostOptionsSchema`) — **never** derived from the post title, which is an unrelated field most of these
+`PostOptionsSchema`), **never** derived from the post title, which is an unrelated field most of these
 platforms don't even render. No other connector (Bluesky, Tumblr, FurAffinity, Discord, Telegram) has an
 equivalent mechanism.
 
-**Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }` — sizes in bytes) — fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
+**Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }`, sizes in bytes), fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 
 ### External triggers
 
@@ -116,7 +116,7 @@ docker compose up --build            # full stack incl. the OIDC edge (Keycloak 
 # connectors-node (Bluesky/Tumblr/FurAffinity/Fediverse): http://localhost:8090/health
 ```
 
-Auth is always the production-representative OIDC path — there is **no DevMode bypass**. oauth2-proxy
+Auth is always the production-representative OIDC path. There is **no DevMode bypass**. oauth2-proxy
 performs the OIDC exchange against Keycloak and the APIs validate the forwarded `Authorization: Bearer`
 token in-app, so reach them through the edge at <http://localhost:4180>. Hitting the APIs directly
 (`:8080`/`:8081`) requires a valid bearer token. External/machine callers authenticate with
@@ -125,7 +125,7 @@ token in-app, so reach them through the edge at <http://localhost:4180>. Hitting
 **Browser login:** open <http://localhost:4180> and sign in as `postyfox` /
 `postyfox` (Keycloak admin console at <http://localhost:8082>, `admin` / `admin`). Keycloak's issuer
 is pinned to `localhost:8082` (`KC_HOSTNAME`) so the browser and the in-cluster back channel stay
-consistent; oauth2-proxy uses split front/back-channel URLs — see
+consistent; oauth2-proxy uses split front/back-channel URLs: see
 [`deploy/oauth2-proxy/oauth2-proxy.cfg`](./deploy/oauth2-proxy/oauth2-proxy.cfg).
 
 > The RabbitMQ image build downloads the delayed-message-exchange plugin (needs network at build).
@@ -142,20 +142,20 @@ dotnet test                  # all 99 unit/integration tests
 dotnet dotnet-ef migrations add <Name> --project src/PostyFox.Infrastructure
 ```
 
-Tests use in-memory SQLite / EF-InMemory and fakes for I/O — no Docker required to run them.
+Tests use in-memory SQLite / EF-InMemory and fakes for I/O. No Docker required to run them.
 
 ## Deploy
 
 All modes consume the same published images (`{registry}/{repository}-{service}:{tag}`, built by
 CI in [`.github/workflows/platform-ci.yml`](./.github/workflows/platform-ci.yml)):
 
-- **docker-compose** — `deploy/docker-compose.yml` (local / single-host).
-- **Helm** — `deploy/helm/postyfox` for any Kubernetes (`helm install postyfox deploy/helm/postyfox`);
+- **docker-compose**: `deploy/docker-compose.yml` (local / single-host).
+- **Helm**: `deploy/helm/postyfox` for any Kubernetes (`helm install postyfox deploy/helm/postyfox`);
   backing services (Postgres/RabbitMQ/object store) provided externally via values.
-- **Terraform → Azure Container Apps** — `deploy/terraform-aca` deploys the images to ACA
+- **Terraform → Azure Container Apps**: `deploy/terraform-aca` deploys the images to ACA
   (`terraform apply`), with external ingress for the APIs and internal for connectors-node.
 
-Telemetry (OTLP) is exported to a collector and forwarded to central **OpenSearch** — see
+Telemetry (OTLP) is exported to a collector and forwarded to central **OpenSearch**: see
 [deploy/observability/README.md](./deploy/observability/README.md).
 
 ## Configuration (env vars)
@@ -184,4 +184,4 @@ with the Keycloak `postyfox-admin` realm role can manage connector operational c
 - **Telegram MTProto is stateful**: route a user's Telegram ops to a single instance (consistent
   hashing / dedicated telegram-worker).
 - There is no endpoint yet to set platform-level secrets (e.g. Telegram api id/hash, trigger signing
-  secrets) — seed them into the secret store directly for now.
+  secrets), seed them into the secret store directly for now.

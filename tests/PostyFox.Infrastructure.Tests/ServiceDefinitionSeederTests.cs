@@ -23,7 +23,7 @@ public class ServiceDefinitionSeederTests
     }
 
     /// <summary>
-    /// FurAffinity's account holds nothing configurable — it authenticates from a handed-over browser
+    /// FurAffinity's account holds nothing configurable: it authenticates from a handed-over browser
     /// session, and its submission choices belong to the post (see FurAffinityPostOptionsTests). The
     /// seeder re-writes schemas onto existing rows, so this is what an upgrade converges on.
     /// </summary>

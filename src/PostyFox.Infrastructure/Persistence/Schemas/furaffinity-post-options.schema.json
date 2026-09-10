@@ -1,5 +1,5 @@
 {
-  "$comment": "FurAffinity's submission form options, mirrored so the connector editor can offer names instead of numeric IDs. These are static per-account-independent values scraped from https://www.furaffinity.net/submit/finalize/ — see Schemas/README.md to regenerate.",
+  "$comment": "FurAffinity's submission form options, mirrored so the connector editor can offer names instead of numeric IDs. These are static per-account-independent values scraped from https://www.furaffinity.net/submit/finalize/, see Schemas/README.md to regenerate.",
   "Category": {
     "label": "Category",
     "placeholder": "All (FurAffinity default)",

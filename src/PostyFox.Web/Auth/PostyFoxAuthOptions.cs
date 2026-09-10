@@ -6,7 +6,7 @@ public sealed class PostyFoxAuthOptions
 
     /// <summary>
     /// Local/test-only identity: authenticates every request as <see cref="DevUserId"/> without any
-    /// credential. This is NOT a deployment parameter — no shipped configuration enables it; it is set
+    /// credential. This is NOT a deployment parameter: no shipped configuration enables it; it is set
     /// in-memory by the test host only. Real deployments authenticate via the OIDC bearer token
     /// (<see cref="Oidc"/>) or an API key.
     /// </summary>

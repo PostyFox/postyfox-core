@@ -36,7 +36,7 @@ public sealed class UserConnectorService(IAppDbContext db, ISecretsProvider secr
         // checks for fast feedback, but this is the authoritative gate (throws → 400 with the message).
         if (ConfigSchemaValidator.Validate(def.ConfigSchema, request.ConfigJson) is { } configError)
             throw new ConnectorValidationException(configError);
-        // Secrets are only present when the user actually (re)entered them — a blank payload means
+        // Secrets are only present when the user actually (re)entered them: a blank payload means
         // "keep the stored secret unchanged", so there is nothing to validate in that case.
         if (!string.IsNullOrWhiteSpace(request.SecureConfigJson)
             && ConfigSchemaValidator.Validate(def.SecureConfigSchema, request.SecureConfigJson) is { } secretError)

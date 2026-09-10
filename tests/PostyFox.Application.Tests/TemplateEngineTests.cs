@@ -174,7 +174,7 @@ public class TemplateEngineTests
     public void Render_text_template_values_never_reference_another_text_template()
     {
         // {{tt:...}} substitution runs exactly once, at the start of Render(), so a value containing
-        // {{tt:other}} can never expand it — one template can't reference another, so no cycles.
+        // {{tt:other}} can never expand it: one template can't reference another, so no cycles.
         var req = new RenderRequest("DiscordWH", null, "{{tt:snippet}}", new Dictionary<string, string>(), [], [],
             TextTemplateValues: new Dictionary<string, string> { ["snippet"] = "{{tt:other}}", ["other"] = "REAL" });
         Assert.Equal("{{tt:other}}", _engine.Render(req).Body);
@@ -183,7 +183,7 @@ public class TemplateEngineTests
     [Fact]
     public void Render_text_template_values_still_pass_through_ordinary_variable_substitution()
     {
-        // A text-template value is spliced into the body like any other author-controlled text — it
+        // A text-template value is spliced into the body like any other author-controlled text: it
         // is not shielded from the post's own {variable} substitution that runs immediately after.
         var req = new RenderRequest("DiscordWH", null, "{{tt:snippet}}",
             new Dictionary<string, string> { ["name"] = "Sam" }, [], [],
@@ -202,7 +202,7 @@ public class TemplateEngineTests
     [Fact]
     public void Render_text_template_substitution_counts_toward_the_tag_trim_budget()
     {
-        // The resolved value's length must be accounted for before the hashtag budget is computed —
+        // The resolved value's length must be accounted for before the hashtag budget is computed:
         // substituting after would let a long value silently blow the platform's character limit.
         var req = new RenderRequest("BlueSky", null, "{{tt:long}} {tags}", new Dictionary<string, string>(),
             ["aaaaaaaaaa", "bbbbbbbbbb"], [], SupportsTags: false, MaxContentLength: 25,

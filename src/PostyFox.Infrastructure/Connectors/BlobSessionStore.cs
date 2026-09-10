@@ -8,7 +8,7 @@ namespace PostyFox.Infrastructure.Connectors;
 /// TelegramStore). Loads existing session on open; persists changes back to object storage.
 ///
 /// IMPORTANT: WTelegramClient's <c>Session.Save()</c> persists session state via
-/// <c>Position = 0; Write(...); SetLength(...)</c> — it never calls <see cref="Stream.Flush"/>,
+/// <c>Position = 0; Write(...); SetLength(...)</c>: it never calls <see cref="Stream.Flush"/>,
 /// and <c>Client.Dispose()</c> only disposes the underlying stream (which does not call Flush
 /// either). So persistence MUST be triggered from <see cref="Write(byte[], int, int)"/> /
 /// <see cref="Write(ReadOnlySpan{byte})"/> (or <see cref="SetLength"/>) rather than from
@@ -72,7 +72,7 @@ public sealed class BlobSessionStore : MemoryStream
         Position = 0;
         try
         {
-            // Persist synchronously — Session.Save() writes/truncates the stream directly and never
+            // Persist synchronously: Session.Save() writes/truncates the stream directly and never
             // calls Flush(), so this is the only reliable hook for pushing state to the object store.
             _store.PutAsync(_container, _key, new MemoryStream(ToArray()), "application/octet-stream")
                 .GetAwaiter().GetResult();

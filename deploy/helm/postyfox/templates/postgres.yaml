@@ -1,6 +1,6 @@
 {{- if .Values.postgres.enabled }}
 # Self-contained PostgreSQL instance. Disable (postgres.enabled: false) and point
-# secrets.externalPostgresConnection at your own managed/HA instance instead — see
+# secrets.externalPostgresConnection at your own managed/HA instance instead: see
 # postyfox.postgresConnection in _helpers.tpl.
 apiVersion: apps/v1
 kind: StatefulSet

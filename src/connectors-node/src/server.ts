@@ -17,7 +17,7 @@ export interface BuildServerOptions {
   /** Connector registry. Defaults to the real Bluesky + Tumblr connectors. */
   registry?: ConnectorRegistry;
   /**
-   * Expected internal token. If undefined, auth is disabled — a deliberate escape hatch for tests
+   * Expected internal token. If undefined, auth is disabled: a deliberate escape hatch for tests
    * that build a server directly without wiring one up. The real entrypoint (index.ts) always
    * passes one and refuses to start otherwise; nothing should rely on this default reaching a
    * running process.
@@ -48,7 +48,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     }
   });
 
-  // logLevel: silent — the container healthcheck hits this constantly; don't emit access logs for it.
+  // logLevel: silent. The container healthcheck hits this constantly; don't emit access logs for it.
   app.get("/health", { logLevel: "silent" }, async () => ({ status: "ok" }));
 
   app.post<{ Params: { platform: string }; Body: ConnectorContext }>(

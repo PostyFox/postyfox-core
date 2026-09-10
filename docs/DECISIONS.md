@@ -6,7 +6,7 @@ fit together.
 
 ---
 
-## ADR-001 — Cloud-agnostic containers over Azure Functions
+## ADR-001: Cloud-agnostic containers over Azure Functions
 
 **Context.** The legacy system was Azure-Functions-native (Table/Blob/Queue Storage, KeyVault,
 EasyAuth, App Insights). The reimplementation must run anywhere (Container Apps / Kubernetes /
@@ -23,7 +23,7 @@ dev parity (`docker compose up`).
 
 ---
 
-## ADR-002 — PostgreSQL as the system of record
+## ADR-002: PostgreSQL as the system of record
 
 **Context.** Legacy used Azure Table Storage (denormalised key-value). We need a portable store with
 relational integrity for the post → target → status graph.
@@ -32,11 +32,11 @@ relational integrity for the post → target → status graph.
 
 **Trade-off.** A schema to migrate vs. schemaless flexibility; worth it for query power and
 integrity. `Application` depends on EF Core Core (`IAppDbContext` exposes `DbSet<>`) to avoid a
-repository explosion — a deliberate, minor purity compromise.
+repository explosion, a deliberate, minor purity compromise.
 
 ---
 
-## ADR-003 — RabbitMQ as the message bus (not Kafka)
+## ADR-003: RabbitMQ as the message bus (not Kafka)
 
 **Context.** The posting pipeline is task-queue-shaped: per-message ack, per-target retries with
 backoff, dead-lettering, and delayed/scheduled delivery.
@@ -50,7 +50,7 @@ is an in-memory scheduler; a durable due-scan is a future item for very long hor
 
 ---
 
-## ADR-004 — oauth2-proxy edge + retained hashed API keys
+## ADR-004: oauth2-proxy edge + retained hashed API keys
 
 **Context.** The legacy trusted platform-injected identity headers (EasyAuth). We need equivalent
 OIDC auth that is portable, plus machine-to-machine access.
@@ -59,34 +59,33 @@ OIDC auth that is portable, plus machine-to-machine access.
 token to the APIs as `Authorization: Bearer`; the APIs **re-validate it in-app** against the realm's
 JWKS rather than trusting an injected identity header. An internal nginx gateway path-routes the edge
 to core-api/post-api. **API keys are retained** for external connectivity, stored as PBKDF2 hashes
-(never in clear) and verified in constant time. There is no DevMode bypass in any deployment — local
+(never in clear) and verified in constant time. There is no DevMode bypass in any deployment. Local
 dev runs the same Keycloak edge.
 
 **Trade-off.** The APIs depend on OIDC config (issuer/JWKS) being correct, and local dev now requires
-Keycloak to be up (no header/DevMode shortcut) — but the trust boundary no longer relies on a
+Keycloak to be up (no header/DevMode shortcut), but the trust boundary no longer relies on a
 spoofable header, and local mirrors production. Fixing the legacy's non-comparing API-key check was a
 requirement.
 
 ---
 
-## ADR-005 — Uniform connector contract; Node only where its libraries win
+## ADR-005: Uniform connector contract; Node only where its libraries win
 
 **Context.** Platform SDK quality varies by language. Bluesky's first-party client (`@atproto/api`)
 and Tumblr's official client (`tumblr.js`) are Node; .NET equivalents are weaker/unmaintained.
 
 **Decision.** One `IConnector` contract for all platforms. Discord and Telegram run in-process in
 C#; Bluesky and Tumblr run in a small **connectors-node** service behind the same contract over
-internal HTTP, called via a C# `HttpConnector` adapter. The Node service is stateless — the C# side
+internal HTTP, called via a C# `HttpConnector` adapter. The Node service is stateless: the C# side
 passes resolved config + secret in each request.
 
 **Trade-off.** A second runtime and an internal hop for two platforms, in exchange for using the best
 library per platform and keeping a single extension seam. Internal calls are secured with a shared
-token; a follow-up could move to mTLS - however mTLS brings its own operational complexity and is not strictly 
-necessary for a private internal service.
+token; mTLS is a possible follow-up but unnecessary complexity for a private internal service.
 
 ---
 
-## ADR-006 — Telegram via MTProto user account (not the Bot API)
+## ADR-006: Telegram via MTProto user account (not the Bot API)
 
 **Context.** The legacy posted to Telegram **as the user** via MTProto (WTelegramClient), listing
 the user's own chats/channels. The Bot API is simpler and stateless but requires a bot to be added
@@ -98,19 +97,19 @@ connector and login flow are testable with a fake.
 
 **Trade-off.** MTProto login is interactive and session-stateful, so Telegram operations for a user
 must be routed to a single instance (consistent hashing / dedicated worker). The live gateway needs
-real credentials and is therefore not covered by automated tests — only the logic around the seam is.
+real credentials and is therefore not covered by automated tests. Only the logic around the seam is.
 
 ---
 
-## ADR-007 — Source-agnostic external triggers
+## ADR-007: Source-agnostic external triggers
 
 **Context.** The only concrete legacy trigger source (Twitch) was descoped. External triggers were
 still wanted.
 
 **Decision.** A generic trigger framework: `ITriggerSource` encapsulates a source's signature scheme
 and payload shape; a generic HMAC-signed webhook source ships built-in. Inbound events are
-signature-verified, deduped by message id, and fanned out to matching triggers — each throttled by
-`NotifyFrequencyHrs` — reusing the normal posting pipeline. New sources plug in by implementing the
+signature-verified, deduped by message id, and fanned out to matching triggers (each throttled by
+`NotifyFrequencyHrs`), reusing the normal posting pipeline. New sources plug in by implementing the
 contract.
 
 **Trade-off.** No real third-party source is wired yet, but the engine is complete and tested, and

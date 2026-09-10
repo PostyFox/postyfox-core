@@ -1,12 +1,12 @@
 {{/*
   Custom error.html for oauth2-proxy. sign_in.html is also overridden (see ./sign_in.html); any
-  other template still falls back to oauth2-proxy's embedded defaults — see
+  other template still falls back to oauth2-proxy's embedded defaults, see
   pkg/app/pagewriter/templates.go: files that don't exist in custom_templates_dir fall back
   automatically.
 
   This renders for ALL oauth2-proxy error paths (auth failures, CSRF, etc.), not just an unreachable
   upstream, so it keeps the standard Title/Message/RequestID fields for real diagnostics but reuses
-  the same maintenance-page look so a downed `gateway` (the internal router this proxy forwards to —
+  the same maintenance-page look so a downed `gateway` (the internal router this proxy forwards to,
   see deploy/gateway) reads as consistent "service unavailable" branding rather than a bare Go error.
 */}}
 {{define "error.html"}}

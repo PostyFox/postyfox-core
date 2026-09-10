@@ -54,21 +54,25 @@ jobs:
           - service: core-api
             context: .
             dockerfile: Dockerfile
+            target: final
             project: src/PostyFox.Api.Core/PostyFox.Api.Core.csproj
             assembly: PostyFox.Api.Core.dll
           - service: post-api
             context: .
             dockerfile: Dockerfile
+            target: final
             project: src/PostyFox.Api.Post/PostyFox.Api.Post.csproj
             assembly: PostyFox.Api.Post.dll
           - service: worker
             context: .
             dockerfile: Dockerfile
+            target: with-ffmpeg
             project: src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj
             assembly: PostyFox.Worker.Posting.dll
           - service: connectors-node
             context: src/connectors-node
             dockerfile: src/connectors-node/Dockerfile
+            target: runtime
             project: ""
             assembly: ""
     steps:
@@ -110,6 +114,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: true
           tags: ghcr.io/${{ env.IMAGE_REPOSITORY }}-${{ matrix.service }}:${{ steps.tag.outputs.tag }}
           build-args: |
@@ -194,7 +199,7 @@ jobs:
           cd "$STACK_DIR"
           echo '📋 Checking .env file exists...'
           [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }
-          # Capture the workflow-resolved image coords BEFORE sourcing .env — a pinned or `latest`
+          # Capture the workflow-resolved image coords BEFORE sourcing .env: a pinned or `latest`
           # IMAGE_TAG in .env would otherwise clobber the correct commit-SHA tag (there is no
           # `:latest` image; build-images only pushes commit-SHA tags).
           WF_IMAGE_REPOSITORY="$IMAGE_REPOSITORY"; WF_IMAGE_TAG="$IMAGE_TAG"
@@ -278,7 +283,7 @@ jobs:
         run: kubectl cluster-info
 
       - name: Render secret overrides
-        # See release.yml for the rationale — same secret set, same gitignored/workflow-local file.
+        # See release.yml for the rationale: same secret set, same gitignored/workflow-local file.
         run: |
           cat > "$RUNNER_TEMP/values-secrets.yaml" <<EOF
           postgres:

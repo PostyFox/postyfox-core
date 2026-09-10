@@ -84,7 +84,7 @@ public class FurAffinityPostOptionsTests
         var schema = EmbeddedSchema.Load(FileName);
 
         Assert.Contains("$comment", schema);
-        // Every field is optional, so an empty selection is valid — in particular $comment must not be
+        // Every field is optional, so an empty selection is valid: in particular $comment must not be
         // validated as a required field.
         Assert.Null(ConfigSchemaValidator.Validate(schema, "{}"));
         Assert.Null(ConfigSchemaValidator.Validate(schema, """{"Category":"13","Gender":"2"}"""));
