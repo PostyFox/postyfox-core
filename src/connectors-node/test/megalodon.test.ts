@@ -141,7 +141,7 @@ test("megalodon deliver appends tags as hashtags and returns id + url", async ()
   assert.ok(receivedStatus?.includes("hello world"));
   assert.ok(receivedStatus?.includes("#cats"));
   assert.ok(receivedStatus?.includes("#dogs"));
-  // The post's title ("CW") must never be used as the content warning — only an explicit
+  // The post's title ("CW") must never be used as the content warning: only an explicit
   // ContentWarning config value (see the test below) should ever populate spoiler_text.
   assert.equal(receivedOptions?.spoiler_text, undefined);
   assert.equal(receivedOptions?.media_ids, undefined);
@@ -528,7 +528,7 @@ test("megalodon oauth start registers an app and carries the MiAuth session toke
 
 test("megalodon oauth start requests granular write:notes permission for firefish (Iceshrimp)", async () => {
   // Regression: registering with coarse Mastodon "read"/"write" scopes yields an app that cannot
-  // create notes on Iceshrimp/Firefish — /api/notes/create returns PERMISSION_DENIED.
+  // create notes on Iceshrimp/Firefish: /api/notes/create returns PERMISSION_DENIED.
   let requested: string[] | undefined;
   const client = fakeClient({
     async registerApp(_name, options) {

@@ -15,7 +15,7 @@ name: release
 #
 # DEV stays on docker-compose (self-hosted runner). PROD deploys to Kubernetes via Helm
 # (deploy/helm/postyfox), using a kubeconfig stored in the `production` GitHub Environment's
-# secrets — see deploy/helm/postyfox/values-prod.yaml for the cluster overlay and
+# secrets, see deploy/helm/postyfox/values-prod.yaml for the cluster overlay and
 # deploy/DEPLOYMENT.md for the full list of required secrets.
 
 on:
@@ -84,7 +84,7 @@ jobs:
         # `docker compose pull`), rebuild from the tagged commit whenever the semver image is
         # missing so the correct version is baked into every image (and therefore the footer/
         # `/api/version`) either way. Checking core-api is a representative proxy for the whole
-        # matrix — they're always built and pushed together.
+        # matrix, they're always built and pushed together.
         id: image_check
         env:
           IS_NEW: ${{ steps.resolve.outputs.is_new }}
@@ -125,21 +125,27 @@ jobs:
           - service: core-api
             context: .
             dockerfile: Dockerfile
+            target: final
             project: src/PostyFox.Api.Core/PostyFox.Api.Core.csproj
             assembly: PostyFox.Api.Core.dll
           - service: post-api
             context: .
             dockerfile: Dockerfile
+            target: final
             project: src/PostyFox.Api.Post/PostyFox.Api.Post.csproj
             assembly: PostyFox.Api.Post.dll
           - service: worker
             context: .
             dockerfile: Dockerfile
+            # Only the worker's delivery pipeline shells out to ffmpeg (see the Dockerfile);
+            # core-api/post-api build the `final` target above and skip that ~150MB layer.
+            target: with-ffmpeg
             project: src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj
             assembly: PostyFox.Worker.Posting.dll
           - service: connectors-node
             context: src/connectors-node
             dockerfile: src/connectors-node/Dockerfile
+            target: runtime
             project: ""
             assembly: ""
     steps:
@@ -157,9 +163,10 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: true
           # Tag with the semver AND the actual built commit SHA for traceability. Note this is
-          # NOT necessarily `github.sha` — a rebuild-on-redeploy builds the tagged commit, which
+          # NOT necessarily `github.sha`: a rebuild-on-redeploy builds the tagged commit, which
           # may differ from the commit that triggered this workflow run.
           tags: |
             ghcr.io/${{ env.IMAGE_REPOSITORY }}-${{ matrix.service }}:${{ needs.compute-version.outputs.version }}
@@ -254,7 +261,7 @@ jobs:
 
   deploy-prod:
     # Approval-gated via the `production` GitHub environment.
-    # NOTE: can't rely on the default success() here — it evaluates the whole transitive needs
+    # NOTE: can't rely on the default success() here, it evaluates the whole transitive needs
     # chain, and `build` (a dependency of deploy-dev) is legitimately skipped on a redeploy of
     # already-published images. Mirror deploy-dev's explicit result check instead.
     needs: [compute-version, deploy-dev]
@@ -277,7 +284,7 @@ jobs:
         run: echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Tag release + publish GitHub Release
-        # New releases only — a redeploy targets an existing tag, so there's nothing to tag.
+        # New releases only, a redeploy targets an existing tag, so there's nothing to tag.
         # Runs post-approval (this whole job is gated by the `production` environment) but BEFORE
         # the deploy, so the tag exists the moment we ship to prod.
         if: needs.compute-version.outputs.is_new == 'true'
@@ -310,7 +317,7 @@ jobs:
         run: kubectl cluster-info
 
       - name: Render secret overrides
-        # Real secret VALUES never touch the repo or values-prod.yaml — they're written to a
+        # Real secret VALUES never touch the repo or values-prod.yaml: they're written to a
         # gitignored, workflow-local file from GitHub Environment secrets and passed to `helm
         # upgrade` as an extra -f, then deleted in the Cleanup step below.
         run: |

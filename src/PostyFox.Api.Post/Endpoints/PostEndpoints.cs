@@ -34,7 +34,7 @@ public static class PostEndpoints
             }
         })
         .WithSummary("Create a post")
-        .WithDescription("Accepts a post for one or more target connectors and enqueues generation + delivery. `targetOptions` carries per-submission platform choices keyed by connector id (see the service definition's `postOptionsSchema`). Set `isDraft` to save it for later instead — it's persisted with no targets resolved/validated and nothing enqueued; publish it later via `POST /{id}/publish`. Returns 202 (or 201 for a draft) with the post id; poll the status endpoint for progress.")
+        .WithDescription("Accepts a post for one or more target connectors and enqueues generation + delivery. `targetOptions` carries per-submission platform choices keyed by connector id (see the service definition's `postOptionsSchema`). Set `isDraft` to save it for later instead: it's persisted with no targets resolved/validated and nothing enqueued; publish it later via `POST /{id}/publish`. Returns 202 (or 201 for a draft) with the post id; poll the status endpoint for progress.")
         .Produces<CreatePostResponse>(StatusCodes.Status202Accepted)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -54,7 +54,7 @@ public static class PostEndpoints
         group.MapGet("{id:guid}/content", async (Guid id, ClaimsPrincipal user, PostStatusService svc, CancellationToken ct) =>
             await svc.GetContentAsync(user.UserId()!, id, ct) is { } dto ? Results.Ok(dto) : Results.NotFound())
         .WithSummary("Get a post's authored content")
-        .WithDescription("Returns a post's authored content as-is, no media duplication — used to load a draft back into the compose form for editing.")
+        .WithDescription("Returns a post's authored content as-is, no media duplication: used to load a draft back into the compose form for editing.")
         .Produces<PostContentDto>()
         .Produces(StatusCodes.Status404NotFound);
 
@@ -75,7 +75,7 @@ public static class PostEndpoints
             }
         })
         .WithSummary("Update a draft")
-        .WithDescription("Overwrites a draft's authored content and target selection in place. 409 once it's been published — recreate it via duplicate instead.")
+        .WithDescription("Overwrites a draft's authored content and target selection in place. 409 once it's been published: recreate it via duplicate instead.")
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status400BadRequest)

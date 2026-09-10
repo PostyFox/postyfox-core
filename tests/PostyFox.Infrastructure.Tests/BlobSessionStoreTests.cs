@@ -6,7 +6,7 @@ namespace PostyFox.Infrastructure.Tests;
 
 /// <summary>
 /// WTelegramClient's Session.Save() persists state via Position/Write/SetLength and never calls
-/// Stream.Flush() — these tests guard against regressing to a Flush()-based persistence trigger,
+/// Stream.Flush(): these tests guard against regressing to a Flush()-based persistence trigger,
 /// which silently drops all Telegram session state (see BlobSessionStore remarks).
 /// </summary>
 public class BlobSessionStoreTests
@@ -19,7 +19,7 @@ public class BlobSessionStoreTests
 
         var payload = new byte[] { 1, 2, 3, 4 };
         session.Write(payload, 0, payload.Length);
-        // Deliberately do NOT call session.Flush() — WTelegramClient never does either.
+        // Deliberately do NOT call session.Flush(): WTelegramClient never does either.
 
         Assert.True(await store.ExistsAsync("telegram", "user-1"));
         var persisted = await store.GetTextAsync("telegram", "user-1");

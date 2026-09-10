@@ -34,11 +34,11 @@ public sealed class FfmpegVideoProcessor(ILogger<FfmpegVideoProcessor> logger)
             }
 
             var vs = analysis.PrimaryVideoStream;
-            if (vs is null) return source; // no video stream — nothing to do
+            if (vs is null) return source; // no video stream, nothing to do
 
             var duration = analysis.Duration.TotalSeconds;
 
-            // A single-frame GIF is effectively a still image — leave it untouched.
+            // A single-frame GIF is effectively a still image, leave it untouched.
             var isGif = (source.ContentType ?? string.Empty).Contains("gif", StringComparison.OrdinalIgnoreCase);
             if (isGif && duration <= 0.1) return source;
 

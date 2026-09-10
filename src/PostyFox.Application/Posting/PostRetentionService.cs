@@ -34,7 +34,7 @@ public sealed class PostRetentionService(
 
         if (expired.Count == 0) return 0;
 
-        // Remove the DB rows first (cascade drops the targets), then best-effort the object store —
+        // Remove the DB rows first (cascade drops the targets), then best-effort the object store:
         // an orphaned blob is harmless, an orphaned row is not.
         db.Posts.RemoveRange(expired);
         await db.SaveChangesAsync(ct);

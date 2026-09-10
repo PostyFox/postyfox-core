@@ -48,14 +48,14 @@ public sealed class ImageSharpImageProcessor
         img.Mutate(x => x.AutoOrient());
         StripMetadata(img);
 
-        // Downscale only — never enlarge.
+        // Downscale only, never enlarge.
         if (image.MaxWidth is { } mw && image.MaxHeight is { } mh && (img.Width > mw || img.Height > mh))
             img.Mutate(x => x.Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new Size(mw, mh) }));
 
         var mayHaveAlpha = MayHaveAlpha(source.ContentType);
         var outputMime = ChooseOutputMime(source.ContentType, image, mayHaveAlpha);
 
-        // JPEG has no alpha channel — flatten onto white so transparent areas don't turn black.
+        // JPEG has no alpha channel, flatten onto white so transparent areas don't turn black.
         if (outputMime == "image/jpeg" && mayHaveAlpha)
             img.Mutate(x => x.BackgroundColor(Color.White));
 
@@ -147,7 +147,7 @@ public sealed class ImageSharpImageProcessor
         var src = NormalizeMime(sourceMime);
         var allowed = spec.AllowedMimeTypes;
         if (allowed is null || allowed.Count == 0)
-            return src ?? "image/jpeg"; // unconstrained — keep source
+            return src ?? "image/jpeg"; // unconstrained, keep source
 
         if (src is not null && Contains(allowed, src)) return src;
 

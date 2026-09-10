@@ -9,7 +9,7 @@ namespace PostyFox.Infrastructure.Telemetry;
 /// logs are searchable by post in OpenSearch (<c>log.attributes.PostId</c>). A user can hand a dev
 /// the post id shown in the UI and the dev finds all its telemetry.
 ///
-/// Baggage — not an ILogger scope — because scopes are disabled globally (they caused the ASP.NET
+/// Baggage (not an ILogger scope) because scopes are disabled globally (they caused the ASP.NET
 /// duplicate-key rejection at Data Prepper), whereas Baggage flows across async, child spans, and
 /// the RabbitMQ hop. No-op when no post is in context (e.g. health checks, startup logs), so it
 /// never adds empty attributes.
@@ -25,7 +25,7 @@ public sealed class PostIdLogEnricher : BaseProcessor<LogRecord>
             ? new List<KeyValuePair<string, object?>>()
             : new List<KeyValuePair<string, object?>>(data.Attributes);
 
-        // A handler may already log {PostId} structurally — don't double-stamp (avoids the
+        // A handler may already log {PostId} structurally: don't double-stamp (avoids the
         // duplicate-key rejection at Data Prepper).
         if (attrs.Exists(a => a.Key == "PostId")) return;
 

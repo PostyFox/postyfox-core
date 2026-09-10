@@ -9,7 +9,7 @@ are Node-only:
 - **Tumblr** via [`tumblr.js`](https://www.npmjs.com/package/tumblr.js)
 - **FurAffinity** via its authenticated HTML forms
 
-The service is intentionally small and holds no state — every request carries
+The service is intentionally small and holds no state: every request carries
 the credentials/config it needs.
 
 ## Stack
@@ -38,7 +38,7 @@ the credentials/config it needs.
 itself from the single bucket named by `OBJECT_STORE_BUCKET`, using the object
 key `` `${container}/${key}` `` (e.g. container `media`, key `u1/abc/pic.png` →
 S3 key `media/u1/abc/pic.png`). A fetch failure is caught and returned as
-`{ "success": false, "error": "..." }` — it never crashes the request.
+`{ "success": false, "error": "..." }`, it never crashes the request.
 
 ## Authentication
 
@@ -108,7 +108,7 @@ Body:
 200 { "success": true, "externalId": "string", "externalUrl": "string", "error": "string" }
 ```
 
-`deliver` never throws on platform errors — it returns
+`deliver` never throws on platform errors: it returns
 `{ "success": false, "error": "..." }`.
 
 > **Media:** each `post.media` item is an object-store reference. The service
@@ -121,14 +121,14 @@ Body:
 ### Media normalization (mandatory core step)
 
 Every connector **must** route fetched bytes through `normalizeMedia()` from
-`src/media/` before uploading — this is a core building block, not per-connector
+`src/media/` before uploading: this is a core building block, not per-connector
 glue. It resizes/re-encodes still images (`sharp`) and transcodes video and
 animated GIFs (`fluent-ffmpeg`) to the platform's `MediaSpec` (`src/media/specs.ts`):
 max dimensions / bytes / duration, accepted formats and attachment count. Sources
 in an unaccepted format are converted; media that can't be brought within the limits
 fails that delivery cleanly. Fediverse connectors merge the instance's live limits
 (`mergeLiveLimits`) over the static spec. Adding a new connector means calling
-`normalizeMedia(bytes, contentType, spec)` right after `mediaStore.fetch` — never
+`normalizeMedia(bytes, contentType, spec)` right after `mediaStore.fetch`, never
 upload raw bytes. The runtime image installs the `ffmpeg` binary for the video path.
 
 ## Connector credential shapes

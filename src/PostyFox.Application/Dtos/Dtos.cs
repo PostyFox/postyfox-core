@@ -74,8 +74,8 @@ public sealed record ConnectorDestinationSummaryDto(
 public sealed record ConnectorDestinationInput(string ExternalId, string Name);
 
 /// <summary>
-/// Replaces the full set of destinations exposed for a connector (add/update/remove in one call) —
-/// simpler for the client than issuing individual add/remove requests as checkboxes are toggled.
+/// Replaces the full set of destinations exposed for a connector (add/update/remove in one call).
+/// Simpler for the client than issuing individual add/remove requests as checkboxes are toggled.
 /// </summary>
 public sealed record SetConnectorDestinationsRequest(IReadOnlyList<ConnectorDestinationInput> Destinations);
 
@@ -134,9 +134,9 @@ public sealed record TextTemplateUpsertRequest(
 public sealed record CreatePostRequest(
     /// <summary>
     /// Ids of the destinations to deliver to. Each entry is either a <see cref="Domain.Entities.UserConnector"/> id
-    /// (the legacy 1:1 behaviour — the connector's own configured destination is used), or a
+    /// (the legacy 1:1 behaviour: the connector's own configured destination is used), or a
     /// <see cref="ConnectorDestinationDto"/> id for a connector that declares
-    /// <see cref="Connectors.ConnectorDescriptor.SupportsMultipleTargets"/> (Telegram) — in which case
+    /// <see cref="Connectors.ConnectorDescriptor.SupportsMultipleTargets"/> (Telegram), in which case
     /// delivery goes to that specific exposed chat/channel rather than the connector's default.
     /// </summary>
     IReadOnlyList<Guid> Targets,
@@ -150,7 +150,7 @@ public sealed record CreatePostRequest(
     DateTimeOffset? PostAt,
     ContentRating? Rating = null,
     /// <summary>
-    /// Per-submission platform choices, keyed by the same id used in <see cref="Targets"/>  —
+    /// Per-submission platform choices, keyed by the same id used in <see cref="Targets"/>:
     /// FurAffinity's category, species, gender and folders. Validated against that platform's
     /// <see cref="ServiceDefinitionDto.PostOptionsSchema"/>; anything it does not declare is dropped.
     /// Entries for connectors outside <see cref="Targets"/> are ignored.
@@ -166,7 +166,7 @@ public sealed record CreatePostRequest(
     /// True to save this as a draft instead of submitting it: no targets are resolved/validated and
     /// nothing is enqueued for delivery. <see cref="Targets"/> and <see cref="TargetOptions"/> are
     /// still stored as-authored so the draft can be edited and eventually published. Also the request
-    /// body accepted by the draft update endpoint (which ignores this flag — a post's draft status
+    /// body accepted by the draft update endpoint (which ignores this flag: a post's draft status
     /// only changes via publish).
     /// </summary>
     bool IsDraft = false);

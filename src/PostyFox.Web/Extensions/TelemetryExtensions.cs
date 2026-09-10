@@ -10,7 +10,7 @@ public static class TelemetryExtensions
 {
     /// <summary>
     /// Wires OpenTelemetry traces + metrics + logs with OTLP export (endpoint from
-    /// OTEL_EXPORTER_OTLP_ENDPOINT). Cloud-agnostic — points at any OTLP collector/backend.
+    /// OTEL_EXPORTER_OTLP_ENDPOINT). Cloud-agnostic: points at any OTLP collector/backend.
     /// </summary>
     public static IServiceCollection AddPostyFoxTelemetry(this IServiceCollection services, string serviceName)
     {
@@ -35,7 +35,7 @@ public static class TelemetryExtensions
                     o.IncludeFormattedMessage = true;
                     // IncludeScopes stays OFF: ASP.NET Core emits the same key across nested scopes
                     // (e.g. HttpMethod/ConnectionId from the Kestrel + hosting scopes), which the OTLP
-                    // exporter sends as duplicate log attributes — Data Prepper/OpenSearch then reject
+                    // exporter sends as duplicate log attributes: Data Prepper/OpenSearch then reject
                     // the whole record ("Duplicate key log.attributes.HttpMethod"). Trace↔log
                     // correlation is unaffected (it comes from the span context, not scopes).
                     o.IncludeScopes = false;

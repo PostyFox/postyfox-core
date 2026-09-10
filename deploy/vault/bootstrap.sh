@@ -4,13 +4,13 @@
 # Runs alongside the `vault` service and:
 #   1. Waits for Vault to answer.
 #   2. Initialises it on first boot, saving the generated unseal keys + root token to the mounted
-#      keys volume ($KEY_FILE). These are the Shamir seal keys — treat the volume as a secret.
+#      keys volume ($KEY_FILE). These are the Shamir seal keys: treat the volume as a secret.
 #   3. Watches Vault forever and re-applies the saved keys whenever it is found sealed (first boot,
 #      after a restart, or after a crash), so the stack comes up unsealed with no manual step.
 #   4. Provisions the app's secret store once Vault is unsealed: a KV v2 mount, a scoped policy, and
 #      an AppRole whose RoleId/SecretId are PINNED to the values supplied via env ($VAULT_ROLE_ID /
 #      $VAULT_SECRET_ID). Pinning is what lets the API/worker containers authenticate with AppRole
-#      credentials they already hold from `.env` — no runtime token hand-off needed.
+#      credentials they already hold from `.env`: no runtime token hand-off needed.
 #
 # NOTE: storing the unseal keys next to the server is what makes unattended unsealing possible; it
 # trades the Shamir key-splitting guarantee for convenience. For a stronger posture switch to a
@@ -25,7 +25,7 @@ KEY_SHARES="${VAULT_KEY_SHARES:-5}"
 KEY_THRESHOLD="${VAULT_KEY_THRESHOLD:-3}"
 
 # App secret-store provisioning (KV v2 + AppRole). Provisioning is skipped unless BOTH the RoleId and
-# SecretId are supplied — that keeps this a no-op when the stack is pointed at a different provider.
+# SecretId are supplied: that keeps this a no-op when the stack is pointed at a different provider.
 APP_MOUNT="${VAULT_MOUNT:-secret}"
 APP_BASE_PATH="${VAULT_BASE_PATH:-postyfox}"
 APP_ROLE_NAME="${VAULT_APP_ROLE_NAME:-postyfox}"
@@ -117,7 +117,7 @@ provision_app_auth() {
     vault secrets enable -path="$APP_MOUNT" kv-v2 >/dev/null 2>&1 || true
   fi
 
-  # Scoped policy — exactly the KV v2 paths the adapter touches under the base path.
+  # Scoped policy: exactly the KV v2 paths the adapter touches under the base path.
   log "writing policy '${APP_POLICY_NAME}'"
   vault policy write "$APP_POLICY_NAME" - >/dev/null 2>&1 <<EOF
 path "${APP_MOUNT}/data/${APP_BASE_PATH}/*" {

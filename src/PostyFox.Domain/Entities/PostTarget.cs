@@ -25,7 +25,7 @@ public class PostTarget
     /// </summary>
     public string OptionsJson { get; set; } = "{}";
     /// <summary>
-    /// Whether tags should be included for this target — optional for every platform (even ones with
+    /// Whether tags should be included for this target: optional for every platform (even ones with
     /// no native tags field, which get them woven into the body instead; see
     /// <see cref="Connectors.ConnectorDescriptor.SupportsTags"/>), and forced true for platforms that
     /// declare <see cref="Connectors.ConnectorDescriptor.RequiresTags"/>. Defaults to true so
@@ -44,7 +44,7 @@ public class PostTarget
     /// <summary>
     /// Set the moment <see cref="PostSchedulerService"/> claims this target and publishes its
     /// <c>GenerateTargetCommand</c> (once <see cref="Post.PostAt"/> is due). Null while the target is
-    /// still waiting on its schedule (or was never scheduled — immediate posts publish straight away
+    /// still waiting on its schedule (or was never scheduled: immediate posts publish straight away
     /// at intake without going through the scheduler at all). Acts as a claim marker so concurrent
     /// scheduler passes/replicas can't both publish the same due target.
     /// </summary>

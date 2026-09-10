@@ -126,8 +126,8 @@ public sealed class DeliverTargetHandler(
     /// declares as a per-submission choice taken from this post's target instead.
     /// <para>
     /// Those fields are stripped from the account config before the target's are applied, so a value
-    /// left behind by an older release — when FurAffinity's category/species/gender/folders were
-    /// connector settings — cannot silently override what the author chose (or leave a stale default
+    /// left behind by an older release (when FurAffinity's category/species/gender/folders were
+    /// connector settings) cannot silently override what the author chose (or leave a stale default
     /// applying when they chose nothing). Merging into <c>ConfigJson</c> rather than adding a second
     /// channel keeps connectors reading one object.
     /// </para>

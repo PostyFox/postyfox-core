@@ -1,9 +1,9 @@
-# OpenTelemetry Collector — LOCAL / bare stack (docker-compose.yml).
+# OpenTelemetry Collector: LOCAL / bare stack (docker-compose.yml).
 #
 # Self-contained: telemetry is printed to the collector's own logs
 # (`docker compose logs otel-collector`), so the local stack is observable with NO external
 # OpenSearch / Data Prepper dependency. Deployed environments forward to the central Data Prepper
-# instead — see config.central.yaml.
+# instead: see config.central.yaml.
 receivers:
   otlp:
     protocols:

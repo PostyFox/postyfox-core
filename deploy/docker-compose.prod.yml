@@ -20,9 +20,9 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Password: "${RABBITMQ_PASSWORD}"
   # Secret store (Neillans.Adapters.Secrets). Production defaults to the bundled HashiCorp Vault (the
   # `vault` service, provisioned + AppRole-wired by `vault-init`). Switch backends by setting
-  # SECRETS_PROVIDER (+ that provider's Secrets__<Provider>__* options) — see README.
+  # SECRETS_PROVIDER (+ that provider's Secrets__<Provider>__* options): see README.
   Secrets__Provider: "${SECRETS_PROVIDER:-HashiCorpVault}"
-  # HashiCorp Vault (bundled) — AppRole auth against the internal `vault` service. RoleId/SecretId
+  # HashiCorp Vault (bundled): AppRole auth against the internal `vault` service. RoleId/SecretId
   # are the same values vault-init pins on the AppRole, so the app authenticates with no hand-off.
   Secrets__HashiCorpVault__VaultAddress: "${VAULT_APP_ADDR:-http://vault:8200}"
   Secrets__HashiCorpVault__RoleId: "${VAULT_ROLE_ID:-}"

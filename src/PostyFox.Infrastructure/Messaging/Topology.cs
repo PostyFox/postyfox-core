@@ -4,7 +4,7 @@ namespace PostyFox.Infrastructure.Messaging;
 
 /// <summary>
 /// Declares the exchange/queue topology. The main exchange is a plain "direct" exchange (no
-/// delayed-message plugin — see <see cref="RabbitMqMessageBus"/> for how retry backoff delay is
+/// delayed-message plugin, see <see cref="RabbitMqMessageBus"/> for how retry backoff delay is
 /// achieved instead). Each queue dead-letters to a per-queue DLQ on handler failure, and has a
 /// companion "retry" holding queue used for delayed re-publish (see
 /// <see cref="RabbitMqMessageBus.PublishAsync{T}"/>).
@@ -33,9 +33,9 @@ internal static class Topology
 
         // Holding queue for delayed re-publish (retry backoff): never consumed directly. A message
         // sits here until its per-message TTL (set as the AMQP `expiration` property at publish time)
-        // elapses, at which point RabbitMQ dead-letters it back into the main exchange/queue — no
+        // elapses, at which point RabbitMQ dead-letters it back into the main exchange/queue: no
         // plugin required. Safe from head-of-line blocking here because callers only ever use this
-        // for DeliverTargetHandler's narrow, bounded retry backoff (10-20s) — see
+        // for DeliverTargetHandler's narrow, bounded retry backoff (10-20s), see
         // RabbitMqMessageBus.PublishAsync and PostSchedulerService for the wider-range scheduling
         // case, which never touches RabbitMQ delay at all.
         await channel.QueueDeclareAsync(RetryQueue(queue), durable: true, exclusive: false, autoDelete: false,

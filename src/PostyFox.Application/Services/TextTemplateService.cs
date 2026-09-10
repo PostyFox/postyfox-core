@@ -7,7 +7,7 @@ using PostyFox.Domain.Entities;
 namespace PostyFox.Application.Services;
 
 /// <summary>
-/// CRUD for a user's reusable text templates — named snippets referenced inline in a post as
+/// CRUD for a user's reusable text templates: named snippets referenced inline in a post as
 /// <c>{{tt:Name}}</c> and resolved per delivery target at generation time (see
 /// <see cref="ITemplateEngine"/> and <see cref="Posting.GenerateTargetHandler"/>).
 /// </summary>
@@ -71,7 +71,7 @@ public sealed class TextTemplateService(IAppDbContext db, IClock clock)
         return true;
     }
 
-    /// <summary>Matches the token regex in <see cref="Templating.TemplateEngine"/> — kept in sync deliberately.</summary>
+    /// <summary>Matches the token regex in <see cref="Templating.TemplateEngine"/>, kept in sync deliberately.</summary>
     private static readonly System.Text.RegularExpressions.Regex TextTemplateNamePattern = new("^[A-Za-z0-9_-]+$");
 
     private static TextTemplateDto ToDto(TextTemplate entity) => new(

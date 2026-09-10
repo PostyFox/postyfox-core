@@ -218,7 +218,7 @@ resource "azurerm_container_app" "core_api" {
   }
 
   # Internal only. Public access goes through the OIDC edge; the APIs are never externally exposed
-  # (they re-validate the forwarded JWT in-app). Provisioning the edge is a follow-up — see README.
+  # (they re-validate the forwarded JWT in-app). Provisioning the edge is a follow-up: see README.
   ingress {
     external_enabled = false
     target_port      = 8080
@@ -278,7 +278,7 @@ resource "azurerm_container_app" "post_api" {
     }
   }
 
-  # Internal only — see core-api. The OIDC edge is the sole external Container App.
+  # Internal only: see core-api. The OIDC edge is the sole external Container App.
   ingress {
     external_enabled = false
     target_port      = 8080

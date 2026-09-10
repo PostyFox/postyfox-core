@@ -1,8 +1,8 @@
 # OAuth "connect" flow for connectors
 
 Some platforms let a user connect by clicking a button and authorizing in the provider's UI, rather
-than pasting API tokens. Today this covers **Tumblr** (OAuth 1.0a) and the **Fediverse** platforms —
-Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown and Pixelfed — all
+than pasting API tokens. Today this covers **Tumblr** (OAuth 1.0a) and the **Fediverse** platforms
+(Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown and Pixelfed), all
 served by one generic megalodon connector that auto-detects the instance's software (nodeinfo → SNS)
 and runs whichever authorization the instance uses (OAuth2 for Mastodon-family, MiAuth for
 Firefish/Iceshrimp).
@@ -18,7 +18,7 @@ opaquely:
 | MiAuth (Iceshrimp/Firefish) | session token | *(none)* | stored session token |
 
 The callback route accepts `oauth_token`/`oauth_verifier`, `state`/`code`, or `token`/`session`, and
-the verifier is optional (MiAuth carries no callback code — the session token minted at start is what
+the verifier is optional (MiAuth carries no callback code: the session token minted at start is what
 gets exchanged).
 
 ## How it works
@@ -68,7 +68,7 @@ Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_to
    The callback base is sourced per stack:
    - **Local full stack** (`docker-compose.yml`, bundled edge): `OAUTH_CALLBACK_BASE_URL`
      (defaults to `http://localhost:4180`).
-   - **Deployed** (`docker-compose.server.yml`, external edge): reuses **`PUBLIC_BASE_URL`** — the
+   - **Deployed** (`docker-compose.server.yml`, external edge): reuses **`PUBLIC_BASE_URL`**, the
      same public edge URL you already configure in `.env`, so there is no extra variable to set.
 
    If either operational secret is missing, Tumblr OAuth and delivery fail closed with a
@@ -99,5 +99,5 @@ per-user secret holds only `{AccessToken, Sns}`.
   `configJson` for instance-scoped providers.
 - **core**: set `SupportsOAuth: true` on the connector's `ConnectorDescriptor`. The generic
   start/callback endpoints and `HttpConnector` forwarding handle the rest.
-- The frontend needs no per-platform change — it shows the "Connect" button whenever
+- The frontend needs no per-platform change: it shows the "Connect" button whenever
   `/api/services` reports `supportsOAuth: true`.

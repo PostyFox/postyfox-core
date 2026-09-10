@@ -15,7 +15,7 @@
 **/bin
 **/obj
 
-# Node connectors service — built from its own context (src/connectors-node), not the .NET image
+# Node connectors service, built from its own context (src/connectors-node), not the .NET image
 src/connectors-node
 **/node_modules
 **/dist

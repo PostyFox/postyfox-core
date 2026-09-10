@@ -36,7 +36,7 @@ public sealed record MediaSpec(
 {
     private static readonly IReadOnlyList<string> None = Array.Empty<string>();
 
-    /// <summary>An unconstrained spec — every item passes through untouched.</summary>
+    /// <summary>An unconstrained spec: every item passes through untouched.</summary>
     public static MediaSpec Unconstrained { get; } = new(
         new ImageSpec(null, null, null, None),
         new VideoSpec(null, null, null, null, None),

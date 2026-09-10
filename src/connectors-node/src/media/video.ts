@@ -92,7 +92,7 @@ export async function normalizeVideo(
     try {
       data = await probe(input);
     } catch {
-      return { bytes, contentType }; // unprobeable — leave untouched
+      return { bytes, contentType }; // unprobeable, leave untouched
     }
 
     const stream = data.streams.find((s) => s.codec_type === "video");
@@ -100,7 +100,7 @@ export async function normalizeVideo(
 
     const durationSeconds = Number(data.format.duration ?? stream.duration ?? 0) || 0;
 
-    // A single-frame GIF is effectively a still image — leave it untouched.
+    // A single-frame GIF is effectively a still image, leave it untouched.
     if (contentType.includes("gif") && durationSeconds <= 0.1) return { bytes, contentType };
 
     const decision = decideVideo(

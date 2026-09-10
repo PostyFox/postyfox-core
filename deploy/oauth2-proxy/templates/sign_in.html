@@ -2,7 +2,7 @@
   Custom sign_in.html for oauth2-proxy. Based on oauth2-proxy's embedded default template (see
   pkg/app/pagewriter/sign_in.html upstream) with a single addition: a "Privacy policy" link in the
   footer, pointing at the SPA's public /privacy route (skip_auth_routes in ../oauth2-proxy.cfg lets
-  it — and the static assets it needs — load without a session). This is the pre-auth landing page,
+  it, and the static assets it needs, load without a session). This is the pre-auth landing page,
   so it's the right place to surface the link before a user signs in.
 */}}
 {{define "sign_in.html"}}

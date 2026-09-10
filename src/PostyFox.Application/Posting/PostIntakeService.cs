@@ -83,7 +83,7 @@ public sealed class PostIntakeService(
     /// Saves a post as a draft: the authored content is persisted as-is, but the target selection is
     /// kept raw (unresolved/unvalidated) on the post itself rather than as real <see cref="PostTarget"/>
     /// rows, and nothing is enqueued. Unlike <see cref="CreateAsync"/>, an empty or currently-invalid
-    /// target selection is fine — the draft just isn't postable yet.
+    /// target selection is fine: the draft just isn't postable yet.
     /// </summary>
     public async Task<CreatePostResponse> SaveDraftAsync(string userId, CreatePostRequest request, CancellationToken ct = default)
     {
@@ -108,7 +108,7 @@ public sealed class PostIntakeService(
 
     /// <summary>
     /// Overwrites a draft's authored content and target selection in place. Only valid while the post
-    /// is still a draft — once published, edit "post again" (duplicate) instead.
+    /// is still a draft. Once published, edit "post again" (duplicate) instead.
     /// </summary>
     public async Task<DraftActionOutcome> UpdateDraftAsync(string userId, Guid postId, CreatePostRequest request, CancellationToken ct = default)
     {
@@ -149,7 +149,7 @@ public sealed class PostIntakeService(
         var now = clock.UtcNow;
         var targets = BuildTargets(post.Id, resolved, targetOptions, targetIncludeTags, tags, now);
         // Explicit Add rather than post.Targets.Add(...): post is already tracked (loaded above), so
-        // navigation fixup alone leaves these client-keyed entities Modified instead of Added — EF has
+        // navigation fixup alone leaves these client-keyed entities Modified instead of Added: EF has
         // no other way to tell a manually-assigned Guid key apart from an existing row's.
         db.PostTargets.AddRange(targets);
         post.DraftTargetsJson = null;
@@ -209,7 +209,7 @@ public sealed class PostIntakeService(
     /// Resolves requested target ids to their destinations. A requested id is either a whole connector
     /// (single-destination platforms, and the legacy behaviour every platform used before
     /// per-destination selection existed) or one of that connector's exposed ConnectorDestinations
-    /// (multi-target platforms like Telegram — see ConnectorDescriptor.SupportsMultipleTargets). Both
+    /// (multi-target platforms like Telegram, see ConnectorDescriptor.SupportsMultipleTargets). Both
     /// id spaces are plain Guids from different tables, so a requested id can only ever match one of
     /// them. Ids that don't resolve (unknown, disabled, or belonging to another user) are silently
     /// dropped.
@@ -291,7 +291,7 @@ public sealed class PostIntakeService(
     /// Field names are matched case-insensitively and re-emitted under the schema's own casing. JSON
     /// dictionary keys are not touched by naming policies, so a client serialising with camelCase web
     /// defaults would otherwise send <c>category</c> against a declared <c>Category</c> and have its
-    /// choice silently dropped — the connector would then apply the platform default instead.
+    /// choice silently dropped: the connector would then apply the platform default instead.
     /// </para>
     /// </summary>
     private string TargetOptionsFor(

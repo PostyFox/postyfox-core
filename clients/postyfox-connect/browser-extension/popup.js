@@ -2,7 +2,7 @@
 
 /**
  * One click, start to finish: the popup asks PostyFox what can be connected, reads the matching
- * website cookies, and posts them straight back. There is no URL to type and no token to copy —
+ * website cookies, and posts them straight back. There is no URL to type and no token to copy:
  * the extension presents the user's own PostyFox session, so the server already knows who is asking.
  * Everything site-specific (which cookies, which login page) comes from the server, so supporting a
  * new site needs no extension release.
@@ -53,7 +53,7 @@ els.devMode.addEventListener("change", () =>
 els.target.addEventListener("change", render);
 
 // NB: no await before action(), so the user gesture is still live if the handler needs to request an
-// optional permission — Chrome rejects permissions.request() once the gesture has been consumed.
+// optional permission: Chrome rejects permissions.request() once the gesture has been consumed.
 els.action.addEventListener("click", () => {
   if (action) run(action);
 });
@@ -155,7 +155,7 @@ function render() {
   }
 
   // Both logins are needed, and the user may be missing either. Name them all, and point the button
-  // at the first — a second pass through the popup will ask for the other if it is still missing.
+  // at the first. A second pass through the popup will ask for the other if it is still missing.
   const missing = [];
   if (!signedIn)
     missing.push({ what: "PostyFox", label: "Sign in to PostyFox", url: `${origin()}/` });
@@ -208,7 +208,7 @@ async function connect(site) {
 }
 
 /**
- * Fallback for a browser that cannot present a PostyFox session — a different profile, or a Safari
+ * Fallback for a browser that cannot present a PostyFox session: a different profile, or a Safari
  * build where the session cookie does not reach the extension. The one-use token is the authorization
  * in place of the session, so this call is deliberately unauthenticated.
  */
@@ -255,7 +255,7 @@ async function api(method, path, body) {
       // The extension's own session-bearing call. Chrome treats extension-initiated requests as
       // same-site, so the PostyFox session cookie rides along.
       credentials: "include",
-      // A login redirect must not be followed — it would arrive as a perfectly valid HTML page.
+      // A login redirect must not be followed: it would arrive as a perfectly valid HTML page.
       redirect: "manual",
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -317,7 +317,7 @@ function hasSiteAccess(siteUrl) {
 }
 
 async function activeTabHost() {
-  // tab.url is only populated for tabs this extension has host access to — exactly the tabs whose
+  // tab.url is only populated for tabs this extension has host access to: exactly the tabs whose
   // host could match a pairable site, so no "tabs" permission is needed.
   const [tab] = await extensionApi.tabs.query({ active: true, currentWindow: true }).catch(() => []);
   return tab?.url ? host(tab.url) : null;

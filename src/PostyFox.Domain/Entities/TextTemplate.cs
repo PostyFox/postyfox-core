@@ -1,7 +1,7 @@
 namespace PostyFox.Domain.Entities;
 
 /// <summary>
-/// A reusable, named text snippet owned by a user — referenced inline in a post's title/description
+/// A reusable, named text snippet owned by a user, referenced inline in a post's title/description
 /// as <c>{{tt:Name}}</c> and resolved per delivery target (see
 /// <see cref="Application.Abstractions.ITemplateEngine"/>). <see cref="DefaultValue"/> is used when
 /// the target's connector has no override in <see cref="ConnectorValuesJson"/>; both may be blank,

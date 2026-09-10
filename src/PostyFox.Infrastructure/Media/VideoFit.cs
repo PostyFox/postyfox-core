@@ -58,7 +58,7 @@ public static class VideoFit
         if (src is not null)
             foreach (var m in allowed)
                 if (string.Equals(NormalizeMime(m), src, StringComparison.OrdinalIgnoreCase)) return src;
-        // Prefer mp4 (H.264/AAC) — the most broadly accepted.
+        // Prefer mp4 (H.264/AAC), the most broadly accepted.
         foreach (var m in allowed)
             if (string.Equals(NormalizeMime(m), "video/mp4", StringComparison.OrdinalIgnoreCase)) return "video/mp4";
         return NormalizeMime(allowed[0]) ?? "video/mp4";
