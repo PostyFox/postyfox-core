@@ -2,10 +2,11 @@ import { AtpAgent, RichText } from "@atproto/api";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { normalizeMedia } from "../media/normalize.js";
-import { BLUESKY_SPEC } from "../media/specs.js";
+import { BLUESKY_SPEC, limitsFromSpec } from "../media/specs.js";
 import type {
   Connector,
   ConnectorContext,
+  ConnectorLimits,
   DeliverResult,
   IsAuthenticatedResult,
   ListTargetsResult,
@@ -94,6 +95,12 @@ export class BlueskyConnector implements Connector {
     } catch {
       return { targets: [] };
     }
+  }
+
+  // Bluesky's caps are fixed (not per-instance), so this needs no network call — it just exposes
+  // BLUESKY_SPEC in the shape the frontend's pre-flight media check expects.
+  async getLimits(): Promise<ConnectorLimits> {
+    return limitsFromSpec(BLUESKY_SPEC);
   }
 
   async deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {

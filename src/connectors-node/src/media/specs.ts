@@ -36,6 +36,24 @@ export const MEDIA_SPECS: Record<string, MediaSpec> = {
 };
 
 /**
+ * Converts a platform's static `MediaSpec` into the `ConnectorLimits` shape the `limits` endpoint
+ * reports. Used by connectors whose byte caps are fixed (Bluesky, Tumblr, FurAffinity) rather than
+ * fetched live from an instance (contrast the Fediverse driver, which overlays `mergeLiveLimits` on
+ * top of this). `maxContentLength` is left null — those platforms' character caps are already
+ * surfaced from the static `ServiceDefinition` descriptor, not this endpoint.
+ */
+export function limitsFromSpec(spec: MediaSpec): ConnectorLimits {
+  const mimes = [...spec.image.allowedMimeTypes, ...spec.video.allowedMimeTypes];
+  return {
+    maxContentLength: null,
+    maxMediaAttachments: spec.maxAttachments ?? null,
+    supportedMimeTypes: mimes.length > 0 ? mimes : null,
+    imageSizeLimit: spec.image.maxBytes ?? null,
+    videoSizeLimit: spec.video.maxBytes ?? null,
+  };
+}
+
+/**
  * Overlays a connector's live, per-instance limits (e.g. a Fediverse instance's reported caps) onto
  * a static base spec. A live value wins only when reported; otherwise the base value is kept.
  */

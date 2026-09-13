@@ -87,6 +87,18 @@ function connectorWith(
   });
 }
 
+test("furaffinity getLimits reports the platform's fixed media caps", async () => {
+  const connector = connectorWith(new FakeSession([]));
+  const limits = await connector.getLimits();
+  assert.deepEqual(limits, {
+    maxContentLength: null,
+    maxMediaAttachments: 1,
+    supportedMimeTypes: ["image/jpeg", "image/png", "image/gif"],
+    imageSizeLimit: 10_485_760,
+    videoSizeLimit: 10_485_760,
+  });
+});
+
 test("furaffinity authenticates and identifies the account", async () => {
   const authSession = new FakeSession([
     response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),

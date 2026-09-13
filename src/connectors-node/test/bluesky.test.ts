@@ -241,6 +241,18 @@ test("bluesky deliver resizes an oversized image before uploading the blob", asy
   assert.ok(encoding === "image/png" || encoding === "image/jpeg" || encoding === "image/webp");
 });
 
+test("bluesky getLimits reports the platform's fixed media caps", async () => {
+  const connector = new BlueskyConnector(() => fakeAgent());
+  const limits = await connector.getLimits();
+  assert.deepEqual(limits, {
+    maxContentLength: null,
+    maxMediaAttachments: 4,
+    supportedMimeTypes: ["image/jpeg", "image/png", "image/webp", "video/mp4"],
+    imageSizeLimit: 976_560,
+    videoSizeLimit: 52_428_800,
+  });
+});
+
 test("bluesky deliver failure when login throws", async () => {
   const connector = new BlueskyConnector(() =>
     fakeAgent({
