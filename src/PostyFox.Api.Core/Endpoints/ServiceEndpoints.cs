@@ -188,7 +188,7 @@ public static class ServiceEndpoints
         // authenticated request; correlation to the connector is via the stashed request token.
         connectors.MapGet("oauth/callback", async (
             // OAuth1 (Tumblr): oauth_token/oauth_verifier. OAuth2 (Mastodon): state/code.
-            // Firefish/Misskey MiAuth: the redirect echoes the session token (token/session) and
+            // Misskey-family MiAuth (e.g. Iceshrimp): the redirect echoes the session token (token/session) and
             // there is no verifier: the stored session token is exchanged for the access token.
             [FromQuery(Name = "oauth_token")] string? oauthToken,
             [FromQuery(Name = "oauth_verifier")] string? oauthVerifier,

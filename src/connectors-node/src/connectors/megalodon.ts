@@ -54,8 +54,8 @@ export interface MegalodonClientLike {
     options?: { description?: string },
   ): Promise<{ data: { id: string } }>;
   /**
-   * Sets a drive file's alt text (`comment`). Present only on the firefish (Iceshrimp/Firefish)
-   * client: megalodon's firefish uploadMedia/updateMedia both drop the description, so alt text has
+   * Sets a drive file's alt text (`comment`). Present only on the firefish (Iceshrimp) client:
+   * megalodon's firefish uploadMedia/updateMedia both drop the description, so alt text has
    * to be applied via /api/drive/files/update directly. Mastodon-style clients set it at upload
    * time and leave this undefined.
    */
@@ -101,7 +101,7 @@ const APP_WEBSITE = "https://postyfox.com";
 const MASTODON_SCOPES = ["read", "write"];
 
 /**
- * Misskey-family (Iceshrimp/Firefish) authorize *granular* permissions via MiAuth. The coarse
+ * Misskey-family instances (e.g. Iceshrimp) authorize *granular* permissions via MiAuth. The coarse
  * Mastodon "read"/"write" strings are not recognised as Misskey permissions, so an app registered
  * with them cannot create notes: /api/notes/create returns PERMISSION_DENIED. This mirrors
  * megalodon's firefish DEFAULT_SCOPE (the permission set its endpoints expect); "write:notes" and
@@ -155,7 +155,7 @@ interface PendingConnect {
   sns: MegalodonSns;
   clientId: string;
   clientSecret: string;
-  /** Firefish/Misskey (MiAuth): the session token is the credential exchanged for the access token. */
+  /** Misskey-family (MiAuth): the session token is the credential exchanged for the access token. */
   sessionToken: string | null;
   callbackUrl: string;
 }
@@ -204,7 +204,7 @@ const defaultPixelfedInstanceFetcher: PixelfedInstanceFetcher = async (instanceU
  * the secret. Authorization spans two provider families that megalodon abstracts behind the same
  * calls but drive differently:
  *   - Mastodon-style OAuth2: the callback returns a `code` which is exchanged for a token.
- *   - Firefish/Misskey MiAuth: `registerApp` yields a session token up front; after the user
+ *   - Misskey-family MiAuth: `registerApp` yields a session token up front; after the user
  *     authorizes, that same session token (not a callback code) is exchanged for a token.
  * The `oauth` flow captures both by carrying the session token (when present) through
  * `requestTokenSecret` and using it in place of a callback code.

@@ -103,7 +103,11 @@ public static class ServiceDefinitionSeeder
                 ConfigSchema = FediverseSchema, SecureConfigSchema = null },
         new() { Id = "Friendica", Name = "Friendica", Platform = "Friendica", Enabled = true,
                 ConfigSchema = FediverseSchema, SecureConfigSchema = null },
-        new() { Id = "Firefish", Name = "Firefish", Platform = "Firefish", Enabled = true,
+        // Firefish is dead upstream and has no backing connector any more (see
+        // ServiceCollectionExtensions.AddInfrastructure) - kept as a disabled catalogue entry rather
+        // than deleted outright so existing deployments that already seeded this row get it flipped
+        // off cleanly (SeedAsync updates rows already present) instead of left dangling.
+        new() { Id = "Firefish", Name = "Firefish", Platform = "Firefish", Enabled = false,
                 ConfigSchema = FediverseSchema, SecureConfigSchema = null },
         new() { Id = "Iceshrimp", Name = "Iceshrimp", Platform = "Iceshrimp", Enabled = true,
                 ConfigSchema = FediverseSchema, SecureConfigSchema = null },

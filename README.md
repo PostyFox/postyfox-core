@@ -51,7 +51,7 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 | Bluesky | **Node** service | `@atproto/api`, via the `HttpConnector` adapter over internal HTTP (`X-Internal-Token`) |
 | Tumblr | **Node** service | `tumblr.js`, same adapter |
 | FurAffinity | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
-| Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon`, same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
+| Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon`, same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
 | ~~Twitch~~ | N/A | descoped |
 
 `connectors-node` exposes an `IConnector`-shaped HTTP contract (`/connectors/:platform/{is-authenticated,list-targets,limits,deliver}`); the C# `HttpConnector` forwards to it, passing the resolved config + secret in the request so the Node side stays stateless. Connector auth/target operations are exposed at `GET /api/connectors/{id}/authenticated`, `GET /api/connectors/{id}/targets`, and the Telegram login flow at `POST /api/connectors/{id}/telegram/login`.
@@ -75,9 +75,9 @@ on the `PostTarget`, and applied over the connector's config when delivery build
 `ConnectorContext`, so connectors keep reading a single config object. Options lists too large for a
 C# literal live in [`Persistence/Schemas`](./src/PostyFox.Infrastructure/Persistence/Schemas/README.md).
 
-**Content warnings (Fediverse).** Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial,
+**Content warnings (Fediverse).** Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial,
 Hometown and Pixelfed all support a click-to-reveal content warning (Mastodon's API calls this
-`spoiler_text`; megalodon maps it to Misskey's `cw` for the Firefish/Iceshrimp driver), declared via
+`spoiler_text`; megalodon maps it to Misskey's `cw` for the firefish driver Iceshrimp uses), declared via
 `ConnectorDescriptor.SupportsContentWarning` and surfaced as the "Content warning" capability badge on
 `GET /api/services`. It is an explicit, optional per-submission field (`ContentWarning` in
 `PostOptionsSchema`), **never** derived from the post title, which is an unrelated field most of these

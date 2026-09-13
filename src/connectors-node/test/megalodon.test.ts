@@ -526,9 +526,9 @@ test("megalodon oauth start registers an app and carries the MiAuth session toke
   assert.equal(pending.clientSecret, "csecret");
 });
 
-test("megalodon oauth start requests granular write:notes permission for firefish (Iceshrimp)", async () => {
+test("megalodon oauth start requests granular write:notes permission for Iceshrimp (firefish driver)", async () => {
   // Regression: registering with coarse Mastodon "read"/"write" scopes yields an app that cannot
-  // create notes on Iceshrimp/Firefish: /api/notes/create returns PERMISSION_DENIED.
+  // create notes on Iceshrimp: /api/notes/create returns PERMISSION_DENIED.
   let requested: string[] | undefined;
   const client = fakeClient({
     async registerApp(_name, options) {
@@ -542,7 +542,7 @@ test("megalodon oauth start requests granular write:notes permission for firefis
   });
   assert.ok(requested, "registerApp should receive scopes");
   assert.ok(requested.includes("write:notes"), `expected granular Misskey permissions, got ${JSON.stringify(requested)}`);
-  assert.ok(!requested.includes("write"), "should not send coarse Mastodon scopes to a firefish instance");
+  assert.ok(!requested.includes("write"), "should not send coarse Mastodon scopes to a Misskey-family instance");
 });
 
 test("megalodon oauth start requests coarse read/write scopes for Mastodon-style providers", async () => {
