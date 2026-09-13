@@ -2,10 +2,10 @@
 
 Some platforms let a user connect by clicking a button and authorizing in the provider's UI, rather
 than pasting API tokens. Today this covers **Tumblr** (OAuth 1.0a) and the **Fediverse** platforms
-(Mastodon, Pleroma, Akkoma, Friendica, Firefish, Iceshrimp, GoToSocial, Hometown and Pixelfed), all
+(Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown and Pixelfed), all
 served by one generic megalodon connector that auto-detects the instance's software (nodeinfo → SNS)
 and runs whichever authorization the instance uses (OAuth2 for Mastodon-family, MiAuth for
-Firefish/Iceshrimp).
+Iceshrimp/Misskey-family).
 
 The same generic start/callback plumbing serves three authorization families. The connector fills in
 the `requestToken` / `requestTokenSecret` / `verifier` fields differently, but core treats them
@@ -15,7 +15,7 @@ opaquely:
 |--------|------------------------------|----------------------------|---------------------|
 | OAuth 1.0a (Tumblr) | request token | `oauth_verifier` | request token + verifier |
 | OAuth2 (Mastodon-style) | random `state` echoed back | `code` | authorization `code` |
-| MiAuth (Iceshrimp/Firefish) | session token | *(none)* | stored session token |
+| MiAuth (Iceshrimp/Misskey-family) | session token | *(none)* | stored session token |
 
 The callback route accepts `oauth_token`/`oauth_verifier`, `state`/`code`, or `token`/`session`, and
 the verifier is optional (MiAuth carries no callback code: the session token minted at start is what
@@ -86,7 +86,7 @@ The user supplies their **instance URL** in the connector's config; the connect 
 instance's software (nodeinfo → megalodon SNS) and mints the app + session token per connect. The
 per-user secret holds only `{AccessToken, Sns}`.
 
-> **Note:** Firefish/Misskey MiAuth redirects back to the registered callback and the exact query
+> **Note:** Misskey-family MiAuth redirects back to the registered callback and the exact query
 > parameter carrying the session token can vary by instance software/version. The callback route
 > accepts `token`/`session`/`state` as correlation candidates; verify against your target instance if
 > a connect appears to succeed in the provider UI but does not complete.

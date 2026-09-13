@@ -146,7 +146,6 @@ public static class ServiceCollectionExtensions
         AddFediverse("Pleroma", "Pleroma", 5000);
         AddFediverse("Akkoma", "Akkoma", 5000);
         AddFediverse("Friendica", "Friendica", null);
-        AddFediverse("Firefish", "Firefish", 3000);
         AddFediverse("Iceshrimp", "Iceshrimp", 3000);
         AddFediverse("GoToSocial", "GoToSocial", 5000);
         AddFediverse("Hometown", "Hometown", 500);

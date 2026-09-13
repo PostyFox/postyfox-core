@@ -24,7 +24,6 @@ export function createDefaultRegistry(
     ["pleroma", "pleroma"],
     ["akkoma", "pleroma"],
     ["friendica", "friendica"],
-    ["firefish", "firefish"],
     ["iceshrimp", "firefish"],
     ["gotosocial", "gotosocial"],
     ["hometown", "mastodon"],
