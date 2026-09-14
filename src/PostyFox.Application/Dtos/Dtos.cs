@@ -259,6 +259,9 @@ public sealed record PostSummaryDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? PostAt);
 
+/// <summary>Result of <c>DELETE /api/posts/history</c>: how many posts were removed.</summary>
+public sealed record DeleteHistoryResponse(int DeletedCount);
+
 /// <summary>
 /// Global media-upload limits reported by <c>GET /api/media/limits</c>. Mirrors the gateway's own
 /// configured cap (see <see cref="PostyFox.Application.Options.MediaOptions"/>) rather than

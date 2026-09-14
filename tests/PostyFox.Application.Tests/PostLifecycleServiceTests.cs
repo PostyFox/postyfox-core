@@ -119,4 +119,61 @@ public class PostLifecycleServiceTests
         Assert.False(deleted);
         Assert.Single(db.Posts);
     }
+
+    // ----- delete-all-history --------------------------------------------------
+
+    private static async Task SetRootStatusAsync(TestDbContext db, Post post, PostRootStatus status)
+    {
+        post.RootStatus = status;
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task DeleteAllHistory_removes_only_terminal_posts()
+    {
+        using var db = TestDbContext.Create();
+        var store = new FakeObjectStore();
+        var delivered = await SeedAsync(db, "u1", ("DiscordWH", TargetStatus.Delivered));
+        await SetRootStatusAsync(db, delivered, PostRootStatus.Delivered);
+        var failed = await SeedAsync(db, "u1", ("DiscordWH", TargetStatus.Failed));
+        await SetRootStatusAsync(db, failed, PostRootStatus.Failed);
+        var cancelled = await SeedAsync(db, "u1", ("DiscordWH", TargetStatus.Cancelled));
+        await SetRootStatusAsync(db, cancelled, PostRootStatus.Cancelled);
+
+        var queued = await SeedAsync(db, "u1", ("DiscordWH", TargetStatus.Queued));
+        await SetRootStatusAsync(db, queued, PostRootStatus.Queued);
+        var draft = await SeedAsync(db, "u1", ("DiscordWH", TargetStatus.Queued));
+        await SetRootStatusAsync(db, draft, PostRootStatus.Draft);
+
+        var count = await New(db, store).DeleteAllHistoryAsync("u1");
+
+        Assert.Equal(3, count);
+        var remaining = db.Posts.Select(p => p.Id).ToHashSet();
+        Assert.Equal(new HashSet<Guid> { queued.Id, draft.Id }, remaining);
+    }
+
+    [Fact]
+    public async Task DeleteAllHistory_only_touches_the_calling_users_posts()
+    {
+        using var db = TestDbContext.Create();
+        var mine = await SeedAsync(db, "u1", ("DiscordWH", TargetStatus.Delivered));
+        await SetRootStatusAsync(db, mine, PostRootStatus.Delivered);
+        var theirs = await SeedAsync(db, "someone-else", ("DiscordWH", TargetStatus.Delivered));
+        await SetRootStatusAsync(db, theirs, PostRootStatus.Delivered);
+
+        var count = await New(db, new FakeObjectStore()).DeleteAllHistoryAsync("u1");
+
+        Assert.Equal(1, count);
+        Assert.Equal(theirs.Id, db.Posts.Single().Id);
+    }
+
+    [Fact]
+    public async Task DeleteAllHistory_with_nothing_to_delete_returns_zero()
+    {
+        using var db = TestDbContext.Create();
+
+        var count = await New(db, new FakeObjectStore()).DeleteAllHistoryAsync("u1");
+
+        Assert.Equal(0, count);
+    }
 }

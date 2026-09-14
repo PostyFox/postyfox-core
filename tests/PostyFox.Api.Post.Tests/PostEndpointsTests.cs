@@ -334,6 +334,49 @@ public class PostEndpointsTests(CustomWebApplicationFactory factory) : IClassFix
         Assert.DoesNotContain("unknownField", options.Keys); // undeclared keys never reach a connector
     }
 
+    [Fact]
+    public async Task DeleteHistory_removes_terminal_posts_and_keeps_active_and_drafts()
+    {
+        var body = new { targets = new[] { factory.SeededConnectorId }, title = "History target", description = "x" };
+        var terminal = await (await _client.PostAsJsonAsync("/api/posts", body)).Content.ReadFromJsonAsync<CreatePostResponse>();
+        var active = await (await _client.PostAsJsonAsync("/api/posts", body)).Content.ReadFromJsonAsync<CreatePostResponse>();
+        var draft = await (await _client.PostAsJsonAsync("/api/posts", new
+        {
+            targets = new[] { factory.SeededConnectorId },
+            title = "Draft",
+            isDraft = true
+        })).Content.ReadFromJsonAsync<CreatePostResponse>();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var post = await db.Posts.SingleAsync(p => p.Id == terminal!.PostId);
+            post.RootStatus = PostRootStatus.Delivered;
+            await db.SaveChangesAsync();
+        }
+
+        // The shared fixture's DB may carry terminal posts left behind by other tests in this class
+        // (e.g. a cancelled post), so assert on this test's own posts rather than an exact total count.
+        var delete = await _client.DeleteAsync("/api/posts/history");
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        var result = await delete.Content.ReadFromJsonAsync<DeleteHistoryResponse>();
+        Assert.True(result!.DeletedCount >= 1);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/posts/{terminal!.PostId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync($"/api/posts/{active!.PostId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync($"/api/posts/{draft!.PostId}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteHistory_second_call_in_a_row_finds_nothing_left_to_delete()
+    {
+        await _client.DeleteAsync("/api/posts/history"); // clear whatever earlier tests in this class left behind
+        var delete = await _client.DeleteAsync("/api/posts/history");
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        var result = await delete.Content.ReadFromJsonAsync<DeleteHistoryResponse>();
+        Assert.Equal(0, result!.DeletedCount);
+    }
+
     /// <summary>
     /// FurAffinity is the platform that declares per-submission options; the fixture only seeds
     /// Discord, so add one per test (a fresh id keeps the shared fixture's rows independent).
