@@ -72,4 +72,31 @@ public sealed class PostLifecycleService(IAppDbContext db, PostPayloadCleaner pa
         await payloadCleaner.DeleteAsync(postId, mediaManifestJson, ct);
         return true;
     }
+
+    /// <summary>
+    /// Hard-deletes every one of the user's terminal (history) posts in one go: everything that isn't
+    /// still in flight (<see cref="PostStatusService.ActiveStatuses"/>) and isn't a draft. Drafts and
+    /// active posts are left untouched — this is "clear my history", not "delete everything". Returns
+    /// the number of posts removed.
+    /// </summary>
+    public async Task<int> DeleteAllHistoryAsync(string userId, CancellationToken ct = default)
+    {
+        var posts = await db.Posts
+            .Include(p => p.Targets)
+            .Where(p => p.UserId == userId
+                && p.RootStatus != PostRootStatus.Draft
+                && !PostStatusService.ActiveStatuses.Contains(p.RootStatus))
+            .ToListAsync(ct);
+        if (posts.Count == 0) return 0;
+
+        // Rows first (cascade drops the targets); then best-effort the object store per post: an
+        // orphaned blob is harmless, an orphaned row is not.
+        db.Posts.RemoveRange(posts);
+        await db.SaveChangesAsync(ct);
+
+        foreach (var post in posts)
+            await payloadCleaner.DeleteAsync(post.Id, post.MediaManifestJson, ct);
+
+        return posts.Count;
+    }
 }

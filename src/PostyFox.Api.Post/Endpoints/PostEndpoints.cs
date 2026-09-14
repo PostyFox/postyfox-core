@@ -132,5 +132,11 @@ public static class PostEndpoints
         .WithDescription("Permanently removes a post and its stored payload/media. Works for history entries and for stale/orphaned queued rows; any pending queue message for it then no-ops.")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status404NotFound);
+
+        group.MapDelete("history", async (ClaimsPrincipal user, PostLifecycleService svc, CancellationToken ct) =>
+            Results.Ok(new DeleteHistoryResponse(await svc.DeleteAllHistoryAsync(user.UserId()!, ct))))
+        .WithSummary("Clear post history")
+        .WithDescription("Permanently deletes every one of the caller's terminal posts (delivered/partially failed/failed/cancelled), and their stored payload/media. Drafts and posts still in flight are left untouched. Returns the number of posts removed.")
+        .Produces<DeleteHistoryResponse>();
     }
 }
