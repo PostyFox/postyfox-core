@@ -29,7 +29,9 @@ public sealed class PostIntakeService(
     /// per-submission <see cref="CreatePostRequest.TargetOptions"/>.
     /// </summary>
     private sealed record ResolvedDestination(
-        Guid SelectionId, Guid ConnectorId, string DisplayName, string Platform, string? TargetId, string? TargetName);
+        Guid SelectionId, Guid ConnectorId, string DisplayName, string Platform, string? TargetId, string? TargetName,
+        /// <summary>The owning connector's configured default for <see cref="PostTarget.IncludeTags"/>.</summary>
+        bool DefaultIncludeTags);
 
     /// <summary>
     /// Persists a post + one target per selected destination, stores the payload, and enqueues
@@ -58,7 +60,8 @@ public sealed class PostIntakeService(
         ApplyContent(post, request);
         // Throws ConnectorValidationException before anything is persisted if a target's options fail,
         // or if a target's platform requires tags and none are being sent.
-        post.Targets = BuildTargets(post.Id, resolved, request.TargetOptions, request.TargetIncludeTags, request.Tags, now);
+        post.Targets = BuildTargets(post.Id, resolved, request.TargetOptions, request.TargetIncludeTags,
+            request.TargetRating, request.Tags, now);
 
         // From here on, every log in this request carries the PostId (see PostIdLogEnricher), so a
         // user can hand a dev the post id from the UI and the dev finds the intake telemetry too.
@@ -144,10 +147,11 @@ public sealed class PostIntakeService(
 
         var targetOptions = Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}");
         var targetIncludeTags = Json.Deserialize<Dictionary<Guid, bool>>(post.DraftTargetIncludeTagsJson ?? "{}");
+        var targetRating = Json.Deserialize<Dictionary<Guid, ContentRating>>(post.DraftTargetRatingJson ?? "{}");
         var tags = Json.Deserialize<List<string>>(post.TagsJson) ?? [];
 
         var now = clock.UtcNow;
-        var targets = BuildTargets(post.Id, resolved, targetOptions, targetIncludeTags, tags, now);
+        var targets = BuildTargets(post.Id, resolved, targetOptions, targetIncludeTags, targetRating, tags, now);
         // Explicit Add rather than post.Targets.Add(...): post is already tracked (loaded above), so
         // navigation fixup alone leaves these client-keyed entities Modified instead of Added: EF has
         // no other way to tell a manually-assigned Guid key apart from an existing row's.
@@ -182,7 +186,6 @@ public sealed class PostIntakeService(
             throw new ConnectorValidationException("Invalid media reference.");
         post.MediaManifestJson = Json.Serialize(media);
         post.VariablesJson = Json.Serialize(request.Variables ?? new Dictionary<string, string>());
-        post.Rating = request.Rating;
         post.TemplateId = request.TemplateId;
         post.PostAt = request.PostAt;
     }
@@ -195,6 +198,7 @@ public sealed class PostIntakeService(
         post.DraftTargetOptionsJson = Json.Serialize(
             request.TargetOptions ?? new Dictionary<Guid, IReadOnlyDictionary<string, string>>());
         post.DraftTargetIncludeTagsJson = Json.Serialize(request.TargetIncludeTags ?? new Dictionary<Guid, bool>());
+        post.DraftTargetRatingJson = Json.Serialize(request.TargetRating ?? new Dictionary<Guid, ContentRating>());
     }
 
     /// <summary>Persists the human-authored payload alongside the record (mirrors media storage).</summary>
@@ -230,9 +234,10 @@ public sealed class PostIntakeService(
 
         var resolved = new List<ResolvedDestination>();
         resolved.AddRange(connectors.Select(c =>
-            new ResolvedDestination(c.Id, c.Id, c.DisplayName, c.ServiceDefinition!.Platform, null, null)));
+            new ResolvedDestination(c.Id, c.Id, c.DisplayName, c.ServiceDefinition!.Platform, null, null, c.DefaultIncludeTags)));
         resolved.AddRange(destinations.Select(d =>
-            new ResolvedDestination(d.Id, d.ConnectorId, d.Connector!.DisplayName, d.Connector!.ServiceDefinition!.Platform, d.ExternalId, d.Name)));
+            new ResolvedDestination(d.Id, d.ConnectorId, d.Connector!.DisplayName, d.Connector!.ServiceDefinition!.Platform,
+                d.ExternalId, d.Name, d.Connector!.DefaultIncludeTags)));
         return resolved;
     }
 
@@ -245,6 +250,7 @@ public sealed class PostIntakeService(
         List<ResolvedDestination> resolved,
         IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? targetOptions,
         IReadOnlyDictionary<Guid, bool>? targetIncludeTags,
+        IReadOnlyDictionary<Guid, ContentRating>? targetRating,
         IReadOnlyList<string>? tags,
         DateTimeOffset now)
     {
@@ -259,9 +265,12 @@ public sealed class PostIntakeService(
                 throw new ConnectorValidationException($"{destination.DisplayName}: at least one tag is required for this platform.");
 
             // RequiresTags forces the toggle on regardless of what the client sent; otherwise the
-            // author's per-target choice applies (defaulting to on when absent).
+            // author's per-target choice applies, falling back to the connector's own configured
+            // default when the author didn't override it for this post.
             var includeTags = requiresTags
-                || !(targetIncludeTags?.TryGetValue(destination.SelectionId, out var chosen) == true && !chosen);
+                || (targetIncludeTags?.TryGetValue(destination.SelectionId, out var chosen) == true
+                    ? chosen
+                    : destination.DefaultIncludeTags);
 
             targets.Add(new PostTarget
             {
@@ -274,6 +283,14 @@ public sealed class PostIntakeService(
                 OptionsJson = TargetOptionsFor(destination.Platform, destination.DisplayName,
                     targetOptions?.GetValueOrDefault(destination.SelectionId)),
                 IncludeTags = includeTags,
+                // Unlike IncludeTags, this carries exactly what was sent for this target and falls
+                // back to no rating (not the connector's DefaultRating) when absent: a single shared
+                // post-wide value doesn't apply here any more, and resolving the connector's own
+                // default is left to the caller (the compose form does this before submitting; see
+                // UserConnector.DefaultRating).
+                Rating = targetRating?.TryGetValue(destination.SelectionId, out var rating) == true
+                    ? rating
+                    : (ContentRating?)null,
                 Status = TargetStatus.Queued,
                 CreatedAt = now,
                 UpdatedAt = now

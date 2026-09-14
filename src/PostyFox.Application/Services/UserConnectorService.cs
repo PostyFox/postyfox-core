@@ -17,14 +17,14 @@ public sealed class UserConnectorService(IAppDbContext db, ISecretsProvider secr
             .Include(c => c.ServiceDefinition)
             .OrderBy(c => c.DisplayName)
             .Select(c => new UserConnectorDto(c.Id, c.ServiceDefinitionId,
-                c.ServiceDefinition!.Platform, c.DisplayName, c.ConfigJson, c.Enabled))
+                c.ServiceDefinition!.Platform, c.DisplayName, c.ConfigJson, c.Enabled, c.DefaultIncludeTags, c.DefaultRating))
             .ToListAsync(ct);
 
     public async Task<UserConnectorDto?> GetAsync(string userId, Guid id, CancellationToken ct = default) =>
         await db.UserConnectors.Where(c => c.UserId == userId && c.Id == id)
             .Include(c => c.ServiceDefinition)
             .Select(c => new UserConnectorDto(c.Id, c.ServiceDefinitionId,
-                c.ServiceDefinition!.Platform, c.DisplayName, c.ConfigJson, c.Enabled))
+                c.ServiceDefinition!.Platform, c.DisplayName, c.ConfigJson, c.Enabled, c.DefaultIncludeTags, c.DefaultRating))
             .FirstOrDefaultAsync(ct);
 
     public async Task<UserConnectorDto?> UpsertAsync(string userId, UserConnectorUpsertRequest request, CancellationToken ct = default)
@@ -61,13 +61,16 @@ public sealed class UserConnectorService(IAppDbContext db, ISecretsProvider secr
         entity.DisplayName = request.DisplayName;
         entity.ConfigJson = request.ConfigJson;
         entity.Enabled = request.Enabled;
+        entity.DefaultIncludeTags = request.DefaultIncludeTags;
+        entity.DefaultRating = request.DefaultRating;
         entity.UpdatedAt = clock.UtcNow;
         await db.SaveChangesAsync(ct);
 
         if (!string.IsNullOrWhiteSpace(request.SecureConfigJson))
             await secrets.SetSecretAsync(SecretName(entity.Id, userId), request.SecureConfigJson, ct);
 
-        return new UserConnectorDto(entity.Id, entity.ServiceDefinitionId, def.Platform, entity.DisplayName, entity.ConfigJson, entity.Enabled);
+        return new UserConnectorDto(entity.Id, entity.ServiceDefinitionId, def.Platform, entity.DisplayName,
+            entity.ConfigJson, entity.Enabled, entity.DefaultIncludeTags, entity.DefaultRating);
     }
 
     public async Task<bool> DeleteAsync(string userId, Guid id, CancellationToken ct = default)

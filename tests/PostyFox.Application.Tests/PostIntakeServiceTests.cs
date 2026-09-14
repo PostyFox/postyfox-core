@@ -13,13 +13,14 @@ namespace PostyFox.Application.Tests;
 
 public class PostIntakeServiceTests
 {
-    private static async Task<Guid> SeedConnectorAsync(TestDbContext db, string userId, bool enabled = true)
+    private static async Task<Guid> SeedConnectorAsync(TestDbContext db, string userId, bool enabled = true, bool defaultIncludeTags = true)
     {
         db.ServiceDefinitions.Add(new ServiceDefinition { Id = "DiscordWH", Name = "Discord", Platform = "DiscordWH", Enabled = true });
         var id = Guid.NewGuid();
         db.UserConnectors.Add(new UserConnector
         {
-            Id = id, UserId = userId, ServiceDefinitionId = "DiscordWH", DisplayName = "d", Enabled = enabled
+            Id = id, UserId = userId, ServiceDefinitionId = "DiscordWH", DisplayName = "d", Enabled = enabled,
+            DefaultIncludeTags = defaultIncludeTags
         });
         await db.SaveChangesAsync();
         return id;
@@ -39,14 +40,14 @@ public class PostIntakeServiceTests
 
         var result = await svc.CreateAsync("u1", new CreatePostRequest(
             [connectorId], "Title", "Body", "<p>Body</p>", ["tag"], null, null, null, null,
-            ContentRating.Mature));
+            TargetRating: new Dictionary<Guid, ContentRating> { [connectorId] = ContentRating.Mature }));
 
         Assert.NotNull(result);
-        var post = Assert.Single(db.Posts);
-        Assert.Single(db.PostTargets);
-        Assert.Equal(ContentRating.Mature, post.Rating);
+        Assert.Single(db.Posts);
+        var target = Assert.Single(db.PostTargets);
+        Assert.Equal(ContentRating.Mature, target.Rating);
         var cmd = Assert.Single(bus.Of<GenerateTargetCommand>());
-        Assert.Equal(post.Id, cmd.PostId);
+        Assert.Equal(target.PostId, cmd.PostId);
     }
 
     [Fact]
@@ -425,5 +426,101 @@ public class PostIntakeServiceTests
         Assert.NotNull(result);
         var target = Assert.Single(db.PostTargets);
         Assert.True(target.IncludeTags);
+    }
+
+    [Fact]
+    public async Task Create_falls_back_to_the_connectors_default_include_tags_when_unspecified()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1", defaultIncludeTags: false);
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, ["tag"], null, null, null, null));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        Assert.False(target.IncludeTags);
+    }
+
+    [Fact]
+    public async Task Create_lets_a_per_target_choice_override_the_connectors_default()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1", defaultIncludeTags: false);
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, ["tag"], null, null, null, null,
+            TargetIncludeTags: new Dictionary<Guid, bool> { [connectorId] = true }));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        Assert.True(target.IncludeTags);
+    }
+
+    [Fact]
+    public async Task Create_stores_a_targets_rating_exactly_as_sent()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null, null, null, null, null,
+            TargetRating: new Dictionary<Guid, ContentRating> { [connectorId] = ContentRating.Extreme }));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        Assert.Equal(ContentRating.Extreme, target.Rating);
+    }
+
+    [Fact]
+    public async Task Create_leaves_rating_null_when_unspecified_regardless_of_the_connectors_default()
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true });
+        var connectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = connectorId, UserId = "u1", ServiceDefinitionId = "FurAffinity", DisplayName = "FA", Enabled = true,
+            DefaultRating = ContentRating.Adult
+        });
+        await db.SaveChangesAsync();
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("FurAffinity")),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        // No TargetRating sent: unlike IncludeTags, intake never falls back to the connector's own
+        // default itself (see PostTarget.Rating) — that's left to whoever built the request.
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null, null, null, null, null));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        Assert.Null(target.Rating);
+    }
+
+    [Fact]
+    public async Task PublishDraft_carries_the_drafts_per_target_rating_through()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+        var created = await svc.SaveDraftAsync("u1", new CreatePostRequest(
+            [connectorId], "Draft", "Body", null, null, null, null, null, null,
+            TargetRating: new Dictionary<Guid, ContentRating> { [connectorId] = ContentRating.Mature }));
+        db.ChangeTracker.Clear();
+
+        var result = await svc.PublishDraftAsync("u1", created.PostId);
+
+        Assert.Equal(DraftActionOutcome.Success, result.Outcome);
+        var target = Assert.Single(db.PostTargets);
+        Assert.Equal(ContentRating.Mature, target.Rating);
     }
 }

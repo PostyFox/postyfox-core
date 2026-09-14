@@ -46,6 +46,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.ToTable("user_connectors");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.UserId);
+            e.Property(x => x.DefaultRating).HasConversion<string>().HasMaxLength(32);
             e.HasOne(x => x.ServiceDefinition)
                 .WithMany()
                 .HasForeignKey(x => x.ServiceDefinitionId)
@@ -119,7 +120,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.UserId);
             e.Property(x => x.RootStatus).HasConversion<string>().HasMaxLength(32);
-            e.Property(x => x.Rating).HasConversion<string>().HasMaxLength(32);
             e.HasMany(x => x.Targets).WithOne(x => x.Post!).HasForeignKey(x => x.PostId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -129,6 +129,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.PostId);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Rating).HasConversion<string>().HasMaxLength(32);
             e.Property(x => x.OptionsJson).HasDefaultValue("{}");
         });
 

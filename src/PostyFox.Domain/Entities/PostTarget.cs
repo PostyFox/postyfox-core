@@ -28,10 +28,20 @@ public class PostTarget
     /// Whether tags should be included for this target: optional for every platform (even ones with
     /// no native tags field, which get them woven into the body instead; see
     /// <see cref="Connectors.ConnectorDescriptor.SupportsTags"/>), and forced true for platforms that
-    /// declare <see cref="Connectors.ConnectorDescriptor.RequiresTags"/>. Defaults to true so
-    /// existing behaviour is unchanged unless the author opts out.
+    /// declare <see cref="Connectors.ConnectorDescriptor.RequiresTags"/>. Otherwise defaults to the
+    /// owning connector's configured <see cref="UserConnector.DefaultIncludeTags"/> unless the author
+    /// overrides the choice for this post.
     /// </summary>
     public bool IncludeTags { get; set; } = true;
+    /// <summary>
+    /// The audience/content rating for this target, on platforms that can represent one (see
+    /// <see cref="Connectors.ConnectorDescriptor.SupportsRating"/>). Unlike <see cref="IncludeTags"/>
+    /// this carries exactly what the author chose at compose time (including a connector's own
+    /// <see cref="UserConnector.DefaultRating"/> pre-fill, if that's what they left in place): intake
+    /// stores it as sent and applies no fallback of its own. Null on a platform that doesn't support
+    /// ratings, or when the author never set one.
+    /// </summary>
+    public ContentRating? Rating { get; set; }
     public string? RenderedContentJson { get; set; }
     public TargetStatus Status { get; set; } = TargetStatus.Queued;
     public string? ExternalId { get; set; }
