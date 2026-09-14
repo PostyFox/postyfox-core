@@ -13,7 +13,6 @@ public class Post
     public string TagsJson { get; set; } = "[]";
     public string MediaManifestJson { get; set; } = "[]";
     public string VariablesJson { get; set; } = "{}";
-    public ContentRating? Rating { get; set; }
     public Guid? TemplateId { get; set; }
     public DateTimeOffset? PostAt { get; set; }
     public PostRootStatus RootStatus { get; set; } = PostRootStatus.Queued;
@@ -37,6 +36,13 @@ public class Post
     /// true (include tags) once published.
     /// </summary>
     public string? DraftTargetIncludeTagsJson { get; set; }
+
+    /// <summary>
+    /// The draft's per-target content rating choices (see <see cref="PostTarget.Rating"/>), keyed by
+    /// the same raw selection id as <see cref="DraftTargetsJson"/>. Null/absent entries carry no
+    /// rating once published, same as a fresh (non-draft) post that never set one.
+    /// </summary>
+    public string? DraftTargetRatingJson { get; set; }
 
     public List<PostTarget> Targets { get; set; } = new();
 }

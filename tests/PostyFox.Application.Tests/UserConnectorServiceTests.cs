@@ -3,6 +3,7 @@ using PostyFox.Application.Dtos;
 using PostyFox.Application.Services;
 using PostyFox.Application.Tests.Support;
 using PostyFox.Domain.Entities;
+using PostyFox.Domain.Enums;
 using Xunit;
 
 namespace PostyFox.Application.Tests;
@@ -59,6 +60,54 @@ public class UserConnectorServiceTests
             svc.UpsertAsync("u1", new UserConnectorUpsertRequest(null, "BlueSky", "Bsky", "{\"Handle\":\"@me\"}", null, true)));
         Assert.Equal("No leading @.", ex.Message);
         Assert.Empty(db.UserConnectors);
+    }
+
+    [Fact]
+    public async Task Upsert_persists_default_include_tags()
+    {
+        using var db = TestDbContext.Create();
+        SeedDefinition(db);
+        await db.SaveChangesAsync();
+        var (svc, _) = New(db);
+
+        var dto = await svc.UpsertAsync("u1",
+            new UserConnectorUpsertRequest(null, "DiscordWH", "My Discord", "{}", null, true, DefaultIncludeTags: false));
+
+        Assert.NotNull(dto);
+        Assert.False(dto!.DefaultIncludeTags);
+        var stored = await svc.GetAsync("u1", dto.Id);
+        Assert.False(stored!.DefaultIncludeTags);
+    }
+
+    [Fact]
+    public async Task Upsert_persists_default_rating()
+    {
+        using var db = TestDbContext.Create();
+        SeedDefinition(db);
+        await db.SaveChangesAsync();
+        var (svc, _) = New(db);
+
+        var dto = await svc.UpsertAsync("u1",
+            new UserConnectorUpsertRequest(null, "DiscordWH", "My Discord", "{}", null, true, DefaultRating: ContentRating.Mature));
+
+        Assert.NotNull(dto);
+        Assert.Equal(ContentRating.Mature, dto!.DefaultRating);
+        var stored = await svc.GetAsync("u1", dto.Id);
+        Assert.Equal(ContentRating.Mature, stored!.DefaultRating);
+    }
+
+    [Fact]
+    public async Task Upsert_defaults_rating_to_null_when_unspecified()
+    {
+        using var db = TestDbContext.Create();
+        SeedDefinition(db);
+        await db.SaveChangesAsync();
+        var (svc, _) = New(db);
+
+        var dto = await svc.UpsertAsync("u1", new UserConnectorUpsertRequest(null, "DiscordWH", "d", "{}", null, true));
+
+        Assert.NotNull(dto);
+        Assert.Null(dto!.DefaultRating);
     }
 
     [Fact]

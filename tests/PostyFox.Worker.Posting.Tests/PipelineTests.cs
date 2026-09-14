@@ -173,8 +173,8 @@ public class PipelineTests
         {
             var intake = scope.ServiceProvider.GetRequiredService<PostIntakeService>();
             await intake.CreateAsync("u1", new CreatePostRequest(
-                [cid], "T", "body", null, null, null, null, null, null, null,
-                new Dictionary<Guid, IReadOnlyDictionary<string, string>>
+                [cid], "T", "body", null, null, null, null, null, null,
+                TargetOptions: new Dictionary<Guid, IReadOnlyDictionary<string, string>>
                 {
                     [cid] = new Dictionary<string, string> { ["Category"] = "13" }
                 }));
@@ -215,8 +215,8 @@ public class PipelineTests
         var intake = scope.ServiceProvider.GetRequiredService<PostIntakeService>();
         var ex = await Assert.ThrowsAsync<ConnectorValidationException>(() => intake.CreateAsync(
             "u1", new CreatePostRequest(
-                [cid], "T", "body", null, null, null, null, null, null, null,
-                new Dictionary<Guid, IReadOnlyDictionary<string, string>>
+                [cid], "T", "body", null, null, null, null, null, null,
+                TargetOptions: new Dictionary<Guid, IReadOnlyDictionary<string, string>>
                 {
                     [cid] = new Dictionary<string, string> { ["Category"] = "999" }
                 })));

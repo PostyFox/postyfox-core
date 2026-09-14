@@ -31,7 +31,8 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 t.IncludeTags,
                 t.RenderedContentJson is { } rendered
                     ? Json.Deserialize<RenderedPost>(rendered)?.TagsOmitted ?? 0
-                    : 0))
+                    : 0,
+                t.Rating))
             .ToList();
 
         return new PostStatusDto(post.Id, post.RootStatus, targets);
@@ -63,9 +64,9 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 Json.Deserialize<Dictionary<string, string>>(post.VariablesJson) ?? new(),
                 Json.Deserialize<List<Guid>>(post.DraftTargetsJson ?? "[]") ?? [],
                 post.PostAt,
-                post.Rating,
                 Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}") ?? new(),
-                Json.Deserialize<Dictionary<Guid, bool>>(post.DraftTargetIncludeTagsJson ?? "{}") ?? new());
+                Json.Deserialize<Dictionary<Guid, bool>>(post.DraftTargetIncludeTagsJson ?? "{}") ?? new(),
+                Json.Deserialize<Dictionary<Guid, ContentRating>>(post.DraftTargetRatingJson ?? "{}") ?? new());
 
         // "Post again" must re-tick the exact same destination the post was originally sent to, not
         // just its connector: for a multi-target platform (Telegram) that means resolving each
@@ -99,7 +100,6 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             Json.Deserialize<Dictionary<string, string>>(post.VariablesJson) ?? new(),
             post.Targets.Where(t => t.ConnectorId.HasValue).Select(SelectionId).Distinct().ToList(),
             post.PostAt,
-            post.Rating,
             post.Targets
                 .Where(t => t.ConnectorId.HasValue)
                 .Select(t => (SelectionId: SelectionId(t),
@@ -113,7 +113,12 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 .Where(t => t.ConnectorId.HasValue)
                 .Select(t => (SelectionId: SelectionId(t), t.IncludeTags))
                 .GroupBy(x => x.SelectionId)
-                .ToDictionary(g => g.Key, g => g.First().IncludeTags));
+                .ToDictionary(g => g.Key, g => g.First().IncludeTags),
+            post.Targets
+                .Where(t => t.ConnectorId.HasValue && t.Rating.HasValue)
+                .Select(t => (SelectionId: SelectionId(t), Rating: t.Rating!.Value))
+                .GroupBy(x => x.SelectionId)
+                .ToDictionary(g => g.Key, g => g.First().Rating));
     }
 
     /// <summary>

@@ -48,7 +48,16 @@ public sealed record ServiceDefinitionDto(
     /// </summary>
     bool SupportsContentWarning = false);
 
-public sealed record UserConnectorDto(Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled);
+public sealed record UserConnectorDto(
+    Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled,
+    /// <summary>
+    /// This connector's default "include tags" value for a new post target (see
+    /// <see cref="Domain.Entities.UserConnector.DefaultIncludeTags"/>), pre-filling the compose form's
+    /// per-target toggle unless the author overrides it for that post.
+    /// </summary>
+    bool DefaultIncludeTags = true,
+    /// <summary>See <see cref="Domain.Entities.UserConnector.DefaultRating"/>.</summary>
+    ContentRating? DefaultRating = null);
 
 /// <summary>
 /// A destination the user has chosen to expose for posting under one connector login (e.g. one
@@ -100,7 +109,11 @@ public sealed record UserConnectorUpsertRequest(
     string DisplayName,
     string ConfigJson,
     string? SecureConfigJson,
-    bool Enabled);
+    bool Enabled,
+    /// <summary>See <see cref="UserConnectorDto.DefaultIncludeTags"/>.</summary>
+    bool DefaultIncludeTags = true,
+    /// <summary>See <see cref="UserConnectorDto.DefaultRating"/>.</summary>
+    ContentRating? DefaultRating = null);
 
 public sealed record TemplateDto(Guid Id, string Title, string MarkdownBody);
 public sealed record TemplateUpsertRequest(Guid? Id, string Title, string MarkdownBody);
@@ -148,7 +161,6 @@ public sealed record CreatePostRequest(
     Guid? TemplateId,
     IReadOnlyDictionary<string, string>? Variables,
     DateTimeOffset? PostAt,
-    ContentRating? Rating = null,
     /// <summary>
     /// Per-submission platform choices, keyed by the same id used in <see cref="Targets"/>:
     /// FurAffinity's category, species, gender and folders. Validated against that platform's
@@ -158,10 +170,21 @@ public sealed record CreatePostRequest(
     IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? TargetOptions = null,
     /// <summary>
     /// Per-target "include tags" choice, keyed by the same id used in <see cref="Targets"/>. Absent
-    /// entries default to true. Ignored (forced true) for a target whose platform declares
+    /// entries fall back to the connector's own <see cref="UserConnectorDto.DefaultIncludeTags"/>.
+    /// Ignored (forced true) for a target whose platform declares
     /// <see cref="Connectors.ConnectorDescriptor.RequiresTags"/>.
     /// </summary>
     IReadOnlyDictionary<Guid, bool>? TargetIncludeTags = null,
+    /// <summary>
+    /// Per-target content rating, keyed by the same id used in <see cref="Targets"/>, on platforms
+    /// that can represent one (<see cref="ServiceDefinitionDto.SupportsRating"/>). Unlike
+    /// <see cref="TargetIncludeTags"/> this is stored exactly as sent: intake applies no fallback to
+    /// the connector's own <see cref="UserConnectorDto.DefaultRating"/> itself, so a caller that wants
+    /// that default persisted (the compose form does) must resolve and send it explicitly. An absent
+    /// entry means "no rating for this target". Entries for connectors outside <see cref="Targets"/>
+    /// are ignored.
+    /// </summary>
+    IReadOnlyDictionary<Guid, ContentRating>? TargetRating = null,
     /// <summary>
     /// True to save this as a draft instead of submitting it: no targets are resolved/validated and
     /// nothing is enqueued for delivery. <see cref="Targets"/> and <see cref="TargetOptions"/> are
@@ -197,7 +220,9 @@ public sealed record PostTargetStatusDto(
     /// character limit (see <see cref="Connectors.RenderedPost.TagsOmitted"/>); 0 once rendered
     /// unless trimming was needed, or if generation hasn't happened yet.
     /// </summary>
-    int TagsOmitted = 0);
+    int TagsOmitted = 0,
+    /// <summary>The content rating actually stored for this target (see <see cref="Domain.Entities.PostTarget.Rating"/>).</summary>
+    ContentRating? Rating = null);
 public sealed record PostStatusDto(Guid PostId, PostRootStatus RootStatus, IReadOnlyList<PostTargetStatusDto> Targets);
 
 /// <summary>The user-authored content of a post, shaped to re-seed the compose form ("post again").</summary>
@@ -211,14 +236,15 @@ public sealed record PostContentDto(
     IReadOnlyDictionary<string, string> Variables,
     IReadOnlyList<Guid> ConnectorIds,
     DateTimeOffset? PostAt,
-    ContentRating? Rating,
     /// <summary>
     /// The per-submission platform choices this post was created with, keyed by connector id, so
     /// "post again" re-seeds them rather than silently reverting to platform defaults.
     /// </summary>
     IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>> TargetOptions,
     /// <summary>The per-target "include tags" choices this post was created with, keyed by connector id.</summary>
-    IReadOnlyDictionary<Guid, bool> TargetIncludeTags);
+    IReadOnlyDictionary<Guid, bool> TargetIncludeTags,
+    /// <summary>The per-target content ratings this post was created with, keyed by connector id.</summary>
+    IReadOnlyDictionary<Guid, ContentRating> TargetRating);
 
 /// <summary>Lightweight row for the post list / activity view (no per-target detail).</summary>
 public sealed record PostSummaryDto(

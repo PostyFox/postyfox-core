@@ -67,7 +67,7 @@ public sealed class GenerateTargetHandler(
             variables,
             tags,
             media,
-            post.Rating,
+            target.Rating,
             target.IncludeTags,
             supportsTags,
             maxContentLength,

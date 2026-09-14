@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PostyFox.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using PostyFox.Infrastructure.Persistence;
 namespace PostyFox.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914075032_AddConnectorDefaultIncludeTags")]
+    partial class AddConnectorDefaultIncludeTags
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -199,9 +202,6 @@ namespace PostyFox.Infrastructure.Persistence.Migrations
                     b.Property<string>("DraftTargetOptionsJson")
                         .HasColumnType("text");
 
-                    b.Property<string>("DraftTargetRatingJson")
-                        .HasColumnType("text");
-
                     b.Property<string>("DraftTargetsJson")
                         .HasColumnType("text");
 
@@ -215,6 +215,10 @@ namespace PostyFox.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset?>("PostAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Rating")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("RootStatus")
                         .IsRequired()
@@ -292,10 +296,6 @@ namespace PostyFox.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("PostId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Rating")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("RenderedContentJson")
                         .HasColumnType("text");
@@ -478,10 +478,6 @@ namespace PostyFox.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("DefaultIncludeTags")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("DefaultRating")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
