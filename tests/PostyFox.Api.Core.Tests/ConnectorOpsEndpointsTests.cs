@@ -61,6 +61,7 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
         Assert.Single(results!);
         Assert.True(results![0].WillResize);
         Assert.Equal("My Discord", results[0].DisplayName);
+        Assert.Equal(10, results[0].MaxMediaAttachments);
     }
 
     [Fact]

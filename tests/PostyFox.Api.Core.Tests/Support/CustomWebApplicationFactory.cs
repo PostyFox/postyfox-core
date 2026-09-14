@@ -39,6 +39,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public bool DevMode { get; init; } = true;
     public bool DevAdmin { get; init; }
     public int? RateLimitPermits { get; init; }
+    public long? MediaMaxUploadSizeBytes { get; init; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -59,6 +60,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 settings["RateLimit:PermitsPerWindow"] = permits.ToString();
                 settings["RateLimit:WindowSeconds"] = "60";
             }
+            if (MediaMaxUploadSizeBytes is { } maxUpload)
+                settings["Media:MaxUploadSizeBytes"] = maxUpload.ToString();
             cfg.AddInMemoryCollection(settings);
         });
 

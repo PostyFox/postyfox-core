@@ -174,7 +174,10 @@ data:
     # relying on the catch-all) so that /-rooted traffic can be handed to a frontend SPA when one is
     # deployed, while the API and docs keep routing to core.
     location /api/media  {
-                           client_max_body_size 30m;
+                           # nginx accepts a bare byte count here (no unit suffix required); kept in
+                           # sync with core-api's Media__MaxUploadSizeBytes (see templates/configmap.yaml)
+                           # via the same Values.config.media.maxUploadSizeBytes.
+                           client_max_body_size {{ .Values.config.media.maxUploadSizeBytes }};
                            proxy_pass http://core;
                          }
     location /api/       { proxy_pass http://core; }

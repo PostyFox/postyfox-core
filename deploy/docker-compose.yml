@@ -30,6 +30,9 @@ x-dotnet-env: &dotnet-env
   Auth__Oidc__Audience: "oauth2-proxy"
   NodeConnectors__BaseUrl: "http://connectors-node:8090"
   NodeConnectors__InternalToken: "postyfox-internal-dev-token"
+  # Reported by GET /api/media/limits for client-side upload validation; must match the gateway's
+  # client_max_body_size for /api/media (./gateway/conf.d/routes/10-apis.conf) — kept in sync by hand.
+  Media__MaxUploadSizeBytes: "31457280"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   ASPNETCORE_URLS: "http://+:8080"

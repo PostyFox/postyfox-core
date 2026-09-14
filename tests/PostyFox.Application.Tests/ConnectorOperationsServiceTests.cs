@@ -142,6 +142,23 @@ public class ConnectorOperationsServiceTests
     }
 
     [Fact]
+    public async Task CheckMedia_reports_the_connectors_attachment_cap()
+    {
+        using var db = TestDbContext.Create();
+        var spec = new MediaSpec(
+            new ImageSpec(null, null, null, []),
+            new VideoSpec(null, null, null, null, []),
+            MaxAttachments: 4);
+        var id = await SeedAsync(db, "Platform6", "{}");
+        var svc = New(db, new FakeConnectorWithMediaSpec("Platform6", spec));
+
+        var results = await svc.CheckMediaAsync("u1", [id], fileSize: 1_000_000, mimeType: "image/jpeg");
+
+        Assert.Single(results);
+        Assert.Equal(4, results[0].MaxMediaAttachments);
+    }
+
+    [Fact]
     public async Task CheckMedia_skips_unknown_connector_ids()
     {
         using var db = TestDbContext.Create();

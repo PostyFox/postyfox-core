@@ -31,6 +31,10 @@ data:
   RateLimit__RequestsPerMinute: {{ .Values.config.rateLimit.requestsPerMinute | quote }}
   Pipeline__MaxDeliveryAttempts: {{ .Values.config.pipeline.maxDeliveryAttempts | quote }}
   Pipeline__RetryBaseSeconds: {{ .Values.config.pipeline.retryBaseSeconds | quote }}
+  # Reported by GET /api/media/limits so the frontend can reject an oversized file before
+  # uploading it. Same source value as the gateway's client_max_body_size for /api/media below
+  # (see templates/gateway.yaml) — kept in sync by Values.config.media.maxUploadSizeBytes.
+  Media__MaxUploadSizeBytes: {{ .Values.config.media.maxUploadSizeBytes | quote }}
   NodeConnectors__BaseUrl: "http://{{ include "postyfox.fullname" . }}-connectors-node:8090"
   OTEL_EXPORTER_OTLP_ENDPOINT: {{ include "postyfox.otelEndpoint" . | quote }}
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
