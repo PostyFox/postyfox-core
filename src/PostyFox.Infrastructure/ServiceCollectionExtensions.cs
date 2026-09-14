@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.Configure<RabbitMqOptions>(config.GetSection(RabbitMqOptions.SectionName));
         services.Configure<PipelineOptions>(config.GetSection(PipelineOptions.SectionName));
         services.Configure<RetentionOptions>(config.GetSection(RetentionOptions.SectionName));
+        services.Configure<MediaOptions>(config.GetSection(MediaOptions.SectionName));
 
         var conn = config.GetConnectionString("Postgres")
                    ?? "Host=localhost;Port=5432;Database=postyfox;Username=postyfox;Password=postyfox";

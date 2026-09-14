@@ -259,6 +259,13 @@ public sealed record PostSummaryDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? PostAt);
 
+/// <summary>
+/// Global media-upload limits reported by <c>GET /api/media/limits</c>. Mirrors the gateway's own
+/// configured cap (see <see cref="PostyFox.Application.Options.MediaOptions"/>) rather than
+/// introspecting it, so the frontend can reject an oversized file before attempting the upload.
+/// </summary>
+public sealed record MediaLimitsDto(long? MaxUploadSizeBytes);
+
 /// <summary>Request body for the media-check endpoint.</summary>
 public sealed record MediaCheckRequest(
     IReadOnlyList<Guid> ConnectorIds,
@@ -269,7 +276,8 @@ public sealed record MediaCheckRequest(
 /// Per-connector result of a media pre-flight check. <see cref="WillResize"/> is true when the
 /// file exceeds the connector's size limit and the backend will resize/transcode it before delivery.
 /// <see cref="ImageSizeLimit"/> and <see cref="VideoSizeLimit"/> are in bytes; null means the
-/// connector reports no cap for that media type.
+/// connector reports no cap for that media type. <see cref="MaxMediaAttachments"/> is the connector's
+/// cap on the number of files a single post can carry; null means no reported cap.
 /// </summary>
 public sealed record MediaCheckResultItem(
     Guid ConnectorId,
@@ -277,7 +285,8 @@ public sealed record MediaCheckResultItem(
     string DisplayName,
     bool WillResize,
     long? ImageSizeLimit,
-    long? VideoSizeLimit);
+    long? VideoSizeLimit,
+    int? MaxMediaAttachments = null);
 
 public sealed record TriggerRegistrationRequest(
     string SourceType,

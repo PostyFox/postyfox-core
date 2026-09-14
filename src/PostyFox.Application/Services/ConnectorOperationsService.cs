@@ -68,8 +68,10 @@ public sealed class ConnectorOperationsService(
 
     /// <summary>
     /// For a given file (size and MIME type), reports per-connector whether the file exceeds the
-    /// platform's size limit and will therefore be resized before delivery. Used by the frontend
-    /// to surface resize / "file too large" warnings before a post is submitted.
+    /// platform's size limit and will therefore be resized before delivery, plus the platform's
+    /// attachment-count cap. Takes only the file's size and type, not its bytes, so the frontend can
+    /// call this the moment a file is selected — before uploading it — to surface resize / "too many
+    /// attachments" warnings ahead of the (potentially slow) upload itself.
     /// </summary>
     public async Task<IReadOnlyList<MediaCheckResultItem>> CheckMediaAsync(
         string userId, IReadOnlyList<Guid> connectorIds, long fileSize, string mimeType, CancellationToken ct = default)
@@ -97,7 +99,8 @@ public sealed class ConnectorOperationsService(
                 uc.DisplayName,
                 willResize,
                 limits.ImageSizeLimit,
-                limits.VideoSizeLimit));
+                limits.VideoSizeLimit,
+                limits.MaxMediaAttachments));
         }
         return result;
     }

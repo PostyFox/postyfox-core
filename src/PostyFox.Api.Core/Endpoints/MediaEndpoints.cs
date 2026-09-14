@@ -2,8 +2,11 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
+using PostyFox.Application.Dtos;
+using PostyFox.Application.Options;
 using PostyFox.Web.Auth;
 
 namespace PostyFox.Api.Core.Endpoints;
@@ -36,5 +39,14 @@ public static class MediaEndpoints
         .WithDescription("Stores an uploaded file in the object store and returns a MediaRef to attach to a post.")
         .Produces<MediaRef>()
         .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapGet("limits", (IOptions<MediaOptions> options) =>
+            Results.Ok(new MediaLimitsDto(options.Value.MaxUploadSizeBytes)))
+        .WithSummary("Reports the configured max upload size")
+        .WithDescription(
+            "Mirrors the gateway's own configured cap for POST /api/media (see MediaOptions) rather " +
+            "than introspecting it, so the frontend can reject an oversized file before attempting " +
+            "the upload. MaxUploadSizeBytes is null when the deployment hasn't configured one.")
+        .Produces<MediaLimitsDto>();
     }
 }

@@ -35,6 +35,9 @@ x-dotnet-env: &dotnet-env
   Secrets__BitWarden__IdentityUrl: "${BITWARDEN_IDENTITY_URL:-}"
   Auth__UserHeader: "X-Auth-Request-User"
   NodeConnectors__InternalToken: "${INTERNAL_TOKEN:-postyfox-internal-dev-token}"
+  # Reported by GET /api/media/limits for client-side upload validation; must match the gateway's
+  # client_max_body_size for /api/media (./gateway/conf.d/routes/10-apis.conf) — kept in sync by hand.
+  Media__MaxUploadSizeBytes: "31457280"
   OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_ENDPOINT}"
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   ASPNETCORE_URLS: "http://+:8080"

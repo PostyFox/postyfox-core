@@ -62,6 +62,17 @@ config:
   pipeline:
     maxDeliveryAttempts: "5"
     retryBaseSeconds: "60"
+  media:
+    # Max upload size (bytes) the gateway accepts for POST /api/media. This single value drives
+    # BOTH core-api's own Media__MaxUploadSizeBytes (see templates/configmap.yaml) AND the gateway's
+    # client_max_body_size for that route (see templates/gateway.yaml), so the two can't drift for
+    # a Helm install. If you front the app with something other than this chart's bundled gateway
+    # (or change that gateway's limit by hand), update this to match — there's no way for core-api
+    # to introspect a limit enforced upstream of it. 31457280 = 30 MiB, matching the default gateway
+    # config shipped in deploy/gateway/conf.d/routes/10-apis.conf.
+    # Quoted: Helm/Sprig renders a bare large integer here in scientific notation (e.g. 3.145728e+07),
+    # which is invalid in both places this is used.
+    maxUploadSizeBytes: "31457280"
 
 # Secret values. In production, prefer sourcing these from a secret manager (External Secrets /
 # Sealed Secrets / CSI driver) rather than committing real values here. Set `secrets.create: false`

@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using PostyFox.Api.Core.Tests.Support;
 using PostyFox.Application.Connectors;
+using PostyFox.Application.Dtos;
 using Xunit;
 
 namespace PostyFox.Api.Core.Tests;
@@ -35,5 +36,28 @@ public class MediaEndpointsTests(CustomWebApplicationFactory factory) : IClassFi
         using var form = new MultipartFormDataContent();
         var resp = await _client.PostAsync("/api/media", form);
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Limits_reports_the_configured_max_upload_size()
+    {
+        using var factory = new CustomWebApplicationFactory { MediaMaxUploadSizeBytes = 31_457_280 };
+        using var client = factory.CreateClient();
+
+        var resp = await client.GetAsync("/api/media/limits");
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var limits = await resp.Content.ReadFromJsonAsync<MediaLimitsDto>();
+        Assert.Equal(31_457_280, limits!.MaxUploadSizeBytes);
+    }
+
+    [Fact]
+    public async Task Limits_reports_null_when_unconfigured()
+    {
+        var resp = await _client.GetAsync("/api/media/limits");
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var limits = await resp.Content.ReadFromJsonAsync<MediaLimitsDto>();
+        Assert.Null(limits!.MaxUploadSizeBytes);
     }
 }
