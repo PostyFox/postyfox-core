@@ -33,7 +33,7 @@ public sealed class PostLifecycleService(IAppDbContext db, PostPayloadCleaner pa
     /// </summary>
     public async Task<CancelOutcome> CancelAsync(string userId, Guid postId, CancellationToken ct = default)
     {
-        var post = await db.Posts.Include(p => p.Targets)
+        var post = await db.Posts.Include(p => p.Targets).ThenInclude(t => t.Automations)
             .FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
         if (post is null) return CancelOutcome.NotFound;
 
@@ -45,6 +45,10 @@ public sealed class PostLifecycleService(IAppDbContext db, PostPayloadCleaner pa
         {
             target.Status = TargetStatus.Cancelled;
             target.UpdatedAt = now;
+            // A target that never delivered has nothing to repost/delete: its automations (issue
+            // #323) would otherwise sit pending forever with no DueAt ever set.
+            foreach (var automation in target.Automations.Where(a => a.Status == AutomationStatus.Pending))
+                automation.Status = AutomationStatus.Cancelled;
         }
         post.RootStatus = RootStatusCalculator.Compute(post.Targets);
         post.UpdatedAt = now;

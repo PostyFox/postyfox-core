@@ -64,6 +64,12 @@ function fakeClient(over: Partial<MegalodonClientLike> = {}): MegalodonClientLik
     async postStatus() {
       return { data: { id: "42", url: "https://shrimp.example/notes/42" } };
     },
+    async reblogStatus() {
+      return { data: { id: "43", url: "https://shrimp.example/notes/43" } };
+    },
+    async deleteStatus() {
+      return undefined;
+    },
     async getInstance() {
       return {
         data: {
@@ -510,6 +516,58 @@ test("megalodon deliver fails when the access token is missing", async () => {
   const result = await build(fakeClient()).deliver(badCtx, post);
   assert.equal(result.success, false);
   assert.ok(result.error?.includes("access token"));
+});
+
+test("megalodon repost reblogs the given status id and returns the reblog's id + url", async () => {
+  let seenId: string | undefined;
+  const client = fakeClient({
+    async reblogStatus(id) {
+      seenId = id;
+      return { data: { id: "43", url: "https://shrimp.example/notes/43" } };
+    },
+  });
+  const result = await build(client).repost!(ctx, "42");
+
+  assert.equal(result.success, true);
+  assert.equal(seenId, "42");
+  assert.equal(result.externalId, "43");
+  assert.equal(result.externalUrl, "https://shrimp.example/notes/43");
+});
+
+test("megalodon repost failure when the client throws", async () => {
+  const client = fakeClient({
+    async reblogStatus() {
+      throw new Error("status not found");
+    },
+  });
+  const result = await build(client).repost!(ctx, "42");
+  assert.equal(result.success, false);
+  assert.equal(result.error, "status not found");
+});
+
+test("megalodon deleteRemote deletes the given status id", async () => {
+  let seenId: string | undefined;
+  const client = fakeClient({
+    async deleteStatus(id) {
+      seenId = id;
+      return {};
+    },
+  });
+  const result = await build(client).deleteRemote!(ctx, "42");
+
+  assert.equal(result.success, true);
+  assert.equal(seenId, "42");
+});
+
+test("megalodon deleteRemote failure when the client throws", async () => {
+  const client = fakeClient({
+    async deleteStatus() {
+      throw new Error("already gone");
+    },
+  });
+  const result = await build(client).deleteRemote!(ctx, "42");
+  assert.equal(result.success, false);
+  assert.equal(result.error, "already gone");
 });
 
 test("megalodon oauth start registers an app and carries the MiAuth session token", async () => {

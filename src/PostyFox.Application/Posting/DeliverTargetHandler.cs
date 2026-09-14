@@ -31,7 +31,7 @@ public sealed class DeliverTargetHandler(
 
     public async Task HandleAsync(DeliverTargetCommand message, CancellationToken ct)
     {
-        var target = await db.PostTargets.Include(t => t.Post)
+        var target = await db.PostTargets.Include(t => t.Post).Include(t => t.Automations)
             .FirstOrDefaultAsync(t => t.Id == message.TargetId, ct);
         if (target?.Post is null)
         {
@@ -96,6 +96,14 @@ public sealed class DeliverTargetHandler(
             target.ExternalId = result.ExternalId;
             target.ExternalUrl = result.ExternalUrl;
             target.Error = null;
+
+            // An automation (issue #323) attaches to a target's delivery moment, not its authoring
+            // moment: a scheduled or slow-retrying target's "repost/delete after X hours" only starts
+            // counting once it actually goes out. PostAutomationSweeper picks these up once due.
+            var deliveredAt = clock.UtcNow;
+            foreach (var automation in target.Automations)
+                if (automation.Status == AutomationStatus.Pending && automation.DueAt is null)
+                    automation.DueAt = deliveredAt.AddHours(automation.DelayHours);
         }
         else if (target.Attempts < _options.MaxDeliveryAttempts)
         {

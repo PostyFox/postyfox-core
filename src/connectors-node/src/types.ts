@@ -75,6 +75,12 @@ export interface ConnectorLimits {
   videoSizeLimit: number | null;
 }
 
+/** Result of deleting an already-delivered post from its platform. */
+export interface DeleteResult {
+  success: boolean;
+  error?: string;
+}
+
 /** Contract implemented by every platform connector. */
 export interface Connector {
   isAuthenticated(ctx: ConnectorContext): Promise<IsAuthenticatedResult>;
@@ -84,6 +90,16 @@ export interface Connector {
   oauth?: OAuthProvider;
   /** Present when the connector can report live per-instance limits (e.g. Fediverse). */
   getLimits?(ctx: ConnectorContext): Promise<ConnectorLimits>;
+  /**
+   * Present when the connector can repost/reblog/boost one of its own already-delivered posts
+   * (issue #323's "repost after X hours"). `externalId` is whatever `deliver` returned.
+   */
+  repost?(ctx: ConnectorContext, externalId: string): Promise<DeliverResult>;
+  /**
+   * Present when the connector can delete one of its own already-delivered posts from the platform
+   * (issue #323's "delete after X hours"). `externalId` is whatever `deliver` returned.
+   */
+  deleteRemote?(ctx: ConnectorContext, externalId: string): Promise<DeleteResult>;
 }
 
 /** Result of beginning an OAuth1 authorization. */

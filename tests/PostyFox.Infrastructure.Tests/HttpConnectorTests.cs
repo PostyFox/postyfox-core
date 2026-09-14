@@ -109,6 +109,46 @@ public class HttpConnectorTests
     }
 
     [Fact]
+    public async Task Repost_success_maps_external_id_and_url_and_posts_to_the_repost_route()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":true,\"externalId\":\"at://y\",\"externalUrl\":\"https://bsky.app/r\"}");
+        var result = await New(handler).RepostAsync(Ctx(), "at://x");
+
+        Assert.True(result.Success);
+        Assert.Equal("at://y", result.ExternalId);
+        Assert.Equal("https://bsky.app/r", result.ExternalUrl);
+        Assert.EndsWith("/connectors/BlueSky/repost", handler.LastRequest!.RequestUri!.ToString());
+        Assert.Contains("\"externalId\":\"at://x\"", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task Repost_failure_maps_error()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":false,\"error\":\"not found\"}");
+        var result = await New(handler).RepostAsync(Ctx(), "at://x");
+        Assert.False(result.Success);
+        Assert.Equal("not found", result.Error);
+    }
+
+    [Fact]
+    public async Task Delete_success_posts_to_the_delete_route()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":true}");
+        var deleted = await New(handler).DeleteRemoteAsync(Ctx(), "at://x");
+
+        Assert.True(deleted);
+        Assert.EndsWith("/connectors/BlueSky/delete", handler.LastRequest!.RequestUri!.ToString());
+        Assert.Contains("\"externalId\":\"at://x\"", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task Delete_failure_returns_false()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":false,\"error\":\"gone\"}");
+        Assert.False(await New(handler).DeleteRemoteAsync(Ctx(), "at://x"));
+    }
+
+    [Fact]
     public async Task Tumblr_forwards_operational_credentials_from_the_secret_provider()
     {
         var services = new ServiceCollection();

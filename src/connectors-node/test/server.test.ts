@@ -16,9 +16,25 @@ const stubConnector: Connector = {
   },
 };
 
+const automatableConnector: Connector = {
+  ...stubConnector,
+  async repost() {
+    return { success: true, externalId: "2", externalUrl: "http://x/2" };
+  },
+  async deleteRemote() {
+    return { success: true };
+  },
+};
+
 function registryWith(platform: string): ConnectorRegistry {
   const r: ConnectorRegistry = new Map();
   r.set(platform, stubConnector);
+  return r;
+}
+
+function registryWithAutomatable(platform: string): ConnectorRegistry {
+  const r: ConnectorRegistry = new Map();
+  r.set(platform, automatableConnector);
   return r;
 }
 
@@ -88,6 +104,72 @@ test("auth disabled when no token configured (dev)", async () => {
     payload: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null },
   });
   assert.equal(res.statusCode, 200);
+  await app.close();
+});
+
+test("POST /repost forwards to the connector and returns its result", async () => {
+  const app = buildServer({ internalToken: "secret", registry: registryWithAutomatable("mastodon") });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/mastodon/repost",
+    headers: { "x-internal-token": "secret" },
+    payload: { context: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null }, externalId: "1" },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { success: true, externalId: "2", externalUrl: "http://x/2" });
+  await app.close();
+});
+
+test("POST /repost returns 400 when the connector doesn't support it", async () => {
+  const app = buildServer({ internalToken: "secret", registry: registryWith("bluesky") });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/bluesky/repost",
+    headers: { "x-internal-token": "secret" },
+    payload: { context: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null }, externalId: "1" },
+  });
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.json(), { error: "repost not supported" });
+  await app.close();
+});
+
+test("POST /delete forwards to the connector and returns its result", async () => {
+  const app = buildServer({ internalToken: "secret", registry: registryWithAutomatable("mastodon") });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/mastodon/delete",
+    headers: { "x-internal-token": "secret" },
+    payload: { context: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null }, externalId: "1" },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { success: true });
+  await app.close();
+});
+
+test("POST /delete returns 400 when the connector doesn't support it", async () => {
+  const app = buildServer({ internalToken: "secret", registry: registryWith("bluesky") });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/bluesky/delete",
+    headers: { "x-internal-token": "secret" },
+    payload: { context: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null }, externalId: "1" },
+  });
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.json(), { error: "delete not supported" });
+  await app.close();
+});
+
+test("POST /repost returns 502 when the connector throws", async () => {
+  const throwing: Connector = { ...stubConnector, async repost() { throw new Error("boom"); } };
+  const r: ConnectorRegistry = new Map([["mastodon", throwing]]);
+  const app = buildServer({ internalToken: "secret", registry: r });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/mastodon/repost",
+    headers: { "x-internal-token": "secret" },
+    payload: { context: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null }, externalId: "1" },
+  });
+  assert.equal(res.statusCode, 502);
   await app.close();
 });
 

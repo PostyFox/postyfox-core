@@ -46,7 +46,11 @@ public sealed record ServiceDefinitionDto(
     /// <see cref="Connectors.ConnectorDescriptor.SupportsContentWarning"/>). Drives the "Content
     /// warning" capability badge; the field itself (when present) travels in <see cref="PostOptionsSchema"/>.
     /// </summary>
-    bool SupportsContentWarning = false);
+    bool SupportsContentWarning = false,
+    /// <summary>True when the platform can repost/reblog/boost an already-delivered post (see <see cref="Connectors.ConnectorDescriptor.SupportsRepost"/>).</summary>
+    bool SupportsRepost = false,
+    /// <summary>True when the platform can delete an already-delivered post (see <see cref="Connectors.ConnectorDescriptor.SupportsDelete"/>).</summary>
+    bool SupportsDelete = false);
 
 public sealed record UserConnectorDto(
     Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled,
@@ -186,6 +190,15 @@ public sealed record CreatePostRequest(
     /// </summary>
     IReadOnlyDictionary<Guid, ContentRating>? TargetRating = null,
     /// <summary>
+    /// Post-delivery automation rules per target (issue #323), keyed by the same id used in
+    /// <see cref="Targets"/>: repost/reblog or delete a delivered target after an author-chosen
+    /// delay. Rejected with <see cref="Connectors.ConnectorValidationException"/> if the target's
+    /// platform doesn't declare the requested action (<see cref="ServiceDefinitionDto.SupportsRepost"/>/
+    /// <see cref="ServiceDefinitionDto.SupportsDelete"/>). Entries for connectors outside
+    /// <see cref="Targets"/> are ignored.
+    /// </summary>
+    IReadOnlyDictionary<Guid, IReadOnlyList<AutomationRequest>>? TargetAutomations = null,
+    /// <summary>
     /// True to save this as a draft instead of submitting it: no targets are resolved/validated and
     /// nothing is enqueued for delivery. <see cref="Targets"/> and <see cref="TargetOptions"/> are
     /// still stored as-authored so the draft can be edited and eventually published. Also the request
@@ -195,6 +208,23 @@ public sealed record CreatePostRequest(
     bool IsDraft = false);
 
 public sealed record CreatePostResponse(Guid PostId, PostRootStatus RootStatus);
+
+/// <summary>
+/// One "do X after Y hours" automation rule requested for a target (issue #323): repost/reblog it,
+/// or delete it from the platform, once it's been delivered that long.
+/// </summary>
+public sealed record AutomationRequest(AutomationAction Action, double DelayHours);
+
+/// <summary>A requested automation rule and its current state (see <see cref="Domain.Entities.PostTargetAutomation"/>).</summary>
+public sealed record PostTargetAutomationDto(
+    Guid Id,
+    AutomationAction Action,
+    double DelayHours,
+    /// <summary>When this becomes due; null until the target it's attached to actually delivers.</summary>
+    DateTimeOffset? DueAt,
+    AutomationStatus Status,
+    string? Error,
+    DateTimeOffset? ExecutedAt);
 
 /// <summary>Outcome of an action restricted to draft posts (edit/publish).</summary>
 public enum DraftActionOutcome
@@ -222,7 +252,9 @@ public sealed record PostTargetStatusDto(
     /// </summary>
     int TagsOmitted = 0,
     /// <summary>The content rating actually stored for this target (see <see cref="Domain.Entities.PostTarget.Rating"/>).</summary>
-    ContentRating? Rating = null);
+    ContentRating? Rating = null,
+    /// <summary>This target's post-delivery automation rules (issue #323), if any.</summary>
+    IReadOnlyList<PostTargetAutomationDto>? Automations = null);
 public sealed record PostStatusDto(Guid PostId, PostRootStatus RootStatus, IReadOnlyList<PostTargetStatusDto> Targets);
 
 /// <summary>The user-authored content of a post, shaped to re-seed the compose form ("post again").</summary>
@@ -244,7 +276,9 @@ public sealed record PostContentDto(
     /// <summary>The per-target "include tags" choices this post was created with, keyed by connector id.</summary>
     IReadOnlyDictionary<Guid, bool> TargetIncludeTags,
     /// <summary>The per-target content ratings this post was created with, keyed by connector id.</summary>
-    IReadOnlyDictionary<Guid, ContentRating> TargetRating);
+    IReadOnlyDictionary<Guid, ContentRating> TargetRating,
+    /// <summary>The per-target automation rules (issue #323) this post was created with, keyed by connector id.</summary>
+    IReadOnlyDictionary<Guid, IReadOnlyList<AutomationRequest>> TargetAutomations);
 
 /// <summary>Lightweight row for the post list / activity view (no per-target detail).</summary>
 public sealed record PostSummaryDto(
@@ -257,7 +291,9 @@ public sealed record PostSummaryDto(
     int FailedCount,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? PostAt);
+    DateTimeOffset? PostAt,
+    /// <summary>How many of this post's automation rules (issue #323) are still pending, for a small "reposts/deletes in Xh" indicator.</summary>
+    int PendingAutomationCount = 0);
 
 /// <summary>Result of <c>DELETE /api/posts/history</c>: how many posts were removed.</summary>
 public sealed record DeleteHistoryResponse(int DeletedCount);

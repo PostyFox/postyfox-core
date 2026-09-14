@@ -40,6 +40,10 @@ function fakeAgent(over: Partial<BlueskyAgentLike> = {}): BlueskyAgentLike {
     async post() {
       return { uri: "at://did:plc:abc/app.bsky.feed.post/xyz123", cid: "cid1" };
     },
+    async repost() {
+      return { uri: "at://did:plc:abc/app.bsky.feed.repost/r1", cid: "cid2" };
+    },
+    async deletePost() {},
     ...over,
   };
 }
@@ -58,11 +62,16 @@ test("bluesky is-authenticated true on successful login", async () => {
   assert.equal(result.isAuthenticated, true);
 });
 
-test("bluesky deliver success returns uri + url", async () => {
+test("bluesky deliver success returns a uri+cid ref and url", async () => {
   const connector = new BlueskyConnector(() => fakeAgent());
   const result = await connector.deliver(ctx, post);
   assert.equal(result.success, true);
-  assert.equal(result.externalId, "at://did:plc:abc/app.bsky.feed.post/xyz123");
+  // externalId carries both uri and cid (JSON-encoded): repost() needs the cid too, and delivery is
+  // the only place atproto ever returns it.
+  assert.deepEqual(JSON.parse(result.externalId!), {
+    uri: "at://did:plc:abc/app.bsky.feed.post/xyz123",
+    cid: "cid1",
+  });
   assert.equal(
     result.externalUrl,
     "https://bsky.app/profile/alice.bsky.social/post/xyz123",
@@ -265,4 +274,72 @@ test("bluesky deliver failure when login throws", async () => {
   assert.equal(result.success, false);
   assert.equal(result.error, "invalid app password");
   assert.equal(result.externalId, undefined);
+});
+
+const ref = JSON.stringify({ uri: "at://did:plc:abc/app.bsky.feed.post/xyz123", cid: "cid1" });
+
+test("bluesky repost sends the decoded uri and cid", async () => {
+  let seen: { uri: string; cid: string } | undefined;
+  const connector = new BlueskyConnector(() =>
+    fakeAgent({
+      async repost(uri, cid) {
+        seen = { uri, cid };
+        return { uri: "at://did:plc:abc/app.bsky.feed.repost/r1", cid: "cid2" };
+      },
+    }),
+  );
+
+  const result = await connector.repost!(ctx, ref);
+
+  assert.equal(result.success, true);
+  assert.deepEqual(seen, { uri: "at://did:plc:abc/app.bsky.feed.post/xyz123", cid: "cid1" });
+  assert.deepEqual(JSON.parse(result.externalId!), { uri: "at://did:plc:abc/app.bsky.feed.repost/r1", cid: "cid2" });
+});
+
+test("bluesky repost failure when the agent throws", async () => {
+  const connector = new BlueskyConnector(() =>
+    fakeAgent({
+      async repost() {
+        throw new Error("post not found");
+      },
+    }),
+  );
+  const result = await connector.repost!(ctx, ref);
+  assert.equal(result.success, false);
+  assert.equal(result.error, "post not found");
+});
+
+test("bluesky repost fails clearly on a malformed reference", async () => {
+  const connector = new BlueskyConnector(() => fakeAgent());
+  const result = await connector.repost!(ctx, "at://not-a-ref");
+  assert.equal(result.success, false);
+});
+
+test("bluesky deleteRemote deletes the decoded uri", async () => {
+  let seen: string | undefined;
+  const connector = new BlueskyConnector(() =>
+    fakeAgent({
+      async deletePost(uri) {
+        seen = uri;
+      },
+    }),
+  );
+
+  const result = await connector.deleteRemote!(ctx, ref);
+
+  assert.equal(result.success, true);
+  assert.equal(seen, "at://did:plc:abc/app.bsky.feed.post/xyz123");
+});
+
+test("bluesky deleteRemote failure when the agent throws", async () => {
+  const connector = new BlueskyConnector(() =>
+    fakeAgent({
+      async deletePost() {
+        throw new Error("gone");
+      },
+    }),
+  );
+  const result = await connector.deleteRemote!(ctx, ref);
+  assert.equal(result.success, false);
+  assert.equal(result.error, "gone");
 });

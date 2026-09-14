@@ -88,6 +88,25 @@ public class PostLifecycleServiceTests
         Assert.Equal(TargetStatus.Queued, db.PostTargets.Single().Status); // untouched
     }
 
+    [Fact]
+    public async Task Cancel_also_cancels_pending_automations_on_the_cancelled_targets()
+    {
+        using var db = TestDbContext.Create();
+        var post = await SeedAsync(db, "u1", ("BlueSky", TargetStatus.Queued));
+        var target = post.Targets.Single();
+        db.PostTargetAutomations.Add(new PostTargetAutomation
+        {
+            Id = Guid.NewGuid(), PostTargetId = target.Id, Action = AutomationAction.Delete,
+            DelayHours = 6, Status = AutomationStatus.Pending, CreatedAt = Now
+        });
+        await db.SaveChangesAsync();
+
+        var outcome = await New(db, new FakeObjectStore()).CancelAsync("u1", post.Id);
+
+        Assert.Equal(CancelOutcome.Cancelled, outcome);
+        Assert.Equal(AutomationStatus.Cancelled, db.PostTargetAutomations.Single().Status);
+    }
+
     // ----- delete -------------------------------------------------------------
 
     [Fact]

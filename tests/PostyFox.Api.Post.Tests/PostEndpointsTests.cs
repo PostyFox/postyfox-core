@@ -377,6 +377,101 @@ public class PostEndpointsTests(CustomWebApplicationFactory factory) : IClassFix
         Assert.Equal(0, result!.DeletedCount);
     }
 
+    [Fact]
+    public async Task Create_with_an_automation_rule_then_status_shows_it_pending()
+    {
+        var body = new
+        {
+            targets = new[] { factory.SeededConnectorId },
+            title = "Automated",
+            description = "x",
+            targetAutomations = new Dictionary<string, object[]>
+            {
+                [factory.SeededConnectorId.ToString()] = [new { action = (int)AutomationAction.Delete, delayHours = 6 }]
+            }
+        };
+        var created = await (await _client.PostAsJsonAsync("/api/posts", body)).Content.ReadFromJsonAsync<CreatePostResponse>();
+
+        var status = await (await _client.GetAsync($"/api/posts/{created!.PostId}")).Content.ReadFromJsonAsync<PostStatusDto>();
+
+        var target = Assert.Single(status!.Targets);
+        var automation = Assert.Single(target.Automations!);
+        Assert.Equal(AutomationAction.Delete, automation.Action);
+        Assert.Equal(6, automation.DelayHours);
+        Assert.Equal(AutomationStatus.Pending, automation.Status);
+        Assert.Null(automation.DueAt); // not delivered yet in this test
+    }
+
+    [Fact]
+    public async Task Create_with_an_automation_rule_the_platform_does_not_support_is_rejected()
+    {
+        var body = new
+        {
+            targets = new[] { factory.SeededConnectorId },
+            title = "Bad automation",
+            description = "x",
+            targetAutomations = new Dictionary<string, object[]>
+            {
+                [factory.SeededConnectorId.ToString()] = [new { action = (int)AutomationAction.Repost, delayHours = 6 }]
+            }
+        };
+        var response = await _client.PostAsJsonAsync("/api/posts", body);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CancelAutomation_marks_a_pending_rule_cancelled()
+    {
+        var body = new
+        {
+            targets = new[] { factory.SeededConnectorId },
+            title = "Cancel me",
+            description = "x",
+            targetAutomations = new Dictionary<string, object[]>
+            {
+                [factory.SeededConnectorId.ToString()] = [new { action = (int)AutomationAction.Delete, delayHours = 6 }]
+            }
+        };
+        var created = await (await _client.PostAsJsonAsync("/api/posts", body)).Content.ReadFromJsonAsync<CreatePostResponse>();
+        var status = await (await _client.GetAsync($"/api/posts/{created!.PostId}")).Content.ReadFromJsonAsync<PostStatusDto>();
+        var automationId = status!.Targets.Single().Automations!.Single().Id;
+
+        var cancel = await _client.DeleteAsync($"/api/posts/{created.PostId}/automations/{automationId}");
+        Assert.Equal(HttpStatusCode.NoContent, cancel.StatusCode);
+
+        var reloaded = await (await _client.GetAsync($"/api/posts/{created.PostId}")).Content.ReadFromJsonAsync<PostStatusDto>();
+        Assert.Equal(AutomationStatus.Cancelled, reloaded!.Targets.Single().Automations!.Single().Status);
+    }
+
+    [Fact]
+    public async Task CancelAutomation_a_second_time_conflicts()
+    {
+        var body = new
+        {
+            targets = new[] { factory.SeededConnectorId },
+            title = "Cancel twice",
+            description = "x",
+            targetAutomations = new Dictionary<string, object[]>
+            {
+                [factory.SeededConnectorId.ToString()] = [new { action = (int)AutomationAction.Delete, delayHours = 6 }]
+            }
+        };
+        var created = await (await _client.PostAsJsonAsync("/api/posts", body)).Content.ReadFromJsonAsync<CreatePostResponse>();
+        var status = await (await _client.GetAsync($"/api/posts/{created!.PostId}")).Content.ReadFromJsonAsync<PostStatusDto>();
+        var automationId = status!.Targets.Single().Automations!.Single().Id;
+        await _client.DeleteAsync($"/api/posts/{created.PostId}/automations/{automationId}");
+
+        var second = await _client.DeleteAsync($"/api/posts/{created.PostId}/automations/{automationId}");
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task CancelAutomation_unknown_id_is_not_found()
+    {
+        var response = await _client.DeleteAsync($"/api/posts/{Guid.NewGuid()}/automations/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     /// <summary>
     /// FurAffinity is the platform that declares per-submission options; the fixture only seeds
     /// Discord, so add one per test (a fresh id keeps the shared fixture's rows independent).

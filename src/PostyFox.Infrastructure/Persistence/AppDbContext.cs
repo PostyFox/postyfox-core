@@ -19,6 +19,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ExternalInterest> ExternalInterests => Set<ExternalInterest>();
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostTarget> PostTargets => Set<PostTarget>();
+    public DbSet<PostTargetAutomation> PostTargetAutomations => Set<PostTargetAutomation>();
     public DbSet<WebhookDedupe> WebhookDedupes => Set<WebhookDedupe>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -131,6 +132,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
             e.Property(x => x.Rating).HasConversion<string>().HasMaxLength(32);
             e.Property(x => x.OptionsJson).HasDefaultValue("{}");
+        });
+
+        b.Entity<PostTargetAutomation>(e =>
+        {
+            e.ToTable("post_target_automations");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.PostTargetId);
+            e.HasIndex(x => x.DueAt);
+            e.Property(x => x.Action).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            e.HasOne(x => x.PostTarget).WithMany(x => x.Automations)
+                .HasForeignKey(x => x.PostTargetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<WebhookDedupe>(e =>

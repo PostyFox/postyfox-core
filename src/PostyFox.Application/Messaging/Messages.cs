@@ -34,6 +34,20 @@ public sealed class DeliverTargetCommand : ITraceableMessage
     public Guid TargetId { get; set; }
 }
 
+/// <summary>
+/// Stage 3 (post-delivery, optional): run one due <see cref="Domain.Entities.PostTargetAutomation"/>
+/// rule against its target's platform (issue #323: repost/reblog or delete after a delay). Published
+/// by <c>PostAutomationSweeper</c> once the rule's <c>DueAt</c> comes due, exactly as
+/// <see cref="GenerateTargetCommand"/> is published by the scheduler once a post's <c>PostAt</c> comes due.
+/// </summary>
+[Queue("automation")]
+public sealed class ExecuteAutomationCommand : ITraceableMessage
+{
+    public Guid PostId { get; set; }
+    public Guid TargetId { get; set; }
+    public Guid AutomationId { get; set; }
+}
+
 public static class QueueNames
 {
     public static string For<T>() =>

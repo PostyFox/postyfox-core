@@ -12,6 +12,7 @@ import type {
   Connector,
   ConnectorContext,
   ConnectorLimits,
+  DeleteResult,
   DeliverResult,
   IsAuthenticatedResult,
   ListTargetsResult,
@@ -72,6 +73,8 @@ export interface MegalodonClientLike {
   getInstance(): Promise<{
     data: MegalodonInstance;
   }>;
+  reblogStatus(id: string): Promise<{ data: { id?: string; url?: string | null; uri?: string | null } }>;
+  deleteStatus(id: string): Promise<unknown>;
 }
 
 export interface MegalodonInstance {
@@ -419,6 +422,32 @@ export class MegalodonConnector implements Connector {
       const externalId = result.data.id !== undefined ? String(result.data.id) : undefined;
       const externalUrl = result.data.url ?? result.data.uri ?? undefined;
       return { success: true, externalId, externalUrl };
+    } catch (err) {
+      return { success: false, error: describeError(err) };
+    }
+  }
+
+  /** Reposts/reblogs/boosts a status this connector previously delivered (issue #323). */
+  async repost(ctx: ConnectorContext, externalId: string): Promise<DeliverResult> {
+    try {
+      const { instanceUrl, token, sns } = this.parse(ctx);
+      const client = this.clientFactory(sns, instanceUrl, token);
+      const result = await client.reblogStatus(externalId);
+      const reblogId = result.data.id !== undefined ? String(result.data.id) : undefined;
+      const reblogUrl = result.data.url ?? result.data.uri ?? undefined;
+      return { success: true, externalId: reblogId, externalUrl: reblogUrl };
+    } catch (err) {
+      return { success: false, error: describeError(err) };
+    }
+  }
+
+  /** Deletes a status this connector previously delivered (issue #323). */
+  async deleteRemote(ctx: ConnectorContext, externalId: string): Promise<DeleteResult> {
+    try {
+      const { instanceUrl, token, sns } = this.parse(ctx);
+      const client = this.clientFactory(sns, instanceUrl, token);
+      await client.deleteStatus(externalId);
+      return { success: true };
     } catch (err) {
       return { success: false, error: describeError(err) };
     }

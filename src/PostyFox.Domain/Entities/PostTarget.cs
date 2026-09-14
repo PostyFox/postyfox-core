@@ -61,4 +61,7 @@ public class PostTarget
     public DateTimeOffset? GenerationEnqueuedAt { get; set; }
 
     public Post? Post { get; set; }
+
+    /// <summary>Post-delivery automation rules requested for this target (issue #323). See <see cref="PostTargetAutomation"/>.</summary>
+    public List<PostTargetAutomation> Automations { get; set; } = new();
 }

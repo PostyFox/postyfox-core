@@ -75,10 +75,42 @@ public sealed record ConnectorDescriptor(
     /// list; the actual per-submission text lives in <see cref="PostOptionsSchema"/> like FurAffinity's
     /// category/species/gender, so it is authored per post rather than assumed from the title.
     /// </summary>
-    bool SupportsContentWarning = false)
+    bool SupportsContentWarning = false,
+    /// <summary>
+    /// True when the connector can repost/reblog/boost one of its own already-delivered posts (see
+    /// <see cref="IRepostConnector"/>). Drives whether post automation (issue #323) offers "repost
+    /// after X hours" for this platform.
+    /// </summary>
+    bool SupportsRepost = false,
+    /// <summary>
+    /// True when the connector can delete one of its own already-delivered posts from the platform
+    /// (see <see cref="IDeleteConnector"/>). Drives whether post automation (issue #323) offers
+    /// "delete after X hours" for this platform.
+    /// </summary>
+    bool SupportsDelete = false)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;
+}
+
+/// <summary>
+/// Optional capability for connectors that can repost/reblog/boost one of their own
+/// already-delivered posts (see <see cref="ConnectorDescriptor.SupportsRepost"/>). Used by post
+/// automation (issue #323): "repost after X hours".
+/// </summary>
+public interface IRepostConnector
+{
+    Task<DeliveryResult> RepostAsync(ConnectorContext context, string externalId, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Optional capability for connectors that can delete one of their own already-delivered posts from
+/// the platform (see <see cref="ConnectorDescriptor.SupportsDelete"/>). Used by post automation
+/// (issue #323): "delete after X hours".
+/// </summary>
+public interface IDeleteConnector
+{
+    Task<bool> DeleteRemoteAsync(ConnectorContext context, string externalId, CancellationToken ct = default);
 }
 
 /// <summary>Result of beginning an OAuth authorization for a connector.</summary>

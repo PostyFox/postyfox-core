@@ -84,14 +84,21 @@ public static class ServiceCollectionExtensions
                 SupportsThreads: true,
                 MaxContentLength: 300,
                 SupportsRating: true,
-                SupportsTags: false),
+                SupportsTags: false,
+                // Bluesky's atproto agent supports both natively: see HttpConnector's IRepostConnector/
+                // IDeleteConnector implementation and bluesky.ts in connectors-node.
+                SupportsRepost: true,
+                SupportsDelete: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
             sp.GetRequiredService<IServiceScopeFactory>()));
         services.AddSingleton<IConnector>(sp => new HttpConnector(
             "Tumblr",
-            new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true, SupportsTags: true),
+            new ConnectorDescriptor("Tumblr", "Tumblr", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength: null, SupportsOAuth: true, SupportsTags: true,
+                // Tumblr has no native "reblog your own post" concept worth automating; deleting a
+                // post is a normal API call (tumblr.js deletePost).
+                SupportsDelete: true),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
@@ -118,7 +125,11 @@ public static class ServiceCollectionExtensions
                 // Category/theme/species/gender/folders are chosen per submission on FurAffinity's own
                 // form, so they belong to the post rather than the account. The lists run to ~500
                 // entries, see Persistence/Schemas/README.md for provenance and regeneration.
-                PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json")),
+                PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json")
+                // No SupportsRepost/SupportsDelete: FurAffinity has no API, so both would mean scripting
+                // another multi-step, CSRF-guarded browser-session form flow. Deliberately left out of
+                // this pass rather than shipped untested against the real site.
+                ),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
@@ -137,7 +148,11 @@ public static class ServiceCollectionExtensions
                     // The content warning is authored per submission (like FurAffinity's category etc.)
                     // rather than assumed from the post title, see megalodon.ts's use of this field.
                     PostOptionsSchema: FediversePostOptionsSchema,
-                    SupportsContentWarning: true),
+                    SupportsContentWarning: true,
+                    // megalodon's client exposes reblogStatus/deleteStatus for every driver this app
+                    // uses (see megalodon.ts).
+                    SupportsRepost: true,
+                    SupportsDelete: true),
                 sp.GetRequiredService<IHttpClientFactory>(),
                 sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
@@ -203,9 +218,11 @@ public static class ServiceCollectionExtensions
     {
         services.AddHostedService<RabbitMqSubscriber<GenerateTargetCommand>>();
         services.AddHostedService<RabbitMqSubscriber<DeliverTargetCommand>>();
+        services.AddHostedService<RabbitMqSubscriber<ExecuteAutomationCommand>>();
         services.AddHostedService<PostRetentionSweeper>();
         services.AddScoped<PostSchedulerService>();
         services.AddHostedService<PostSchedulerSweeper>();
+        services.AddHostedService<PostAutomationSweeper>();
         return services;
     }
 }
