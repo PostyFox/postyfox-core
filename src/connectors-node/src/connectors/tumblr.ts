@@ -6,10 +6,11 @@ import { basename, join } from "node:path";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { normalizeMedia } from "../media/normalize.js";
-import { TUMBLR_SPEC } from "../media/specs.js";
+import { TUMBLR_SPEC, limitsFromSpec } from "../media/specs.js";
 import type {
   Connector,
   ConnectorContext,
+  ConnectorLimits,
   DeliverResult,
   IsAuthenticatedResult,
   ListTargetsResult,
@@ -227,6 +228,12 @@ export class TumblrConnector implements Connector {
     } catch {
       return { targets: [] };
     }
+  }
+
+  // Tumblr's caps are fixed (not per-instance), so this needs no network call — it just exposes
+  // TUMBLR_SPEC in the shape the frontend's pre-flight media check expects.
+  async getLimits(): Promise<ConnectorLimits> {
+    return limitsFromSpec(TUMBLR_SPEC);
   }
 
   async deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {

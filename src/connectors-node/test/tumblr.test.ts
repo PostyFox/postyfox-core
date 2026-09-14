@@ -65,6 +65,17 @@ test("tumblr list-targets maps blogs", async () => {
   ]);
 });
 
+test("tumblr getLimits reports the platform's fixed media caps", async () => {
+  const limits = await buildConnector(fakeClient()).getLimits();
+  assert.deepEqual(limits, {
+    maxContentLength: null,
+    maxMediaAttachments: 10,
+    supportedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4"],
+    imageSizeLimit: 20_971_520,
+    videoSizeLimit: 524_288_000,
+  });
+});
+
 test("tumblr is-authenticated true on userInfo success", async () => {
   const result = await buildConnector(fakeClient()).isAuthenticated(ctx);
   assert.equal(result.isAuthenticated, true);

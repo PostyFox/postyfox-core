@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { normalizeMedia } from "../media/normalize.js";
-import { FURAFFINITY_SPEC } from "../media/specs.js";
+import { FURAFFINITY_SPEC, limitsFromSpec } from "../media/specs.js";
 import {
   CookieScraperSession,
   type ScraperResponse,
@@ -13,6 +13,7 @@ import {
 import type {
   Connector,
   ConnectorContext,
+  ConnectorLimits,
   DeliverResult,
   IsAuthenticatedResult,
   ListTargetsResult,
@@ -96,6 +97,12 @@ export class FurAffinityConnector implements Connector {
     } catch {
       return { targets: [] };
     }
+  }
+
+  // FurAffinity's caps are fixed (not per-instance), so this needs no network call — it just
+  // exposes FURAFFINITY_SPEC in the shape the frontend's pre-flight media check expects.
+  async getLimits(): Promise<ConnectorLimits> {
+    return limitsFromSpec(FURAFFINITY_SPEC);
   }
 
   async deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {
