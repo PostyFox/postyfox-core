@@ -22,6 +22,7 @@ public interface IAppDbContext
     DbSet<ExternalInterest> ExternalInterests { get; }
     DbSet<Post> Posts { get; }
     DbSet<PostTarget> PostTargets { get; }
+    DbSet<PostTargetAutomation> PostTargetAutomations { get; }
     DbSet<WebhookDedupe> WebhookDedupes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

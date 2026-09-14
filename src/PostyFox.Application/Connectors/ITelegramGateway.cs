@@ -18,6 +18,9 @@ public interface ITelegramGateway
     Task<IReadOnlyList<ConnectorTarget>> ListChatsAsync(string userId, string phoneNumber, CancellationToken ct = default);
     Task<DeliveryResult> SendAsync(string userId, string phoneNumber, string chatId, string body, IReadOnlyList<MediaRef> media, MediaSpec mediaSpec, CancellationToken ct = default);
 
+    /// <summary>Deletes a previously sent message (issue #323's post automation "delete after X hours").</summary>
+    Task<bool> DeleteMessageAsync(string userId, string phoneNumber, string chatId, int messageId, CancellationToken ct = default);
+
     /// <summary>Advances the login flow; pass the requested <paramref name="value"/> (code/password) on subsequent calls.</summary>
     Task<TelegramLoginStep> LoginAsync(string userId, string phoneNumber, string? value, CancellationToken ct = default);
 }

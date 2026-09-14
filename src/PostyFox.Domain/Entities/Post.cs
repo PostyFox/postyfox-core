@@ -44,5 +44,8 @@ public class Post
     /// </summary>
     public string? DraftTargetRatingJson { get; set; }
 
+    /// <summary>The draft's per-target automation requests (see <see cref="PostTargetAutomation"/>), keyed by the same raw selection id as <see cref="DraftTargetsJson"/>.</summary>
+    public string? DraftTargetAutomationsJson { get; set; }
+
     public List<PostTarget> Targets { get; set; } = new();
 }

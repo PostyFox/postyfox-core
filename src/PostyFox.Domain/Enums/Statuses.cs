@@ -36,3 +36,28 @@ public enum ContentRating
     Adult = 2,
     Extreme = 3
 }
+
+/// <summary>
+/// A post-delivery action a <see cref="Entities.PostTargetAutomation"/> can take against an
+/// already-delivered target (issue #323: "automation").
+/// </summary>
+public enum AutomationAction
+{
+    /// <summary>Repost/reblog/boost the delivered target on its own platform.</summary>
+    Repost = 0,
+    /// <summary>Delete the delivered target from its platform.</summary>
+    Delete = 1
+}
+
+/// <summary>Lifecycle of a single <see cref="Entities.PostTargetAutomation"/> rule.</summary>
+public enum AutomationStatus
+{
+    /// <summary>Not yet run: either still waiting for its target to deliver, or waiting for its due time.</summary>
+    Pending = 0,
+    /// <summary>Ran successfully.</summary>
+    Done = 1,
+    /// <summary>Ran and failed (see <see cref="Entities.PostTargetAutomation.Error"/>).</summary>
+    Failed = 2,
+    /// <summary>Cancelled by the user, or by its target being cancelled, before it ran.</summary>
+    Cancelled = 3
+}

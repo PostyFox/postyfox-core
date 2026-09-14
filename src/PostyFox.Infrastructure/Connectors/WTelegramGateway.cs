@@ -140,6 +140,29 @@ public sealed class WTelegramGateway(
         }
     }
 
+    public async Task<bool> DeleteMessageAsync(string userId, string phoneNumber, string chatId, int messageId, CancellationToken ct = default)
+    {
+        try
+        {
+            using var client = await CreateClientAsync(userId, phoneNumber, ct);
+            await client.LoginUserIfNeeded();
+            if (client.UserId == 0) return false;
+            if (!long.TryParse(chatId, out var id)) return false;
+
+            var chats = await client.Messages_GetAllChats();
+            if (!chats.chats.TryGetValue(id, out var chat)) return false;
+
+            // DeleteMessages picks between the plain-chat and channel RPCs internally based on the peer.
+            await client.DeleteMessages(chat.ToInputPeer(), messageId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Telegram delete failed for {User}", userId);
+            return false;
+        }
+    }
+
     public async Task<TelegramLoginStep> LoginAsync(string userId, string phoneNumber, string? value, CancellationToken ct = default)
     {
         var client = _loginClients.GetOrAdd(userId, _ => CreateClientAsync(userId, phoneNumber, ct).GetAwaiter().GetResult());

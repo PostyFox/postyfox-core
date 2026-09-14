@@ -59,6 +59,37 @@ public class TelegramConnectorTests
         var d = new TelegramConnector(new FakeTelegramGateway()).Describe();
         Assert.Equal("Telegram", d.Platform);
         Assert.True(d.SupportsMedia);
+        Assert.True(d.SupportsDelete);
+        Assert.False(d.SupportsRepost);
         Assert.Same(PostyFox.Infrastructure.Media.PlatformMediaSpecs.Telegram, d.MediaSpec);
     }
+
+    [Fact]
+    public async Task DeleteRemote_sends_the_targets_chat_and_parsed_message_id()
+    {
+        var gw = new FakeTelegramGateway();
+        var deleted = await new TelegramConnector(gw).DeleteRemoteAsync(Ctx("{\"PhoneNumber\":\"+123\",\"DefaultPostingTarget\":\"555\"}"), "42");
+
+        Assert.True(deleted);
+        Assert.Equal(("u1", "+123", "555", 42), gw.LastDelete);
+    }
+
+    [Fact]
+    public async Task DeleteRemote_prefers_the_targets_explicit_chat_over_the_connector_default()
+    {
+        var gw = new FakeTelegramGateway();
+        var ctx = new ConnectorContext(Guid.NewGuid(), "u1", "{\"PhoneNumber\":\"+123\",\"DefaultPostingTarget\":\"555\"}", null, "999");
+        await new TelegramConnector(gw).DeleteRemoteAsync(ctx, "42");
+
+        Assert.Equal("999", gw.LastDelete!.Value.chatId);
+    }
+
+    [Fact]
+    public async Task DeleteRemote_fails_without_phone() =>
+        Assert.False(await new TelegramConnector(new FakeTelegramGateway()).DeleteRemoteAsync(Ctx("{}"), "42"));
+
+    [Fact]
+    public async Task DeleteRemote_fails_on_a_non_numeric_external_id() =>
+        Assert.False(await new TelegramConnector(new FakeTelegramGateway())
+            .DeleteRemoteAsync(Ctx("{\"PhoneNumber\":\"+1\",\"DefaultPostingTarget\":\"5\"}"), "at://not-a-message-id"));
 }

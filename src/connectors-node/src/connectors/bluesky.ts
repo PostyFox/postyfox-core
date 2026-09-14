@@ -7,6 +7,7 @@ import type {
   Connector,
   ConnectorContext,
   ConnectorLimits,
+  DeleteResult,
   DeliverResult,
   IsAuthenticatedResult,
   ListTargetsResult,
@@ -35,6 +36,8 @@ export interface BlueskyAgentLike {
     };
     createdAt?: string;
   }): Promise<{ uri: string; cid: string }>;
+  repost(uri: string, cid: string): Promise<{ uri: string; cid: string }>;
+  deletePost(postUri: string): Promise<void>;
 }
 
 /** Bluesky permits at most 4 images per post. */
@@ -155,7 +158,39 @@ export class BlueskyConnector implements Connector {
 
       const rkey = result.uri.split("/").pop() ?? "";
       const externalUrl = `https://bsky.app/profile/${handle}/post/${rkey}`;
-      return { success: true, externalId: result.uri, externalUrl };
+      // A repost needs both the record's at:// uri *and* its content-hash cid (atproto's
+      // `repost(uri, cid)`), which `post()` only ever returns here at creation time — so both are
+      // carried in externalId rather than the bare uri. Opaque to everything else that reads it
+      // (core stores/passes it back verbatim; externalUrl above is what's ever shown to a user).
+      return { success: true, externalId: encodeRef(result.uri, result.cid), externalUrl };
+    } catch (err) {
+      return { success: false, error: describeError(err) };
+    }
+  }
+
+  /** Reposts a record this connector previously delivered (issue #323). */
+  async repost(ctx: ConnectorContext, externalId: string): Promise<DeliverResult> {
+    try {
+      const { handle, appPassword } = this.parseCredentials(ctx);
+      const agent = this.agentFactory();
+      await agent.login({ identifier: handle, password: appPassword });
+      const { uri, cid } = decodeRef(externalId);
+      const result = await agent.repost(uri, cid);
+      return { success: true, externalId: encodeRef(result.uri, result.cid) };
+    } catch (err) {
+      return { success: false, error: describeError(err) };
+    }
+  }
+
+  /** Deletes a record this connector previously delivered (issue #323). */
+  async deleteRemote(ctx: ConnectorContext, externalId: string): Promise<DeleteResult> {
+    try {
+      const { handle, appPassword } = this.parseCredentials(ctx);
+      const agent = this.agentFactory();
+      await agent.login({ identifier: handle, password: appPassword });
+      const { uri } = decodeRef(externalId);
+      await agent.deletePost(uri);
+      return { success: true };
     } catch (err) {
       return { success: false, error: describeError(err) };
     }
@@ -188,4 +223,16 @@ export class BlueskyConnector implements Connector {
         }
       : undefined;
   }
+}
+
+/** Packs a record's uri+cid into the opaque string this connector stores as `externalId`. */
+function encodeRef(uri: string, cid: string): string {
+  return JSON.stringify({ uri, cid });
+}
+
+/** Unpacks a ref encoded by {@link encodeRef}. Throws on anything else (a stale/foreign externalId). */
+function decodeRef(externalId: string): { uri: string; cid: string } {
+  const parsed = JSON.parse(externalId) as { uri?: string; cid?: string };
+  if (!parsed.uri || !parsed.cid) throw new Error("malformed Bluesky post reference");
+  return { uri: parsed.uri, cid: parsed.cid };
 }

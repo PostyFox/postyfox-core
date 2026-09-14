@@ -20,7 +20,7 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
     public async Task<PostStatusDto?> GetAsync(string userId, Guid postId, CancellationToken ct = default)
     {
         var post = await db.Posts
-            .Include(p => p.Targets)
+            .Include(p => p.Targets).ThenInclude(t => t.Automations)
             .FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
         if (post is null) return null;
 
@@ -32,7 +32,10 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 t.RenderedContentJson is { } rendered
                     ? Json.Deserialize<RenderedPost>(rendered)?.TagsOmitted ?? 0
                     : 0,
-                t.Rating))
+                t.Rating,
+                t.Automations
+                    .Select(a => new PostTargetAutomationDto(a.Id, a.Action, a.DelayHours, a.DueAt, a.Status, a.Error, a.ExecutedAt))
+                    .ToList()))
             .ToList();
 
         return new PostStatusDto(post.Id, post.RootStatus, targets);
@@ -47,7 +50,7 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
     {
         var post = await db.Posts
             .AsNoTracking()
-            .Include(p => p.Targets)
+            .Include(p => p.Targets).ThenInclude(t => t.Automations)
             .FirstOrDefaultAsync(p => p.Id == postId && p.UserId == userId, ct);
         if (post is null) return null;
 
@@ -66,7 +69,8 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 post.PostAt,
                 Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}") ?? new(),
                 Json.Deserialize<Dictionary<Guid, bool>>(post.DraftTargetIncludeTagsJson ?? "{}") ?? new(),
-                Json.Deserialize<Dictionary<Guid, ContentRating>>(post.DraftTargetRatingJson ?? "{}") ?? new());
+                Json.Deserialize<Dictionary<Guid, ContentRating>>(post.DraftTargetRatingJson ?? "{}") ?? new(),
+                Json.Deserialize<Dictionary<Guid, IReadOnlyList<AutomationRequest>>>(post.DraftTargetAutomationsJson ?? "{}") ?? new());
 
         // "Post again" must re-tick the exact same destination the post was originally sent to, not
         // just its connector: for a multi-target platform (Telegram) that means resolving each
@@ -118,7 +122,16 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 .Where(t => t.ConnectorId.HasValue && t.Rating.HasValue)
                 .Select(t => (SelectionId: SelectionId(t), Rating: t.Rating!.Value))
                 .GroupBy(x => x.SelectionId)
-                .ToDictionary(g => g.Key, g => g.First().Rating));
+                .ToDictionary(g => g.Key, g => g.First().Rating),
+            // Every rule here is one the post was actually created with (issue #323), so "post again"
+            // re-seeds it as an explicit choice rather than silently dropping it.
+            post.Targets
+                .Where(t => t.ConnectorId.HasValue && t.Automations.Count > 0)
+                .Select(t => (SelectionId: SelectionId(t),
+                    Requests: (IReadOnlyList<AutomationRequest>)t.Automations
+                        .Select(a => new AutomationRequest(a.Action, a.DelayHours)).ToList()))
+                .GroupBy(x => x.SelectionId)
+                .ToDictionary(g => g.Key, g => g.First().Requests));
     }
 
     /// <summary>
@@ -151,7 +164,12 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 p.CreatedAt,
                 p.UpdatedAt,
                 p.PostAt,
-                Targets = p.Targets.Select(t => new { t.Platform, t.Status }).ToList()
+                Targets = p.Targets.Select(t => new
+                {
+                    t.Platform,
+                    t.Status,
+                    PendingAutomations = t.Automations.Count(a => a.Status == AutomationStatus.Pending)
+                }).ToList()
             })
             .ToListAsync(ct))
             .Where(p => p.CreatedAt >= cutoff)
@@ -168,6 +186,7 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             p.Targets.Count(t => t.Status == TargetStatus.Failed),
             p.CreatedAt,
             p.UpdatedAt,
-            p.PostAt)).ToList();
+            p.PostAt,
+            p.Targets.Sum(t => t.PendingAutomations))).ToList();
     }
 }

@@ -33,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PostStatusService>();
         services.AddScoped<PostLifecycleService>();
         services.AddScoped<PostDuplicationService>();
+        services.AddScoped<PostTargetAutomationService>();
         services.AddScoped<MediaCopier>();
         services.AddScoped<PostPayloadCleaner>();
         services.AddScoped<PostRetentionService>();
@@ -43,6 +44,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IMessageHandler<GenerateTargetCommand>, GenerateTargetHandler>();
         services.AddScoped<IMessageHandler<DeliverTargetCommand>, DeliverTargetHandler>();
+        services.AddScoped<IMessageHandler<ExecuteAutomationCommand>, AutomationExecutionHandler>();
 
         return services;
     }

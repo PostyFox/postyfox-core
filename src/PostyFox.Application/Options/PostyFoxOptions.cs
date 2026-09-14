@@ -19,4 +19,14 @@ public sealed class PipelineOptions
 
     /// <summary>Max due targets claimed and enqueued per scheduler pass (bounds a single poll tick).</summary>
     public int SchedulerBatchSize { get; set; } = 200;
+
+    /// <summary>
+    /// How often the automation sweeper polls for due post-automation rules (issue #323; see
+    /// <c>PostTargetAutomationService</c>). Coarser than <see cref="SchedulerPollSeconds"/>: automation
+    /// delays are author-chosen in hours, not seconds, so there is no need to poll as tightly.
+    /// </summary>
+    public int AutomationPollSeconds { get; set; } = 60;
+
+    /// <summary>Max due automation rules claimed and enqueued per sweeper pass (bounds a single poll tick).</summary>
+    public int AutomationBatchSize { get; set; } = 200;
 }

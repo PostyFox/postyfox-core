@@ -67,5 +67,38 @@ public class DiscordWebhookConnectorTests
         var d = New(new StubHttpHandler(HttpStatusCode.OK, "{}")).Describe();
         Assert.Equal("DiscordWH", d.Platform);
         Assert.True(d.SupportsMedia);
+        Assert.True(d.SupportsDelete);
+        Assert.False(d.SupportsRepost);
     }
+
+    [Fact]
+    public async Task DeleteRemote_issues_a_delete_against_the_webhooks_message_url()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.NoContent, "");
+        var deleted = await New(handler).DeleteRemoteAsync(Context("{\"Webhook\":\"http://discord/wh\"}"), "999");
+
+        Assert.True(deleted);
+        Assert.Equal(HttpMethod.Delete, handler.LastRequest!.Method);
+        Assert.EndsWith("/wh/messages/999", handler.LastRequest.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task DeleteRemote_keeps_query_string_attached_for_thread_webhooks()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.NoContent, "");
+        await New(handler).DeleteRemoteAsync(Context("{\"Webhook\":\"http://discord/wh?thread_id=1\"}"), "999");
+
+        Assert.EndsWith("/wh/messages/999?thread_id=1", handler.LastRequest!.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task DeleteRemote_returns_false_on_http_error()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.NotFound, "");
+        Assert.False(await New(handler).DeleteRemoteAsync(Context("{\"Webhook\":\"http://discord/wh\"}"), "999"));
+    }
+
+    [Fact]
+    public async Task DeleteRemote_fails_when_no_webhook_configured() =>
+        Assert.False(await New(new StubHttpHandler(HttpStatusCode.OK, "")).DeleteRemoteAsync(Context("{}"), "999"));
 }

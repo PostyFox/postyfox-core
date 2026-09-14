@@ -13,14 +13,17 @@ namespace PostyFox.Infrastructure.Connectors;
 /// Media is fetched from the object store, resized/transcoded to Discord's limits by the media
 /// resolver, and attached as multipart files.
 /// </summary>
-public sealed class DiscordWebhookConnector(IHttpClientFactory httpFactory, IMediaResolver mediaResolver, ILogger<DiscordWebhookConnector> logger) : IConnector
+public sealed class DiscordWebhookConnector(IHttpClientFactory httpFactory, IMediaResolver mediaResolver, ILogger<DiscordWebhookConnector> logger) : IConnector, IDeleteConnector
 {
     public const string PlatformKey = "DiscordWH";
     private const int MaxContentLength = 2000;
 
     public ConnectorDescriptor Describe() =>
         new(PlatformKey, "Discord Web Hook", SupportsTitle: true, SupportsMedia: true, SupportsThreads: false, MaxContentLength,
-            MediaSpec: PlatformMediaSpecs.Discord, SupportsTags: false);
+            MediaSpec: PlatformMediaSpecs.Discord, SupportsTags: false,
+            // No SupportsRepost: a webhook has no "boost" concept. Deleting a webhook message is a
+            // plain DELETE against Discord's webhook-messages endpoint (see DeleteRemoteAsync).
+            SupportsDelete: true);
 
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext context, CancellationToken ct = default) =>
         Task.FromResult(new AuthState(!string.IsNullOrWhiteSpace(GetWebhook(context.ConfigJson))));
@@ -85,6 +88,24 @@ public sealed class DiscordWebhookConnector(IHttpClientFactory httpFactory, IMed
         catch (JsonException) { /* empty body (204), no id available */ }
 
         return DeliveryResult.Ok(id);
+    }
+
+    /// <summary>Deletes a previously sent webhook message (issue #323's "delete after X hours").</summary>
+    public async Task<bool> DeleteRemoteAsync(ConnectorContext context, string externalId, CancellationToken ct = default)
+    {
+        var webhook = GetWebhook(context.ConfigJson);
+        if (string.IsNullOrWhiteSpace(webhook)) return false;
+
+        var client = httpFactory.CreateClient(nameof(DiscordWebhookConnector));
+        // Discord path-parameterizes the message id under the webhook's own URL; the query string
+        // (if any, e.g. ?thread_id=) has to stay attached for a webhook posting into a thread.
+        var baseUrl = webhook.Split('?')[0].TrimEnd('/');
+        var query = webhook.Contains('?') ? webhook[webhook.IndexOf('?')..] : "";
+        var url = $"{baseUrl}/messages/{externalId}{query}";
+        var response = await client.DeleteAsync(url, ct);
+        if (!response.IsSuccessStatusCode)
+            logger.LogWarning("Discord webhook delete returned {Status}", response.StatusCode);
+        return response.IsSuccessStatusCode;
     }
 
     private static string? GetWebhook(string configJson)

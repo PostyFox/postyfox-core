@@ -11,6 +11,7 @@ import type {
   Connector,
   ConnectorContext,
   ConnectorLimits,
+  DeleteResult,
   DeliverResult,
   IsAuthenticatedResult,
   ListTargetsResult,
@@ -54,6 +55,7 @@ export interface TumblrClientLike {
     blogIdentifier: string,
     params: { title?: string; body: string; tags?: string[]; media: TumblrMedia[] },
   ): Promise<TumblrPostResult>;
+  deletePost(blogIdentifier: string, postId: string): Promise<unknown>;
 }
 
 /** OAuth1 credentials that tumblr.js expects. */
@@ -102,6 +104,7 @@ const defaultClientFactory: TumblrClientFactory = (creds) => {
     userInfo(): Promise<{ user?: { blogs?: TumblrBlog[] } }>;
     createLegacyPost(blog: string, params: Record<string, unknown>): Promise<Record<string, unknown>>;
     createPost(blog: string, params: Record<string, unknown>): Promise<Record<string, unknown>>;
+    deletePost(blog: string, postId: string): Promise<unknown>;
   };
 
   return {
@@ -113,6 +116,7 @@ const defaultClientFactory: TumblrClientFactory = (creds) => {
         body: params.body,
         tags: params.tags?.join(","),
       }) as Promise<TumblrPostResult>,
+    deletePost: (blogIdentifier, postId) => client.deletePost(blogIdentifier, postId),
     createPhotoPost: async (blogIdentifier, params) => {
       // tumblr.js NPF media upload requires fs.ReadStream sources, so decoded
       // bytes are staged to a short-lived temp directory that is always cleaned
@@ -275,6 +279,18 @@ export class TumblrConnector implements Connector {
       const externalUrl =
         typeof result.post_url === "string" ? result.post_url : undefined;
       return { success: true, externalId, externalUrl };
+    } catch (err) {
+      return { success: false, error: describeError(err) };
+    }
+  }
+
+  /** Deletes a post this connector previously delivered (issue #323). */
+  async deleteRemote(ctx: ConnectorContext, externalId: string): Promise<DeleteResult> {
+    try {
+      const { username, creds } = this.parseCredentials(ctx);
+      const client = this.clientFactory(creds);
+      await client.deletePost(username, externalId);
+      return { success: true };
     } catch (err) {
       return { success: false, error: describeError(err) };
     }

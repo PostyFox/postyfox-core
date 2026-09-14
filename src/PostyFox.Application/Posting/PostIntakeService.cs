@@ -61,7 +61,7 @@ public sealed class PostIntakeService(
         // Throws ConnectorValidationException before anything is persisted if a target's options fail,
         // or if a target's platform requires tags and none are being sent.
         post.Targets = BuildTargets(post.Id, resolved, request.TargetOptions, request.TargetIncludeTags,
-            request.TargetRating, request.Tags, now);
+            request.TargetRating, request.TargetAutomations, request.Tags, now);
 
         // From here on, every log in this request carries the PostId (see PostIdLogEnricher), so a
         // user can hand a dev the post id from the UI and the dev finds the intake telemetry too.
@@ -148,10 +148,11 @@ public sealed class PostIntakeService(
         var targetOptions = Json.Deserialize<Dictionary<Guid, IReadOnlyDictionary<string, string>>>(post.DraftTargetOptionsJson ?? "{}");
         var targetIncludeTags = Json.Deserialize<Dictionary<Guid, bool>>(post.DraftTargetIncludeTagsJson ?? "{}");
         var targetRating = Json.Deserialize<Dictionary<Guid, ContentRating>>(post.DraftTargetRatingJson ?? "{}");
+        var targetAutomations = Json.Deserialize<Dictionary<Guid, IReadOnlyList<AutomationRequest>>>(post.DraftTargetAutomationsJson ?? "{}");
         var tags = Json.Deserialize<List<string>>(post.TagsJson) ?? [];
 
         var now = clock.UtcNow;
-        var targets = BuildTargets(post.Id, resolved, targetOptions, targetIncludeTags, targetRating, tags, now);
+        var targets = BuildTargets(post.Id, resolved, targetOptions, targetIncludeTags, targetRating, targetAutomations, tags, now);
         // Explicit Add rather than post.Targets.Add(...): post is already tracked (loaded above), so
         // navigation fixup alone leaves these client-keyed entities Modified instead of Added: EF has
         // no other way to tell a manually-assigned Guid key apart from an existing row's.
@@ -199,6 +200,8 @@ public sealed class PostIntakeService(
             request.TargetOptions ?? new Dictionary<Guid, IReadOnlyDictionary<string, string>>());
         post.DraftTargetIncludeTagsJson = Json.Serialize(request.TargetIncludeTags ?? new Dictionary<Guid, bool>());
         post.DraftTargetRatingJson = Json.Serialize(request.TargetRating ?? new Dictionary<Guid, ContentRating>());
+        post.DraftTargetAutomationsJson = Json.Serialize(
+            request.TargetAutomations ?? new Dictionary<Guid, IReadOnlyList<AutomationRequest>>());
     }
 
     /// <summary>Persists the human-authored payload alongside the record (mirrors media storage).</summary>
@@ -251,6 +254,7 @@ public sealed class PostIntakeService(
         IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, string>>? targetOptions,
         IReadOnlyDictionary<Guid, bool>? targetIncludeTags,
         IReadOnlyDictionary<Guid, ContentRating>? targetRating,
+        IReadOnlyDictionary<Guid, IReadOnlyList<AutomationRequest>>? targetAutomations,
         IReadOnlyList<string>? tags,
         DateTimeOffset now)
     {
@@ -272,7 +276,7 @@ public sealed class PostIntakeService(
                     ? chosen
                     : destination.DefaultIncludeTags);
 
-            targets.Add(new PostTarget
+            var target = new PostTarget
             {
                 Id = Guid.NewGuid(),
                 PostId = postId,
@@ -294,9 +298,49 @@ public sealed class PostIntakeService(
                 Status = TargetStatus.Queued,
                 CreatedAt = now,
                 UpdatedAt = now
-            });
+            };
+
+            if (targetAutomations?.TryGetValue(destination.SelectionId, out var requests) == true)
+                foreach (var request in requests)
+                    target.Automations.Add(BuildAutomation(target.Id, destination.DisplayName, descriptor, request, now));
+
+            targets.Add(target);
         }
         return targets;
+    }
+
+    /// <summary>
+    /// Validates one requested automation rule (issue #323) against its target's declared
+    /// capabilities before building the row: rejecting an unsupported action here, at intake, means
+    /// the sweeper/execution handler never has to deal with a rule that can never run.
+    /// </summary>
+    /// <exception cref="ConnectorValidationException">
+    /// The target's platform doesn't declare the requested action, or the delay isn't positive.
+    /// </exception>
+    private static PostTargetAutomation BuildAutomation(
+        Guid targetId, string displayName, ConnectorDescriptor? descriptor, AutomationRequest request, DateTimeOffset now)
+    {
+        var supported = request.Action switch
+        {
+            AutomationAction.Repost => descriptor?.SupportsRepost ?? false,
+            AutomationAction.Delete => descriptor?.SupportsDelete ?? false,
+            _ => false
+        };
+        if (!supported)
+            throw new ConnectorValidationException(
+                $"{displayName}: does not support {request.Action.ToString().ToLowerInvariant()} automation.");
+        if (request.DelayHours <= 0)
+            throw new ConnectorValidationException($"{displayName}: automation delay must be greater than zero hours.");
+
+        return new PostTargetAutomation
+        {
+            Id = Guid.NewGuid(),
+            PostTargetId = targetId,
+            Action = request.Action,
+            DelayHours = request.DelayHours,
+            Status = AutomationStatus.Pending,
+            CreatedAt = now
+        };
     }
 
     /// <summary>

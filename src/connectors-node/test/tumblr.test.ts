@@ -49,6 +49,9 @@ function fakeClient(over: Partial<TumblrClientLike> = {}): TumblrClientLike {
     async createPhotoPost() {
       return { id_string: "790", post_url: "https://myblog.tumblr.com/post/790" };
     },
+    async deletePost() {
+      return {};
+    },
     ...over,
   };
 }
@@ -150,6 +153,31 @@ test("tumblr deliver fails when consumer credentials are not configured", async 
     async () => connector.oauth.startAuthorization({ callbackUrl: "https://app/cb" }),
     /operational secret store/,
   );
+});
+
+test("tumblr deleteRemote deletes the given post id from the configured blog", async () => {
+  let seen: { blog?: string; id?: string } = {};
+  const client = fakeClient({
+    async deletePost(blog, id) {
+      seen = { blog, id };
+      return {};
+    },
+  });
+  const result = await buildConnector(client).deleteRemote!(ctx, "789");
+
+  assert.equal(result.success, true);
+  assert.deepEqual(seen, { blog: "myblog", id: "789" });
+});
+
+test("tumblr deleteRemote failure when the client throws", async () => {
+  const client = fakeClient({
+    async deletePost() {
+      throw new Error("post not found");
+    },
+  });
+  const result = await buildConnector(client).deleteRemote!(ctx, "789");
+  assert.equal(result.success, false);
+  assert.equal(result.error, "post not found");
 });
 
 test("tumblr uses operational consumer credentials from connector context", async () => {

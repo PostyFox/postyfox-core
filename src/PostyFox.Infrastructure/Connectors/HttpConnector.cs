@@ -21,7 +21,7 @@ public sealed class HttpConnector(
     IHttpClientFactory httpFactory,
     IOptions<NodeConnectorsOptions> options,
     ILogger<HttpConnector> logger,
-    IServiceScopeFactory? scopeFactory = null) : IConnector, IOAuthConnector, ILimitsConnector
+    IServiceScopeFactory? scopeFactory = null) : IConnector, IOAuthConnector, ILimitsConnector, IRepostConnector, IDeleteConnector
 {
     private readonly NodeConnectorsOptions _opts = options.Value;
 
@@ -117,6 +117,36 @@ public sealed class HttpConnector(
                 res.Value.TryGetProperty("externalId", out var id) ? id.GetString() : null,
                 res.Value.TryGetProperty("externalUrl", out var url) ? url.GetString() : null);
         return DeliveryResult.Fail(res.Value.TryGetProperty("error", out var e) ? e.GetString() ?? "delivery failed" : "delivery failed");
+    }
+
+    /// <summary>
+    /// Reposts/reblogs/boosts an already-delivered target (issue #323's "repost after X hours"). Only
+    /// meaningful when this instance's descriptor declares <see cref="ConnectorDescriptor.SupportsRepost"/>;
+    /// wired unconditionally (like <see cref="ILimitsConnector"/>) since the Node service itself is the
+    /// authority on whether the platform actually supports it.
+    /// </summary>
+    public async Task<DeliveryResult> RepostAsync(ConnectorContext context, string externalId, CancellationToken ct = default)
+    {
+        var payload = new { context = await CtxAsync(context, ct), externalId };
+        var res = await PostAsync("repost", payload, ct);
+        if (res is null) return DeliveryResult.Fail("connectors-node unavailable");
+        var success = res.Value.TryGetProperty("success", out var s) && s.GetBoolean();
+        if (success)
+            return DeliveryResult.Ok(
+                res.Value.TryGetProperty("externalId", out var id) ? id.GetString() : null,
+                res.Value.TryGetProperty("externalUrl", out var url) ? url.GetString() : null);
+        return DeliveryResult.Fail(res.Value.TryGetProperty("error", out var e) ? e.GetString() ?? "repost failed" : "repost failed");
+    }
+
+    /// <summary>
+    /// Deletes an already-delivered target from its platform (issue #323's "delete after X hours").
+    /// See <see cref="RepostAsync"/> for why this is wired unconditionally.
+    /// </summary>
+    public async Task<bool> DeleteRemoteAsync(ConnectorContext context, string externalId, CancellationToken ct = default)
+    {
+        var payload = new { context = await CtxAsync(context, ct), externalId };
+        var res = await PostAsync("delete", payload, ct);
+        return res is not null && res.Value.TryGetProperty("success", out var s) && s.GetBoolean();
     }
 
     private async Task<object> CtxAsync(ConnectorContext c, CancellationToken ct) => new

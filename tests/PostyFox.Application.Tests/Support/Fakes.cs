@@ -43,10 +43,13 @@ public sealed class FakeObjectStore : IObjectStore
     public Task DeleteAsync(string c, string k, CancellationToken t = default) { Text.Remove($"{c}/{k}"); Blobs.Remove($"{c}/{k}"); return Task.CompletedTask; }
 }
 
-public sealed class FakeConnector(string platform, Func<RenderedPost, DeliveryResult>? deliver = null, bool supportsTags = true, bool requiresTags = false, int? maxContentLength = null) : IConnector
+public sealed class FakeConnector(
+    string platform, Func<RenderedPost, DeliveryResult>? deliver = null, bool supportsTags = true, bool requiresTags = false,
+    int? maxContentLength = null, bool supportsRepost = false, bool supportsDelete = false) : IConnector
 {
     public int DeliverCount { get; private set; }
-    public ConnectorDescriptor Describe() => new(platform, platform, true, false, false, maxContentLength, SupportsTags: supportsTags, RequiresTags: requiresTags);
+    public ConnectorDescriptor Describe() => new(platform, platform, true, false, false, maxContentLength,
+        SupportsTags: supportsTags, RequiresTags: requiresTags, SupportsRepost: supportsRepost, SupportsDelete: supportsDelete);
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
@@ -116,6 +119,7 @@ public sealed class FakeTelegramGateway : ITelegramGateway
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
     public Task<DeliveryResult> SendAsync(string u, string p, string c, string b, IReadOnlyList<MediaRef> media, MediaSpec mediaSpec, CancellationToken ct = default)
         => Task.FromResult(DeliveryResult.Ok("m"));
+    public Task<bool> DeleteMessageAsync(string u, string p, string c, int messageId, CancellationToken ct = default) => Task.FromResult(true);
     public Task<TelegramLoginStep> LoginAsync(string u, string p, string? v, CancellationToken ct = default)
         => Task.FromResult(Steps.Count > 0 ? Steps.Dequeue() : new TelegramLoginStep(TelegramLoginStep.Complete));
 }

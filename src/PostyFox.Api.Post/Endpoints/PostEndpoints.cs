@@ -138,5 +138,19 @@ public static class PostEndpoints
         .WithSummary("Clear post history")
         .WithDescription("Permanently deletes every one of the caller's terminal posts (delivered/partially failed/failed/cancelled), and their stored payload/media. Drafts and posts still in flight are left untouched. Returns the number of posts removed.")
         .Produces<DeleteHistoryResponse>();
+
+        group.MapDelete("{postId:guid}/automations/{automationId:guid}", async (
+                Guid postId, Guid automationId, ClaimsPrincipal user, PostTargetAutomationService svc, CancellationToken ct) =>
+            await svc.CancelAsync(user.UserId()!, automationId, ct) switch
+            {
+                CancelAutomationOutcome.Cancelled => Results.NoContent(),
+                CancelAutomationOutcome.AlreadyDone => Results.Conflict(new { error = "This automation rule has already run (or was already cancelled)" }),
+                _ => Results.NotFound()
+            })
+        .WithSummary("Cancel a post automation rule")
+        .WithDescription("Cancels a not-yet-executed automation rule (issue #323's \"repost/delete after X hours\"). Returns 204 on success, 409 if it already ran or was already cancelled.")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status404NotFound);
     }
 }

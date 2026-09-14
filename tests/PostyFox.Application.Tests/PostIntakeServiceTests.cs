@@ -523,4 +523,99 @@ public class PostIntakeServiceTests
         var target = Assert.Single(db.PostTargets);
         Assert.Equal(ContentRating.Mature, target.Rating);
     }
+
+    // ----- automation (issue #323) ----------------------------------------------
+
+    [Fact]
+    public async Task Create_stores_a_requested_automation_rule_on_the_target()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("DiscordWH", supportsDelete: true)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null, null, null, null, null,
+            TargetAutomations: new Dictionary<Guid, IReadOnlyList<AutomationRequest>>
+            {
+                [connectorId] = [new AutomationRequest(AutomationAction.Delete, 6)]
+            }));
+
+        Assert.NotNull(result);
+        var target = Assert.Single(db.PostTargets);
+        var automation = Assert.Single(target.Automations);
+        Assert.Equal(AutomationAction.Delete, automation.Action);
+        Assert.Equal(6, automation.DelayHours);
+        Assert.Equal(AutomationStatus.Pending, automation.Status);
+        Assert.Null(automation.DueAt); // not set until the target actually delivers
+    }
+
+    [Fact]
+    public async Task Create_rejects_an_automation_action_the_platform_does_not_support()
+    {
+        using var db = TestDbContext.Create();
+        // FakeConnector defaults to no repost/delete support.
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = New(db, bus, new FixedClock(DateTimeOffset.UnixEpoch));
+
+        await Assert.ThrowsAsync<ConnectorValidationException>(() => svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null, null, null, null, null,
+            TargetAutomations: new Dictionary<Guid, IReadOnlyList<AutomationRequest>>
+            {
+                [connectorId] = [new AutomationRequest(AutomationAction.Delete, 6)]
+            })));
+
+        Assert.Empty(db.Posts);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Create_rejects_a_non_positive_automation_delay(double delayHours)
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("DiscordWH", supportsDelete: true)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        await Assert.ThrowsAsync<ConnectorValidationException>(() => svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null, null, null, null, null,
+            TargetAutomations: new Dictionary<Guid, IReadOnlyList<AutomationRequest>>
+            {
+                [connectorId] = [new AutomationRequest(AutomationAction.Delete, delayHours)]
+            })));
+
+        Assert.Empty(db.Posts);
+    }
+
+    [Fact]
+    public async Task PublishDraft_carries_the_drafts_per_target_automations_through()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("DiscordWH", supportsDelete: true)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+        var created = await svc.SaveDraftAsync("u1", new CreatePostRequest(
+            [connectorId], "Draft", "Body", null, null, null, null, null, null,
+            TargetAutomations: new Dictionary<Guid, IReadOnlyList<AutomationRequest>>
+            {
+                [connectorId] = [new AutomationRequest(AutomationAction.Delete, 12)]
+            }));
+        db.ChangeTracker.Clear();
+
+        var result = await svc.PublishDraftAsync("u1", created.PostId);
+
+        Assert.Equal(DraftActionOutcome.Success, result.Outcome);
+        var target = Assert.Single(db.PostTargets);
+        var automation = Assert.Single(target.Automations);
+        Assert.Equal(AutomationAction.Delete, automation.Action);
+        Assert.Equal(12, automation.DelayHours);
+    }
 }

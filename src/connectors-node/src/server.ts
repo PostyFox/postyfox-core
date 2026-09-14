@@ -102,6 +102,44 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     },
   );
 
+  app.post<{ Params: { platform: string }; Body: { context: ConnectorContext; externalId: string } }>(
+    "/connectors/:platform/repost",
+    async (request, reply) => {
+      const platform = request.params.platform;
+      const connector = resolveConnector(registry, platform);
+      if (!connector) return reply.code(404).send({ error: "unknown platform" });
+      if (!connector.repost) return reply.code(400).send({ error: "repost not supported" });
+      const { context, externalId } = request.body;
+      try {
+        const result = await connector.repost(context, externalId);
+        if (!result?.success) request.log.warn({ platform, error: result?.error }, "repost: failed");
+        return result;
+      } catch (err) {
+        request.log.error({ err, platform }, "repost: threw");
+        return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+  );
+
+  app.post<{ Params: { platform: string }; Body: { context: ConnectorContext; externalId: string } }>(
+    "/connectors/:platform/delete",
+    async (request, reply) => {
+      const platform = request.params.platform;
+      const connector = resolveConnector(registry, platform);
+      if (!connector) return reply.code(404).send({ error: "unknown platform" });
+      if (!connector.deleteRemote) return reply.code(400).send({ error: "delete not supported" });
+      const { context, externalId } = request.body;
+      try {
+        const result = await connector.deleteRemote(context, externalId);
+        if (!result?.success) request.log.warn({ platform, error: result?.error }, "delete: failed");
+        return result;
+      } catch (err) {
+        request.log.error({ err, platform }, "delete: threw");
+        return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+  );
+
   app.post<{
     Params: { platform: string };
     Body: { callbackUrl: string; configJson?: string; operationalSecretJson?: string | null };

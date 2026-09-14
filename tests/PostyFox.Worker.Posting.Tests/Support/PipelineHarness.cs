@@ -33,11 +33,14 @@ public sealed class FakeObjectStore : IObjectStore
     public Task DeleteAsync(string c, string k, CancellationToken t = default) => Task.CompletedTask;
 }
 
-public sealed class ProgrammableConnector(string platform, bool succeed, string? postOptionsSchema = null, bool supportsMultipleTargets = false) : IConnector
+public sealed class ProgrammableConnector(
+    string platform, bool succeed, string? postOptionsSchema = null, bool supportsMultipleTargets = false,
+    bool supportsRepost = false, bool supportsDelete = false) : IConnector, IRepostConnector, IDeleteConnector
 {
     public int Calls { get; private set; }
     public ConnectorDescriptor Describe() =>
-        new(platform, platform, true, false, false, null, PostOptionsSchema: postOptionsSchema, SupportsMultipleTargets: supportsMultipleTargets);
+        new(platform, platform, true, false, false, null, PostOptionsSchema: postOptionsSchema, SupportsMultipleTargets: supportsMultipleTargets,
+            SupportsRepost: supportsRepost, SupportsDelete: supportsDelete);
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
@@ -53,6 +56,24 @@ public sealed class ProgrammableConnector(string platform, bool succeed, string?
         LastConfigJson = c.ConfigJson;
         LastTargetId = c.TargetId;
         return Task.FromResult(succeed ? DeliveryResult.Ok($"ext-{Calls}", "http://x") : DeliveryResult.Fail("boom"));
+    }
+
+    public int RepostCalls { get; private set; }
+    public string? LastRepostExternalId { get; private set; }
+    public Task<DeliveryResult> RepostAsync(ConnectorContext c, string externalId, CancellationToken t = default)
+    {
+        RepostCalls++;
+        LastRepostExternalId = externalId;
+        return Task.FromResult(succeed ? DeliveryResult.Ok($"repost-{RepostCalls}", "http://x/repost") : DeliveryResult.Fail("repost boom"));
+    }
+
+    public int DeleteCalls { get; private set; }
+    public string? LastDeleteExternalId { get; private set; }
+    public Task<bool> DeleteRemoteAsync(ConnectorContext c, string externalId, CancellationToken t = default)
+    {
+        DeleteCalls++;
+        LastDeleteExternalId = externalId;
+        return Task.FromResult(succeed);
     }
 }
 
