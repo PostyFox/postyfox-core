@@ -1,0 +1,81 @@
+# Local, disposable Pleroma instance for manually testing the PostyFox `pleroma` connector.
+# Builds Pleroma from source (using Pleroma's own Dockerfile, pinned to the `stable` branch) — the
+# documented prebuilt image (git.pleroma.social:5050/pleroma/pleroma:latest) no longer exists
+# (registry refuses connections outright; see fetch-source.sh). Run ./fetch-source.sh once before
+# your first build/up. `docker compose up -d` and wait for `admin-init` to exit 0 — everything else
+# (instance config generation, migrations) is automatic. See README.md for the test account and the
+# manual test checklist.
+#
+# `net` is an internal-only network: no container here can reach the real internet, which is a
+# hard backstop for "federation and mail are disabled" beyond the app-level config below. Published
+# ports (below) still work — Docker's port-forwarding doesn't need outbound routing.
+
+services:
+  pleroma-db:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    env_file: environments/pleroma-db/postgres.env
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "pleroma"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [net]
+
+  pleroma:
+    image: pleroma-test:local
+    build:
+      context: ./upstream
+    restart: unless-stopped
+    env_file: environments/pleroma/pleroma.env
+    depends_on:
+      pleroma-db: { condition: service_healthy }
+    ports:
+      - "${WEB_PORT:-4010}:4000"
+    volumes:
+      - ./volumes/pleroma/config.exs:/var/lib/pleroma/config.exs
+      - uploads:/var/lib/pleroma/uploads
+    healthcheck:
+      # "localhost" resolves to ::1 first here, and Pleroma only binds 0.0.0.0 (IPv4) — wget doesn't
+      # fall back to the v4 address, so it reports unhealthy forever even once the app is up.
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:4000/api/v1/instance || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [net]
+
+  # One-shot: creates the confirmed test admin account with a fixed password (idempotent — safe to
+  # `up` again), then exits. Must override the image's entrypoint (`docker-entrypoint.sh`) — that
+  # script unconditionally runs `pleroma_ctl migrate && exec pleroma start` and ignores any
+  # `command:` args entirely, so leaving it in place makes this container silently become a second
+  # full Pleroma server instead of a one-shot task (confirmed: `command:` never ran; exited only when
+  # explicitly killed). See README.md for the credentials, and a manual fallback in case this doesn't
+  # converge on your Docker setup.
+  admin-init:
+    image: pleroma-test:local
+    env_file: environments/pleroma/pleroma.env
+    environment:
+      # pleroma_ctl normally RPCs into an already-running node for non-migration commands like
+      # `user new` — pointless here since this is a separate container from `pleroma` with no shared
+      # Erlang distribution, so it'd just hang/fail (confirmed: "RPC failed with reason
+      # :noconnection"). This makes it run standalone (`pleroma eval`, boots its own instance,
+      # talks to the DB directly) instead — a real pleroma_ctl flag, not a PostyFox invention.
+      PLEROMA_CTL_RPC_DISABLED: "true"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - /opt/pleroma/bin/pleroma_ctl user new "$$ADMIN_NICKNAME" "$$ADMIN_EMAIL" --password "$$ADMIN_PASSWORD" --admin -y || true
+    volumes:
+      - ./volumes/pleroma/config.exs:/var/lib/pleroma/config.exs
+    depends_on:
+      pleroma: { condition: service_healthy }
+    networks: [net]
+
+networks:
+  net:
+    internal: true
+
+volumes:
+  db-data:
+  uploads:

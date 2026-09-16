@@ -1,0 +1,52 @@
+# Local, disposable GoToSocial instance for manually testing the PostyFox `gotosocial` connector.
+# `docker compose up -d` and wait for `admin-init` to exit 0 — everything else is automatic. See
+# README.md for the test account and the manual test checklist.
+#
+# `net` is an internal-only network: no container here can reach the real internet, which is a
+# hard backstop for "federation and mail are disabled" beyond the app-level config below. Published
+# ports (below) still work — Docker's port-forwarding doesn't need outbound routing.
+
+services:
+  gotosocial:
+    image: docker.io/superseriousbusiness/gotosocial:0.22.1
+    restart: unless-stopped
+    env_file: .env
+    user: "1000:1000"
+    ports:
+      - "${WEB_PORT:-4080}:8080"
+    volumes:
+      - data:/gotosocial/storage
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/api/v1/instance"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [net]
+
+  # One-shot: creates the confirmed test account (idempotent — safe to `up` again), then exits. Per
+  # GoToSocial's own docs, `admin account create` needs the server to have started at least once
+  # already (to run its migrations), which is why this depends on `gotosocial` being healthy rather
+  # than the other way round — GtS's CLI and server are meant to share the sqlite file concurrently
+  # like this. Not promoted to admin — a normal confirmed account is all the PostyFox connector
+  # needs (OAuth login + posting). See README.md for the credentials.
+  admin-init:
+    image: docker.io/superseriousbusiness/gotosocial:0.22.1
+    env_file: .env
+    user: "1000:1000"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        /gotosocial/gotosocial admin account create --username postyfox --email admin@postyfox.test --password postyfox-test-1234 || true
+    volumes:
+      - data:/gotosocial/storage
+    depends_on:
+      gotosocial: { condition: service_healthy }
+    networks: [net]
+
+networks:
+  net:
+    internal: true
+
+volumes:
+  data:

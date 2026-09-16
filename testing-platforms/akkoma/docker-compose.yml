@@ -1,0 +1,101 @@
+# Local, disposable Akkoma instance for manually testing the PostyFox `akkoma` connector. Akkoma
+# has no prebuilt image, so the first `docker compose up -d` builds one from source (pinned to
+# `stable`) via ./Dockerfile — that alone takes several minutes (Elixir/Erlang compile). Everything
+# after that is automatic: extensions, migrations, then a confirmed test admin account. Wait for
+# `admin-init` to exit 0, then see README.md for the test account and the manual test checklist.
+#
+# `net` is an internal-only network: no container here can reach the real internet, which is a
+# hard backstop for "federation and mail are disabled" beyond the app-level config baked into the
+# image (see Dockerfile). Published ports (below) still work — Docker's port-forwarding doesn't
+# need outbound routing.
+
+services:
+  db:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: akkoma
+      POSTGRES_PASSWORD: akkoma-test-pw
+      POSTGRES_DB: akkoma
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "akkoma"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [net]
+
+  # One-shot: creates the Postgres extensions Akkoma's migrations expect (citext, pg_trgm,
+  # uuid-ossp) — normally done by `setup_db.psql` run as a superuser during interactive install;
+  # the `akkoma` role here already is one, since it's the Postgres bootstrap user (POSTGRES_USER).
+  db-init:
+    image: postgres:14-alpine
+    environment:
+      PGPASSWORD: akkoma-test-pw
+    command:
+      - /bin/sh
+      - -c
+      - |
+        psql -h db -U akkoma -d akkoma -v ON_ERROR_STOP=1 \
+          -c 'CREATE EXTENSION IF NOT EXISTS citext;' \
+          -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;' \
+          -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [net]
+
+  # One-shot: builds the Akkoma image (source is pulled straight from akkoma.dev, no local checkout
+  # needed) and runs migrations, then exits. `akkoma`/`admin-init` below reuse the `akkoma-test:local`
+  # tag this produces instead of rebuilding.
+  migrate:
+    image: akkoma-test:local
+    build: .
+    command: ["mix", "ecto.migrate"]
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    networks: [net]
+
+  akkoma:
+    image: akkoma-test:local
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-4020}:4000"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    volumes:
+      - uploads:/opt/akkoma/uploads
+    healthcheck:
+      # "localhost" resolves to ::1 first here, and Akkoma only binds 0.0.0.0 (IPv4) — wget doesn't
+      # fall back to the v4 address, so it reports unhealthy forever even once the app is up.
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:4000/api/v1/instance || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    networks: [net]
+
+  # One-shot: creates the confirmed test admin account with a fixed password (idempotent — safe to
+  # `up` again), then exits. See README.md for the credentials.
+  admin-init:
+    image: akkoma-test:local
+    command:
+      - mix
+      - pleroma.user
+      - new
+      - postyfox
+      - admin@postyfox.test
+      - --password
+      - postyfox-test-1234
+      - --admin
+      - -y
+    depends_on:
+      akkoma: { condition: service_healthy }
+    networks: [net]
+
+networks:
+  net:
+    internal: true
+
+volumes:
+  db-data:
+  uploads:

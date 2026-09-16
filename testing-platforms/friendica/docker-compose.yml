@@ -1,0 +1,94 @@
+# Local, disposable Friendica instance for manually testing the PostyFox `friendica` connector.
+# `docker compose up -d` and wait for `admin-init` to exit 0 — everything else (the whole install
+# wizard) is automatic via env vars the official image supports. See README.md for the test account,
+# the federation caveat, and the manual test checklist.
+#
+# `net` is an internal-only network: no container here can reach the real internet. Federation
+# genuinely can't be switched off in Friendica (see README.md) so this is the main mitigation, not
+# just a backstop like it is for the other stacks here. Published ports (below) still work —
+# Docker's port-forwarding doesn't need outbound routing.
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MYSQL_USER: friendica
+      MYSQL_PASSWORD: friendica-test-pw
+      MYSQL_DATABASE: friendica
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [net]
+
+  friendica:
+    image: friendica:apache
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: db
+      MYSQL_USER: friendica
+      MYSQL_PASSWORD: friendica-test-pw
+      MYSQL_DATABASE: friendica
+      FRIENDICA_URL: http://localhost:${WEB_PORT:-8084}
+      FRIENDICA_ADMIN_MAIL: admin@postyfox.test
+      FRIENDICA_SITENAME: PostyFox Test Friendica
+      # No SMTP_* vars are set (see README.md) — mail just fails quietly, nothing leaves the host
+      # because this stack has no route to the internet (the `net: internal: true` network).
+    depends_on:
+      db: { condition: service_healthy }
+    ports:
+      - "${WEB_PORT:-8084}:80"
+    volumes:
+      - friendica-data:/var/www/html
+    healthcheck:
+      # No wget/curl in this image (the base image purges wget after using it to fetch `gosu` at
+      # build time) — use PHP's own http stream wrapper instead, since php-cli is guaranteed present.
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://localhost/\") === false ? 1 : 0);'"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    networks: [net]
+
+  # One-shot: creates the confirmed test account (idempotent — safe to `up` again), sets its
+  # password, and turns on Friendica's closest thing to "private/standalone mode", then exits. It
+  # registers under FRIENDICA_ADMIN_MAIL above, so Friendica grants it admin automatically. See
+  # README.md for the credentials and what `block_public` does and doesn't do.
+  admin-init:
+    image: friendica:apache
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        cd /var/www/html
+        # admin@postyfox.test would otherwise fail User::create's live DNS check (.test never
+        # resolves, and this network has no outbound DNS anyway) — this stack has no real mail
+        # sending to protect, so just turn that check off.
+        bin/console config system disable_email_validation true
+        bin/console user add "PostyFox Test" postyfox admin@postyfox.test en || true
+        bin/console user password postyfox postyfox-test-1234
+        bin/console config system block_public true
+        # This release (src/Object/Api/Mastodon/Instance.php) assigns config[config][sender_email]
+        # straight into a non-nullable `string $email` property with no null-coalescing (a later
+        # upstream commit added one, not yet in this tag). We never configure SMTP, so it's NULL by
+        # default, and GET /api/v1/instance — which PostyFox calls for posting limits — TypeErrors
+        # on every single call: "Cannot assign null to property ...Instance::$email of type string".
+        # Any non-null value here avoids it; this isn't used to actually send mail.
+        bin/console config config sender_email admin@postyfox.test
+    volumes:
+      - friendica-data:/var/www/html
+    depends_on:
+      friendica: { condition: service_healthy }
+    networks: [net]
+
+networks:
+  net:
+    internal: true
+
+volumes:
+  db-data:
+  friendica-data:
