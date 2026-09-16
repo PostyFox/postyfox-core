@@ -12,7 +12,7 @@ const extensionApi = globalThis.browser ?? globalThis.chrome;
 
 // The only two deployments this talks to. Both are declared in host_permissions, so flipping the Dev
 // switch never triggers a permission prompt.
-const ENVIRONMENTS = { live: "https://cp.postyfox.com", dev: "https://dev.postyfox.com" };
+const ENVIRONMENTS = { live: "https://app.postyfox.com", dev: "https://dev.postyfox.com" };
 
 const els = {
   devMode: document.querySelector("#dev-mode"),

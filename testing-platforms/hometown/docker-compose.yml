@@ -1,0 +1,143 @@
+# Local, disposable Hometown instance for manually testing the PostyFox `hometown` connector.
+# Hometown (https://github.com/hometown-fork/hometown) is a light fork of Mastodon with no prebuilt
+# image, so `migrate` builds it from source the first time you run `docker compose up -d` — that
+# first build is slow (Ruby gems + JS assets), everything after is instant. Run ./fetch-source.sh
+# once before your first build/up (see that script and README.md for why — a podman/buildah bug
+# means we can't just point `build.context` at upstream's repo directly). Wait for `admin-init` to
+# exit 0, then see README.md for the test account and checklist.
+#
+# `net` is an internal-only network: no container here can reach the real internet, which is a
+# hard backstop for "federation and mail are disabled" beyond the app-level config below. Published
+# ports (below) still work — Docker's port-forwarding doesn't need outbound routing.
+
+services:
+  db:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    shm_size: 256mb
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      # Must match DB_NAME in .env — the postgres image only auto-creates this on first boot, and
+      # `rails db:migrate` (in `migrate`, below) expects it to already exist.
+      POSTGRES_DB: mastodon_production
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [net]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [net]
+
+  # One-shot: builds the Hometown image (source is pulled straight from ./upstream, see
+  # fetch-source.sh), runs migrations, then seeds (creates the Owner/Admin/Moderator UserRole rows
+  # admin-init's `--role Owner` needs — db:migrate alone doesn't seed them), then exits.
+  # `web`/`streaming`/`sidekiq`/`admin-init` below reuse the `hometown-test:local` tag this produces
+  # instead of rebuilding.
+  #
+  # Loads db/seeds.rb directly via `rails runner` rather than `rails db:seed` — the rake task exits
+  # 0 without actually loading the seed file (confirmed: db:seed leaves user_roles empty, an
+  # identical `runner "load Rails.root.join('db/seeds.rb')"` populates it correctly). Both are stock
+  # Rails/Mastodon entry points; this app/version's `db:seed` task itself is the broken one.
+  migrate:
+    image: hometown-test:local
+    build:
+      context: ./upstream
+      dockerfile: Dockerfile
+    env_file: .env
+    command: ["bash", "-c", "bundle exec rails db:migrate && bundle exec rails runner \"load Rails.root.join('db/seeds.rb')\""]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [net]
+
+  web:
+    image: hometown-test:local
+    restart: unless-stopped
+    env_file: .env
+    command: bundle exec puma -C config/puma.rb
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --noproxy localhost localhost:3000/health | grep -q 'OK' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "${WEB_PORT:-3001}:3000"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    volumes:
+      - system-data:/mastodon/public/system
+    networks: [net]
+
+  # The Node.js streaming server is a genuinely separate image upstream (built from its own
+  # streaming/Dockerfile — see upstream/docker-compose.yml) — the main Dockerfile's final stage
+  # doesn't include a Node runtime at all, only Ruby/vips/ffmpeg.
+  streaming:
+    image: hometown-streaming-test:local
+    build:
+      context: ./upstream
+      dockerfile: streaming/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${STREAMING_PORT:-4001}:4000"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [net]
+
+  sidekiq:
+    image: hometown-test:local
+    restart: unless-stopped
+    env_file: .env
+    command: bundle exec sidekiq
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    volumes:
+      - system-data:/mastodon/public/system
+    networks: [net]
+
+  # One-shot: creates the confirmed test admin account (idempotent — safe to `up` again), pins its
+  # password, and sets the instance's site contact (Setting.site_contact_username/_email — these are
+  # DB-backed `Setting` rows, not env vars; normally an admin sets them by hand on first login via
+  # Preferences > Administration > Server Settings, which never happens here since the account is
+  # created headlessly), then exits. See README.md for the credentials.
+  admin-init:
+    image: hometown-test:local
+    env_file: .env
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        bin/tootctl accounts create "$$ADMIN_USERNAME" --email "$$ADMIN_EMAIL" --confirmed --role Owner --approve || true
+        bin/rails runner "
+          u = User.find_by!(email: ENV['ADMIN_EMAIL'])
+          u.password = ENV['ADMIN_PASSWORD']
+          u.password_confirmation = ENV['ADMIN_PASSWORD']
+          u.save!(validate: false)
+          Setting.site_contact_username = ENV['ADMIN_USERNAME']
+          Setting.site_contact_email = ENV['ADMIN_EMAIL']
+        "
+    depends_on:
+      web: { condition: service_healthy }
+    networks: [net]
+
+networks:
+  net:
+    internal: true
+
+volumes:
+  db-data:
+  redis-data:
+  system-data:

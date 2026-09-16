@@ -16,7 +16,7 @@ Opening the popup does the detection; the single button does the work.
    names the platform declares, against the user's connector for that site, creating that connector
    if they have none yet.
 
-There is nothing to type: the target is `https://cp.postyfox.com`, or `https://dev.postyfox.com` with
+There is nothing to type: the target is `https://app.postyfox.com`, or `https://dev.postyfox.com` with
 the **Dev** switch on. Both are declared in `host_permissions`, so switching never prompts.
 
 If the user is not signed in to PostyFox, or not logged in to the website, the popup says which one

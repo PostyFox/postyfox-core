@@ -1,0 +1,25 @@
+# A stand-in for a real Discord channel, for manually testing the PostyFox `DiscordWH` connector.
+# There's no self-hostable Discord server, so instead of a real platform this runs a small mock
+# that implements exactly the HTTP contract DiscordWebhookConnector.cs uses (see app/server.py) —
+# `docker compose up -d` and it's ready immediately, nothing to provision.
+#
+# `net` is an internal-only network: no real Discord traffic can leave this stack even by accident,
+# since there's no real Discord on the other end to begin with. Published ports still work —
+# Docker's port-forwarding doesn't need outbound routing.
+
+services:
+  discord-webhook-mock:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8090}:8090"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/_health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [net]
+
+networks:
+  net:
+    internal: true

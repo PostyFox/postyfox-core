@@ -16,11 +16,18 @@ x-dotnet-env: &dotnet-env
   RabbitMq__Host: "rabbitmq"
   RabbitMq__User: "guest"
   RabbitMq__Password: "guest"
-  # Secret store (Neillans.Adapters.Secrets). The base local stack bundles no vault, so use the
-  # in-process store. Switch to a persistent backend by setting Secrets__Provider (HashiCorpVault |
-  # BitWarden | AzureKeyVault | Infisical) + that provider's Secrets__<Provider>__* options. (The
-  # dev/prod stacks add a bundled HashiCorp Vault and default to it: see docker-compose.dev/prod.yml.)
-  Secrets__Provider: "InMemory"
+  # Secret store (Neillans.Adapters.Secrets), backed by the bundled `vault` service (Vault's own
+  # `-dev` mode: self-unseals on boot with a fixed root token, no AppRole bootstrap needed — unlike
+  # the production-representative Shamir-seal + AppRole setup in docker-compose.server.yml).
+  # core-api, post-api and worker are three separate processes; InMemory would give each its own
+  # private secret store, so an OAuth connector's access token — written by core-api when the user
+  # connects — would be invisible to worker when it tries to post with it ("missing access token —
+  # reconnect the account" even though core-api's own auth check says the connector is fine).
+  Secrets__Provider: "HashiCorpVault"
+  Secrets__HashiCorpVault__VaultAddress: "http://vault:8200"
+  Secrets__HashiCorpVault__Token: "postyfox-dev-root-token"
+  Secrets__HashiCorpVault__MountPoint: "secret"
+  Secrets__HashiCorpVault__BasePath: "postyfox"
   Auth__UserHeader: "X-Auth-Request-User"
   # In-app OIDC bearer validation. Issuer is the browser-facing Keycloak URL (matches the token `iss`);
   # JWKS is fetched over the in-cluster back channel (mirrors the oauth2-proxy split front/back-channel).
@@ -93,6 +100,25 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # Secret store for core-api/post-api/worker (see Secrets__* above). Vault's own `-dev` mode:
+  # in-memory storage, auto-unseals with the fixed root token below, and auto-mounts a KV v2 engine
+  # at `secret/` — so unlike docker-compose.server.yml's vault there's no vault-init bootstrap
+  # sidecar or AppRole provisioning step needed. Not for anything you'd mind losing on `down -v`.
+  vault:
+    image: "hashicorp/vault:2.0.4"
+    command: ["server", "-dev", "-dev-root-token-id=postyfox-dev-root-token"]
+    environment:
+      # The `vault` CLI defaults to https://127.0.0.1:8200 without this — needed for the
+      # healthcheck below, since the dev server listens on plain HTTP.
+      VAULT_ADDR: "http://127.0.0.1:8200"
+    cap_add: [IPC_LOCK]
+    healthcheck:
+      test: ["CMD-SHELL", "vault status >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel/config.yaml"]
@@ -117,6 +143,12 @@ services:
       OTEL_LOGS_EXPORTER: "otlp"
       # Skip cloud resource detectors: avoids metadata-lookup timeouts at startup.
       OTEL_NODE_RESOURCE_DETECTORS: "env,host,os,serviceinstance,process"
+    # Lets connectors-node reach services published on the docker host (e.g. a testing-platforms/
+    # stack's instance URL) instead of resolving `localhost` to itself. Podman already provides
+    # `host.containers.internal` for this without any config; this adds the Docker-Engine-on-Linux
+    # equivalent (Docker Desktop gets it for free too) — see testing-platforms/README.md.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports: ["8090:8090"]
     depends_on:
       rustfs: { condition: service_healthy }
@@ -156,6 +188,7 @@ services:
       rabbitmq: { condition: service_healthy }
       rustfs: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
+      vault: { condition: service_healthy }
 
   post-api:
     build:
@@ -173,6 +206,7 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       rustfs: { condition: service_healthy }
+      vault: { condition: service_healthy }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -195,6 +229,7 @@ services:
       rabbitmq: { condition: service_healthy }
       rustfs: { condition: service_healthy }
       connectors-node: { condition: service_healthy }
+      vault: { condition: service_healthy }
     healthcheck:
       # curl -f enforces HTTP 200-299; grep verifies the expected JSON status marker.
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz | grep -q '\"status\":\"ok\"'"]
@@ -227,6 +262,23 @@ services:
   # everything else to core-api, preserving the full request path. Not published publicly.
   gateway:
     image: nginx:alpine
+    # Before starting nginx, derive its DNS `resolver` from the container's /etc/resolv.conf and
+    # write it to the http-context include (nginx.conf pulls in /etc/nginx/resolver.d/*.conf). nginx
+    # can't read resolv.conf itself and needs a literal IP, which is runtime-specific: Docker's
+    # embedded DNS at 127.0.0.11 vs podman/netavark Aardvark at a per-network address. This is what
+    # lets the frontend SPA route's variable proxy_pass resolve `frontend` lazily (see
+    # postyfox-frontend/deploy), so the gateway starts even when the SPA is down.
+    # $$ escapes compose interpolation so the shell sees a single $.
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /etc/nginx/resolver.d
+        ns=$$(awk '/^nameserver/ { printf "%s ", $$2 }' /etc/resolv.conf 2>/dev/null)
+        [ -n "$$ns" ] || ns="127.0.0.11 "
+        printf 'resolver %sipv6=off valid=10s;\n' "$$ns" > /etc/nginx/resolver.d/dns.conf
+        echo "gateway: DNS resolver -> $${ns}(ipv6=off valid=10s)"
+        exec nginx -g 'daemon off;'
     volumes:
       - "./gateway/nginx.conf:/etc/nginx/nginx.conf:ro"
       - "./gateway/conf.d:/etc/nginx/conf.d:ro"
