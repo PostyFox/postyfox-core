@@ -18,6 +18,11 @@ function fakeMediaStore(
       calls.push({ container, key });
       return bytes;
     },
+    async put() {},
+    async presignedGetUrl() {
+      return "https://example.test/staged";
+    },
+    async delete() {},
   };
 }
 

@@ -167,7 +167,7 @@ const scenarios = {
 
     const pair = app.requests.find((r) => r.url.endsWith("/cookie-pairing/pair"));
     assert.ok(pair, "the click should pair");
-    assert.equal(pair.url, "https://cp.postyfox.com/api/connectors/cookie-pairing/pair");
+    assert.equal(pair.url, "https://app.postyfox.com/api/connectors/cookie-pairing/pair");
     assert.equal(pair.body.connectorId, "conn-1");
     assert.deepEqual(pair.body.cookies, { a: "session-a", b: "session-b" });
     assert.match(app.status(), /is connected to PostyFox/);
@@ -221,7 +221,7 @@ const scenarios = {
     assert.equal(app.button(), "Sign in to PostyFox");
 
     await app.click();
-    assert.deepEqual(app.openedTabs, ["https://cp.postyfox.com/"]);
+    assert.deepEqual(app.openedTabs, ["https://app.postyfox.com/"]);
   },
 
   async "both logins missing are reported together"() {

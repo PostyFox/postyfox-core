@@ -59,9 +59,9 @@ public sealed class PostIntakeService(
         };
         ApplyContent(post, request);
         // Throws ConnectorValidationException before anything is persisted if a target's options fail,
-        // or if a target's platform requires tags and none are being sent.
+        // or if a target's platform requires tags/media and none are being sent.
         post.Targets = BuildTargets(post.Id, resolved, request.TargetOptions, request.TargetIncludeTags,
-            request.TargetRating, request.TargetAutomations, request.Tags, now);
+            request.TargetRating, request.TargetAutomations, request.Tags, (request.Media ?? []).Count > 0, now);
 
         // From here on, every log in this request carries the PostId (see PostIdLogEnricher), so a
         // user can hand a dev the post id from the UI and the dev finds the intake telemetry too.
@@ -150,9 +150,10 @@ public sealed class PostIntakeService(
         var targetRating = Json.Deserialize<Dictionary<Guid, ContentRating>>(post.DraftTargetRatingJson ?? "{}");
         var targetAutomations = Json.Deserialize<Dictionary<Guid, IReadOnlyList<AutomationRequest>>>(post.DraftTargetAutomationsJson ?? "{}");
         var tags = Json.Deserialize<List<string>>(post.TagsJson) ?? [];
+        var hasMedia = (Json.Deserialize<List<MediaRef>>(post.MediaManifestJson) ?? []).Count > 0;
 
         var now = clock.UtcNow;
-        var targets = BuildTargets(post.Id, resolved, targetOptions, targetIncludeTags, targetRating, targetAutomations, tags, now);
+        var targets = BuildTargets(post.Id, resolved, targetOptions, targetIncludeTags, targetRating, targetAutomations, tags, hasMedia, now);
         // Explicit Add rather than post.Targets.Add(...): post is already tracked (loaded above), so
         // navigation fixup alone leaves these client-keyed entities Modified instead of Added: EF has
         // no other way to tell a manually-assigned Guid key apart from an existing row's.
@@ -246,7 +247,8 @@ public sealed class PostIntakeService(
 
     /// <summary>Builds one <see cref="PostTarget"/> per resolved destination, validating its per-submission options.</summary>
     /// <exception cref="ConnectorValidationException">
-    /// A target's options fail its platform's schema, or its platform requires tags and none are supplied.
+    /// A target's options fail its platform's schema, or its platform requires tags/media and none
+    /// are supplied.
     /// </exception>
     private List<PostTarget> BuildTargets(
         Guid postId,
@@ -256,6 +258,7 @@ public sealed class PostIntakeService(
         IReadOnlyDictionary<Guid, ContentRating>? targetRating,
         IReadOnlyDictionary<Guid, IReadOnlyList<AutomationRequest>>? targetAutomations,
         IReadOnlyList<string>? tags,
+        bool hasMedia,
         DateTimeOffset now)
     {
         var hasTags = (tags ?? []).Count > 0;
@@ -267,6 +270,9 @@ public sealed class PostIntakeService(
             var requiresTags = descriptor?.RequiresTags ?? false;
             if (requiresTags && !hasTags)
                 throw new ConnectorValidationException($"{destination.DisplayName}: at least one tag is required for this platform.");
+
+            if ((descriptor?.RequiresMedia ?? false) && !hasMedia)
+                throw new ConnectorValidationException($"{destination.DisplayName}: at least one media attachment is required for this platform.");
 
             // RequiresTags forces the toggle on regardless of what the client sent; otherwise the
             // author's per-target choice applies, falling back to the connector's own configured

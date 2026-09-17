@@ -87,7 +87,14 @@ public sealed record ConnectorDescriptor(
     /// (see <see cref="IDeleteConnector"/>). Drives whether post automation (issue #323) offers
     /// "delete after X hours" for this platform.
     /// </summary>
-    bool SupportsDelete = false)
+    bool SupportsDelete = false,
+    /// <summary>
+    /// True when a delivery to this platform must include at least one media attachment (Instagram:
+    /// the Content Publishing API has no text-only post type). Enforced the same way as
+    /// <see cref="RequiresTags"/>: <c>PostIntakeService</c> rejects a target with no media attached
+    /// at intake, and the compose form surfaces it before the post is even queued.
+    /// </summary>
+    bool RequiresMedia = false)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;
@@ -111,6 +118,19 @@ public interface IRepostConnector
 public interface IDeleteConnector
 {
     Task<bool> DeleteRemoteAsync(ConnectorContext context, string externalId, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Optional capability for connectors whose access token needs periodic renewal ahead of a hard
+/// expiry (Instagram's long-lived token: refreshable once ≥24h old, must be refreshed within 60
+/// days or the connector stops working). Driven by a background sweeper
+/// (<c>ConnectorTokenRefreshSweeper</c> in PostyFox.Infrastructure), not user-initiated.
+/// </summary>
+public interface IRefreshableConnector
+{
+    /// <summary>Refreshes the stored token; returns the new secret JSON to persist, or null if the
+    /// refresh failed (the caller leaves the existing secret in place and the user must reconnect).</summary>
+    Task<string?> RefreshTokenAsync(ConnectorContext context, CancellationToken ct = default);
 }
 
 /// <summary>Result of beginning an OAuth authorization for a connector.</summary>

@@ -1,4 +1,5 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
  * Fetches media bytes from an object store.
@@ -8,6 +9,21 @@ import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 export interface MediaStore {
   /** Fetch the raw bytes for a media reference. */
   fetch(container: string, key: string): Promise<Buffer>;
+  /**
+   * Writes bytes to the store (Instagram's Content Publishing API fetches media by URL rather than
+   * accepting a direct upload, so normalized bytes must be staged here first — see
+   * {@link presignedGetUrl}).
+   */
+  put(container: string, key: string, bytes: Buffer, contentType: string): Promise<void>;
+  /**
+   * A time-limited public GET URL for a stored object. Only meaningful when the underlying store is
+   * actually internet-reachable (true for real S3 in a deployed stack; **not** true for a local
+   * MinIO dev stack reachable only inside the Docker network — a known local-dev limitation for any
+   * connector that needs it, currently just Instagram).
+   */
+  presignedGetUrl(container: string, key: string, expiresInSeconds: number): Promise<string>;
+  /** Deletes a staged object once the platform has finished fetching it. */
+  delete(container: string, key: string): Promise<void>;
 }
 
 export interface S3MediaStoreConfig {
@@ -56,6 +72,28 @@ export class S3MediaStore implements MediaStore {
     }
     const bytes = await response.Body.transformToByteArray();
     return Buffer.from(bytes);
+  }
+
+  async put(container: string, key: string, bytes: Buffer, contentType: string): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: `${container}/${key}`,
+        Body: bytes,
+        ContentType: contentType,
+      }),
+    );
+  }
+
+  async presignedGetUrl(container: string, key: string, expiresInSeconds: number): Promise<string> {
+    const command = new GetObjectCommand({ Bucket: this.bucket, Key: `${container}/${key}` });
+    return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+  }
+
+  async delete(container: string, key: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: `${container}/${key}` }),
+    );
   }
 }
 

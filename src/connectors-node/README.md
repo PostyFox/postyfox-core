@@ -8,6 +8,7 @@ are Node-only:
 - **Bluesky** via [`@atproto/api`](https://www.npmjs.com/package/@atproto/api)
 - **Tumblr** via [`tumblr.js`](https://www.npmjs.com/package/tumblr.js)
 - **FurAffinity** via its authenticated HTML forms
+- **Instagram** via the Instagram Content Publishing API (Business Login for Instagram)
 
 The service is intentionally small and holds no state: every request carries
 the credentials/config it needs.
@@ -48,8 +49,8 @@ If `INTERNAL_TOKEN` is not configured, all requests are allowed (dev only).
 
 ## HTTP contract
 
-`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, and the supported Fediverse platforms
-(case-insensitive). Unknown platforms
+`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Instagram`, and the supported Fediverse
+platforms (case-insensitive). Unknown platforms
 return `404 { "error": "unknown platform" }`.
 
 The **context object** used by every endpoint:
@@ -116,7 +117,21 @@ Body:
 > **normalizes them to the platform's limits** (see below), uploads them, and
 > applies `alt` as the image's alt text. Bluesky attaches up to 4 images as an
 > `app.bsky.embed.images` embed; Tumblr creates an NPF photo post. Text-only posts
-> are unaffected.
+> are unaffected — except Instagram, which has no text-only post type and rejects
+> a `deliver` call with empty `media` outright (see below).
+
+### `POST /connectors/:platform/refresh-token`
+
+Body: the context object. Only implemented by connectors whose token expires (currently just
+Instagram); returns `400 { "error": "refresh not supported" }` for any other platform.
+
+```json
+200 { "secretJson": "string (JSON) | null" }
+```
+
+`secretJson: null` means the platform declined the refresh (the caller keeps the existing secret
+and the user must reconnect); a thrown error still returns `502` like every other route. Driven by
+a background sweeper on the core side (`ConnectorTokenRefreshSweeper`), never a user action.
 
 ### Media normalization (mandatory core step)
 
@@ -151,6 +166,27 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   `{ "consumerKey": "", "consumerSecret": "" }`
 - `list-targets` returns the user's blogs as `{ id: blog.name, name: blog.title || blog.name }`.
 - `deliver` creates a text post and returns the post `id` and `post_url`.
+
+### Instagram
+
+- No `configJson` fields: Business Login for Instagram carries no per-account config, the connect
+  flow itself determines which IG business/creator account is linked.
+- `secretJson` → `{ "AccessToken": "", "IgUserId": "", "ExpiresAt": "2026-09-01T00:00:00Z" }`. The
+  token is long-lived (~60 days); `ExpiresAt` is what the core token-refresh sweeper reads to decide
+  when a refresh is due.
+- `operationalSecretJson` → Vault-sourced app credentials: `{ "appId": "", "appSecret": "" }`.
+- `list-targets` returns the single linked account as `{ id: IgUserId, name: "@username" }`
+  (Business Login tokens are scoped to one IG user).
+- `deliver` **requires at least one media item** — Instagram has no text-only post type — and
+  publishes via the create-container-then-publish flow: a single image/video container, or one
+  child container per item plus a parent `CAROUSEL` container for several. Video containers are
+  polled until Instagram finishes processing them before publish is attempted. Unlike every other
+  connector here, Instagram fetches media **by URL** rather than accepting a direct upload, so
+  normalized bytes are staged in the object store under a short-lived presigned URL
+  (`MediaStore.put` + `presignedGetUrl`) and deleted again once the container is created — this only
+  works when the object store is reachable from the public internet (not true for a local MinIO dev
+  stack).
+- `refresh` exchanges the still-valid token for a new one, resetting the 60-day expiry.
 
 ### FurAffinity
 

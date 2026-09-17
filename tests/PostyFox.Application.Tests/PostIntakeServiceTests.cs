@@ -328,6 +328,50 @@ public class PostIntakeServiceTests
     }
 
     [Fact]
+    public async Task Create_rejects_a_target_that_requires_media_when_none_supplied()
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "Instagram", Name = "Instagram", Platform = "Instagram", Enabled = true });
+        var connectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = connectorId, UserId = "u1", ServiceDefinitionId = "Instagram", DisplayName = "IG", Enabled = true
+        });
+        await db.SaveChangesAsync();
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("Instagram", requiresMedia: true)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        await Assert.ThrowsAsync<PostyFox.Application.Connectors.ConnectorValidationException>(() =>
+            svc.CreateAsync("u1", new CreatePostRequest(
+                [connectorId], "Title", "Body", null, null, null, null, null, null)));
+    }
+
+    [Fact]
+    public async Task Create_accepts_a_target_that_requires_media_when_media_supplied()
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "Instagram", Name = "Instagram", Platform = "Instagram", Enabled = true });
+        var connectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = connectorId, UserId = "u1", ServiceDefinitionId = "Instagram", DisplayName = "IG", Enabled = true
+        });
+        await db.SaveChangesAsync();
+        var bus = new FakeBus();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), bus, new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("Instagram", requiresMedia: true)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null,
+            [new MediaRef("media", "u1/abc/pic.png", "image/png")], null, null, null));
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
     public async Task Create_rejects_a_media_ref_outside_the_media_container()
     {
         using var db = TestDbContext.Create();

@@ -26,6 +26,13 @@ const automatableConnector: Connector = {
   },
 };
 
+const refreshableConnector: Connector = {
+  ...stubConnector,
+  async refresh() {
+    return { secretJson: '{"AccessToken":"new"}' };
+  },
+};
+
 function registryWith(platform: string): ConnectorRegistry {
   const r: ConnectorRegistry = new Map();
   r.set(platform, stubConnector);
@@ -168,6 +175,62 @@ test("POST /repost returns 502 when the connector throws", async () => {
     url: "/connectors/mastodon/repost",
     headers: { "x-internal-token": "secret" },
     payload: { context: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null }, externalId: "1" },
+  });
+  assert.equal(res.statusCode, 502);
+  await app.close();
+});
+
+test("POST /refresh-token forwards to the connector and returns its result", async () => {
+  const r: ConnectorRegistry = new Map([["instagram", refreshableConnector]]);
+  const app = buildServer({ internalToken: "secret", registry: r });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/instagram/refresh-token",
+    headers: { "x-internal-token": "secret" },
+    payload: { connectorId: "c", userId: "u", configJson: "{}", secretJson: '{"AccessToken":"old"}', targetId: null },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { secretJson: '{"AccessToken":"new"}' });
+  await app.close();
+});
+
+test("POST /refresh-token returns 400 when the connector doesn't support it", async () => {
+  const app = buildServer({ internalToken: "secret", registry: registryWith("bluesky") });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/bluesky/refresh-token",
+    headers: { "x-internal-token": "secret" },
+    payload: { connectorId: "c", userId: "u", configJson: "{}", secretJson: null, targetId: null },
+  });
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.json(), { error: "refresh not supported" });
+  await app.close();
+});
+
+test("POST /refresh-token returns null secretJson when the connector declines", async () => {
+  const declining: Connector = { ...stubConnector, async refresh() { return null; } };
+  const r: ConnectorRegistry = new Map([["instagram", declining]]);
+  const app = buildServer({ internalToken: "secret", registry: r });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/instagram/refresh-token",
+    headers: { "x-internal-token": "secret" },
+    payload: { connectorId: "c", userId: "u", configJson: "{}", secretJson: '{"AccessToken":"old"}', targetId: null },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { secretJson: null });
+  await app.close();
+});
+
+test("POST /refresh-token returns 502 when the connector throws", async () => {
+  const throwing: Connector = { ...stubConnector, async refresh() { throw new Error("boom"); } };
+  const r: ConnectorRegistry = new Map([["instagram", throwing]]);
+  const app = buildServer({ internalToken: "secret", registry: r });
+  const res = await app.inject({
+    method: "POST",
+    url: "/connectors/instagram/refresh-token",
+    headers: { "x-internal-token": "secret" },
+    payload: { connectorId: "c", userId: "u", configJson: "{}", secretJson: '{"AccessToken":"old"}', targetId: null },
   });
   assert.equal(res.statusCode, 502);
   await app.close();

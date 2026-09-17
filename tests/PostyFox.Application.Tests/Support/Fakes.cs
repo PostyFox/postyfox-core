@@ -45,11 +45,12 @@ public sealed class FakeObjectStore : IObjectStore
 
 public sealed class FakeConnector(
     string platform, Func<RenderedPost, DeliveryResult>? deliver = null, bool supportsTags = true, bool requiresTags = false,
-    int? maxContentLength = null, bool supportsRepost = false, bool supportsDelete = false) : IConnector
+    int? maxContentLength = null, bool supportsRepost = false, bool supportsDelete = false, bool requiresMedia = false) : IConnector
 {
     public int DeliverCount { get; private set; }
     public ConnectorDescriptor Describe() => new(platform, platform, true, false, false, maxContentLength,
-        SupportsTags: supportsTags, RequiresTags: requiresTags, SupportsRepost: supportsRepost, SupportsDelete: supportsDelete);
+        SupportsTags: supportsTags, RequiresTags: requiresTags, SupportsRepost: supportsRepost, SupportsDelete: supportsDelete,
+        RequiresMedia: requiresMedia);
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
@@ -91,6 +92,27 @@ public sealed class FakeCookiePairingConnector(string platform, params string[] 
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
     public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
         => Task.FromResult(DeliveryResult.Ok("ext-1"));
+}
+
+/// <summary>A connector whose access token needs periodic renewal (see Instagram's long-lived token).</summary>
+public sealed class FakeRefreshableConnector(string platform, Func<ConnectorContext, string?>? refresh = null) : IConnector, IRefreshableConnector
+{
+    public int RefreshCount { get; private set; }
+    public ConnectorDescriptor Describe() => new(platform, platform, false, true, false, null, RequiresMedia: true);
+    public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
+    public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
+        => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
+    public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
+        => Task.FromResult(DeliveryResult.Ok("ext-1"));
+    public Task<string?> RefreshTokenAsync(ConnectorContext context, CancellationToken ct = default)
+    {
+        RefreshCount++;
+        // Note: refresh may legitimately return null (a declined refresh), so it must be
+        // distinguished from "no override supplied" rather than folded together with ??.
+        return Task.FromResult(refresh is not null
+            ? refresh(context)
+            : """{"AccessToken":"new","ExpiresAt":"2999-01-01T00:00:00Z"}""");
+    }
 }
 
 public sealed class FakeRegistry(params IConnector[] connectors) : IConnectorRegistry

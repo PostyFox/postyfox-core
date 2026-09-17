@@ -16,6 +16,15 @@ export const TUMBLR_SPEC: MediaSpec = {
   maxAttachments: 10,
 };
 
+// Meta's documented Content Publishing API limits: JPEG only for images (PNG/WebP are converted),
+// 8MB cap; video (Reels) up to 1GB/limited duration, MP4/MOV container. maxAttachments is the
+// carousel cap (2–10 items).
+export const INSTAGRAM_SPEC: MediaSpec = {
+  image: { maxWidth: 1440, maxHeight: 1800, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg"] },
+  video: { maxWidth: 1920, maxHeight: 1080, maxBytes: 1_073_741_824, maxDurationSeconds: 900, allowedMimeTypes: ["video/mp4"] },
+  maxAttachments: 10,
+};
+
 export const FURAFFINITY_SPEC: MediaSpec = {
   image: { maxBytes: 10_485_760, allowedMimeTypes: ["image/jpeg", "image/png", "image/gif"] },
   video: { maxBytes: 10_485_760, allowedMimeTypes: [] },
@@ -33,6 +42,7 @@ export const MEDIA_SPECS: Record<string, MediaSpec> = {
   bluesky: BLUESKY_SPEC,
   tumblr: TUMBLR_SPEC,
   furaffinity: FURAFFINITY_SPEC,
+  instagram: INSTAGRAM_SPEC,
 };
 
 /**

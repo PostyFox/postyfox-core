@@ -29,7 +29,7 @@ public sealed class ServiceCatalogService(IAppDbContext db, IConnectorRegistry c
         bool supportsTitle = false, supportsMedia = false, supportsThreads = false, supportsOAuth = false,
             supportsCookiePairing = false, supportsRating = false, requiresRating = false, supportsMultipleTargets = false,
             supportsTags = true, requiresTags = false, supportsContentWarning = false,
-            supportsRepost = false, supportsDelete = false;
+            supportsRepost = false, supportsDelete = false, requiresMedia = false;
         int? maxContentLength = null;
         string? postOptionsSchema = null;
         if (connectors.TryGet(s.Platform, out var connector))
@@ -50,6 +50,7 @@ public sealed class ServiceCatalogService(IAppDbContext db, IConnectorRegistry c
             supportsContentWarning = d.SupportsContentWarning;
             supportsRepost = d.SupportsRepost;
             supportsDelete = d.SupportsDelete;
+            requiresMedia = d.RequiresMedia;
         }
 
         return new ServiceDefinitionDto(
@@ -57,6 +58,6 @@ public sealed class ServiceCatalogService(IAppDbContext db, IConnectorRegistry c
             supportsTitle, supportsMedia, supportsThreads, maxContentLength, supportsOAuth,
             supportsCookiePairing, supportsRating, requiresRating, supportsTags, requiresTags,
             postOptionsSchema, supportsMultipleTargets, supportsContentWarning,
-            supportsRepost, supportsDelete);
+            supportsRepost, supportsDelete, requiresMedia);
     }
 }

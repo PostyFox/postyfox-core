@@ -140,6 +140,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     },
   );
 
+  app.post<{ Params: { platform: string }; Body: ConnectorContext }>(
+    "/connectors/:platform/refresh-token",
+    async (request, reply) => {
+      const platform = request.params.platform;
+      const connector = resolveConnector(registry, platform);
+      if (!connector) return reply.code(404).send({ error: "unknown platform" });
+      if (!connector.refresh) return reply.code(400).send({ error: "refresh not supported" });
+      try {
+        const result = await connector.refresh(request.body);
+        return result ?? { secretJson: null };
+      } catch (err) {
+        request.log.error({ err, platform }, "refresh-token failed");
+        return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+  );
+
   app.post<{
     Params: { platform: string };
     Body: { callbackUrl: string; configJson?: string; operationalSecretJson?: string | null };

@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.Configure<RabbitMqOptions>(config.GetSection(RabbitMqOptions.SectionName));
         services.Configure<PipelineOptions>(config.GetSection(PipelineOptions.SectionName));
         services.Configure<RetentionOptions>(config.GetSection(RetentionOptions.SectionName));
+        services.Configure<ConnectorRefreshOptions>(config.GetSection(ConnectorRefreshOptions.SectionName));
         services.Configure<MediaOptions>(config.GetSection(MediaOptions.SectionName));
 
         var conn = config.GetConnectionString("Postgres")
@@ -158,6 +159,21 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
                 sp.GetRequiredService<IServiceScopeFactory>()));
 
+        // Instagram: Business Login for Instagram (OAuth2), delegated to the Node connectors
+        // service. Requires at least one image/video (RequiresMedia — Instagram has no text-only
+        // post type); has no native tags field (hashtags are woven into the caption body); no
+        // rating/repost/delete support in this pass. Caption cap is Instagram's documented 2200
+        // characters.
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "Instagram",
+            new ConnectorDescriptor(
+                "Instagram", "Instagram", SupportsTitle: false, SupportsMedia: true, SupportsThreads: false,
+                MaxContentLength: 2200, SupportsOAuth: true, SupportsTags: false, RequiresMedia: true),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
+
         AddFediverse("Mastodon", "Mastodon", 500);
         AddFediverse("Pleroma", "Pleroma", 5000);
         AddFediverse("Akkoma", "Akkoma", 5000);
@@ -220,6 +236,7 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<RabbitMqSubscriber<DeliverTargetCommand>>();
         services.AddHostedService<RabbitMqSubscriber<ExecuteAutomationCommand>>();
         services.AddHostedService<PostRetentionSweeper>();
+        services.AddHostedService<ConnectorTokenRefreshSweeper>();
         services.AddScoped<PostSchedulerService>();
         services.AddHostedService<PostSchedulerSweeper>();
         services.AddHostedService<PostAutomationSweeper>();
