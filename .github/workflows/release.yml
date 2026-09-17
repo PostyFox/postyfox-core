@@ -57,6 +57,8 @@ jobs:
           minor_pattern: '/^feat(\(.+\))?:/'
           version_format: '${major}.${minor}.${patch}'
           search_commit_body: true
+          version_from_branch: true
+          debug: true
       - name: Resolve version + mode
         id: resolve
         env:

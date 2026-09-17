@@ -100,6 +100,14 @@ export interface Connector {
    * (issue #323's "delete after X hours"). `externalId` is whatever `deliver` returned.
    */
   deleteRemote?(ctx: ConnectorContext, externalId: string): Promise<DeleteResult>;
+  /**
+   * Present when the connector's access token needs periodic renewal ahead of a hard expiry
+   * (Instagram's long-lived token: refreshable once ≥24h old, must be refreshed within 60 days).
+   * Returns the new secret JSON to persist, or null if the stored token could not be refreshed
+   * (e.g. it was revoked — the caller leaves the existing secret in place and the user must
+   * reconnect).
+   */
+  refresh?(ctx: ConnectorContext): Promise<{ secretJson: string } | null>;
 }
 
 /** Result of beginning an OAuth1 authorization. */

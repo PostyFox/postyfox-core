@@ -50,7 +50,9 @@ public sealed record ServiceDefinitionDto(
     /// <summary>True when the platform can repost/reblog/boost an already-delivered post (see <see cref="Connectors.ConnectorDescriptor.SupportsRepost"/>).</summary>
     bool SupportsRepost = false,
     /// <summary>True when the platform can delete an already-delivered post (see <see cref="Connectors.ConnectorDescriptor.SupportsDelete"/>).</summary>
-    bool SupportsDelete = false);
+    bool SupportsDelete = false,
+    /// <summary>True when a delivery to this platform must include at least one media attachment (see <see cref="Connectors.ConnectorDescriptor.RequiresMedia"/>).</summary>
+    bool RequiresMedia = false);
 
 public sealed record UserConnectorDto(
     Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled,

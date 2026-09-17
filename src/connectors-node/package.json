@@ -1,7 +1,7 @@
 {
   "name": "connectors-node",
   "version": "1.0.0",
-  "description": "PostyFox Node delivery connectors for Bluesky, Tumblr, FurAffinity and Fediverse platforms.",
+  "description": "PostyFox Node delivery connectors for Bluesky, Tumblr, FurAffinity, Instagram and Fediverse platforms.",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -15,6 +15,7 @@
   "dependencies": {
     "@atproto/api": "^0.20.44",
     "@aws-sdk/client-s3": "^3.1083.0",
+    "@aws-sdk/s3-request-presigner": "^3.1083.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.80.0",
     "@opentelemetry/sdk-node": "^0.222.0",

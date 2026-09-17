@@ -61,6 +61,11 @@ public static class ServiceDefinitionSeeder
         } }
         """;
 
+    // Business Login for Instagram carries no per-account config (no instance URL/username to
+    // enter): the connect (OAuth) flow itself determines which Instagram business/creator account
+    // is linked, so there is nothing for the user to fill in here.
+    private const string InstagramConfigSchema = "{}";
+
     // FurAffinity's connector holds nothing but the account itself: it authenticates from a browser
     // session handed over by PostyFox Connect, and its category/species/gender/folder choices belong
     // to an individual submission, not the account. Those live on the connector descriptor's
@@ -92,6 +97,10 @@ public static class ServiceDefinitionSeeder
                 ConfigSchema = TumblrSchema, SecureConfigSchema = null },
         new() { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true,
                 ConfigSchema = FurAffinityConfigSchema, SecureConfigSchema = null },
+        // Instagram credentials come from the "Business Login for Instagram" OAuth flow
+        // (SupportsOAuth), not entered by hand, so there is no user-facing secure config schema.
+        new() { Id = "Instagram", Name = "Instagram", Platform = "Instagram", Enabled = true,
+                ConfigSchema = InstagramConfigSchema, SecureConfigSchema = null },
         // Fediverse platforms: credentials come from the OAuth/MiAuth "connect" flow (SupportsOAuth),
         // not entered by hand, so there is no user-facing secure config schema. All share one config
         // schema (just the instance URL); the connector auto-detects the server software at connect.

@@ -21,7 +21,7 @@ public sealed class HttpConnector(
     IHttpClientFactory httpFactory,
     IOptions<NodeConnectorsOptions> options,
     ILogger<HttpConnector> logger,
-    IServiceScopeFactory? scopeFactory = null) : IConnector, IOAuthConnector, ILimitsConnector, IRepostConnector, IDeleteConnector
+    IServiceScopeFactory? scopeFactory = null) : IConnector, IOAuthConnector, ILimitsConnector, IRepostConnector, IDeleteConnector, IRefreshableConnector
 {
     private readonly NodeConnectorsOptions _opts = options.Value;
 
@@ -147,6 +147,17 @@ public sealed class HttpConnector(
         var payload = new { context = await CtxAsync(context, ct), externalId };
         var res = await PostAsync("delete", payload, ct);
         return res is not null && res.Value.TryGetProperty("success", out var s) && s.GetBoolean();
+    }
+
+    /// <summary>
+    /// Refreshes the connector's stored token ahead of expiry (see <see cref="IRefreshableConnector"/>),
+    /// driven by <c>ConnectorTokenRefreshSweeper</c> rather than a user action.
+    /// </summary>
+    public async Task<string?> RefreshTokenAsync(ConnectorContext context, CancellationToken ct = default)
+    {
+        var res = await PostAsync("refresh-token", await CtxAsync(context, ct), ct);
+        if (res is null) return null;
+        return res.Value.TryGetProperty("secretJson", out var s) ? s.GetString() : null;
     }
 
     private async Task<object> CtxAsync(ConnectorContext c, CancellationToken ct) => new

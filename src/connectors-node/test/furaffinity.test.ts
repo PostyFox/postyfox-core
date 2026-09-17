@@ -74,6 +74,15 @@ async function imageBytes(): Promise<Buffer> {
   }).png().toBuffer();
 }
 
+/** The non-`fetch` MediaStore members, unused by FurAffinity but required by the interface. */
+const noopStoreExtras = {
+  async put() {},
+  async presignedGetUrl() {
+    return "https://example.test/staged";
+  },
+  async delete() {},
+};
+
 function connectorWith(
   session: FakeSession,
   mediaStore?: MediaStore,
@@ -81,7 +90,7 @@ function connectorWith(
 ): FurAffinityConnector {
   return new FurAffinityConnector({
     sessionFactory: async () => session,
-    mediaStore: mediaStore ?? { fetch: async () => imageBytes() },
+    mediaStore: mediaStore ?? { fetch: async () => imageBytes(), ...noopStoreExtras },
     minimumPostIntervalMs: 0,
     ...extra,
   });
@@ -148,6 +157,7 @@ test("furaffinity delivers through upload and finalize forms", async () => {
       fetched.push({ container, key });
       return imageBytes();
     },
+    ...noopStoreExtras,
   });
 
   const result = await connector.deliver(context, post);
@@ -226,6 +236,7 @@ test("furaffinity submits the author's chosen default when several images are at
       fetched.push({ container, key });
       return imageBytes();
     },
+    ...noopStoreExtras,
   });
 
   const multiImagePost: Post = {
@@ -275,6 +286,7 @@ test("furaffinity falls back to the first image when several are attached with n
       fetched.push({ container, key });
       return imageBytes();
     },
+    ...noopStoreExtras,
   });
 
   const multiImagePost: Post = {

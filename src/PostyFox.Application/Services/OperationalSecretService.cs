@@ -16,13 +16,17 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
     public const string TelegramApiHash = "TelegramApiHash";
     public const string TumblrConsumerKey = "TumblrConsumerKey";
     public const string TumblrConsumerSecret = "TumblrConsumerSecret";
+    public const string InstagramAppId = "InstagramAppId";
+    public const string InstagramAppSecret = "InstagramAppSecret";
 
     private static readonly IReadOnlyList<Definition> Definitions =
     [
         new(TelegramApiId, "Telegram", "API ID", "Telegram application API ID used by MTProto."),
         new(TelegramApiHash, "Telegram", "API hash", "Telegram application API hash used by MTProto."),
         new(TumblrConsumerKey, "Tumblr", "Consumer key", "Tumblr OAuth application consumer key."),
-        new(TumblrConsumerSecret, "Tumblr", "Consumer secret", "Tumblr OAuth application consumer secret.")
+        new(TumblrConsumerSecret, "Tumblr", "Consumer secret", "Tumblr OAuth application consumer secret."),
+        new(InstagramAppId, "Instagram", "App ID", "Meta app ID configured for Instagram API with Business Login."),
+        new(InstagramAppSecret, "Instagram", "App secret", "Meta app secret configured for Instagram API with Business Login.")
     ];
 
     public async Task<IReadOnlyList<OperationalSecretStatus>> ListAsync(CancellationToken ct = default)
@@ -59,13 +63,25 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
 
     public async Task<string?> ConnectorCredentialsJsonAsync(string platform, CancellationToken ct = default)
     {
-        if (!platform.Equals("Tumblr", StringComparison.OrdinalIgnoreCase)) return null;
+        if (platform.Equals("Tumblr", StringComparison.OrdinalIgnoreCase))
+        {
+            var values = await secrets.GetSecretsAsync([TumblrConsumerKey, TumblrConsumerSecret], ct);
+            values.TryGetValue(TumblrConsumerKey, out var key);
+            values.TryGetValue(TumblrConsumerSecret, out var secret);
+            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(secret)) return null;
+            return JsonSerializer.Serialize(new { consumerKey = key, consumerSecret = secret });
+        }
 
-        var values = await secrets.GetSecretsAsync([TumblrConsumerKey, TumblrConsumerSecret], ct);
-        values.TryGetValue(TumblrConsumerKey, out var key);
-        values.TryGetValue(TumblrConsumerSecret, out var secret);
-        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(secret)) return null;
-        return JsonSerializer.Serialize(new { consumerKey = key, consumerSecret = secret });
+        if (platform.Equals("Instagram", StringComparison.OrdinalIgnoreCase))
+        {
+            var values = await secrets.GetSecretsAsync([InstagramAppId, InstagramAppSecret], ct);
+            values.TryGetValue(InstagramAppId, out var appId);
+            values.TryGetValue(InstagramAppSecret, out var appSecret);
+            if (string.IsNullOrWhiteSpace(appId) || string.IsNullOrWhiteSpace(appSecret)) return null;
+            return JsonSerializer.Serialize(new { appId, appSecret });
+        }
+
+        return null;
     }
 
     private static Definition? Find(string key) =>

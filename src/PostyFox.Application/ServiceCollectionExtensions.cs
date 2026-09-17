@@ -37,6 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<MediaCopier>();
         services.AddScoped<PostPayloadCleaner>();
         services.AddScoped<PostRetentionService>();
+        services.AddScoped<ConnectorTokenRefreshService>();
 
         services.AddSingleton<Triggers.ITriggerSource, Triggers.GenericHmacTriggerSource>();
         services.AddSingleton<Triggers.ITriggerSourceRegistry, Triggers.TriggerSourceRegistry>();

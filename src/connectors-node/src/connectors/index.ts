@@ -2,6 +2,7 @@ import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import type { Connector } from "../types.js";
 import { BlueskyConnector } from "./bluesky.js";
 import { FurAffinityConnector } from "./furaffinity.js";
+import { InstagramConnector } from "./instagram.js";
 import { MegalodonConnector } from "./megalodon.js";
 import { TumblrConnector } from "./tumblr.js";
 
@@ -15,6 +16,7 @@ export function createDefaultRegistry(
   registry.set("bluesky", new BlueskyConnector(undefined, mediaStore));
   registry.set("tumblr", new TumblrConnector(undefined, mediaStore));
   registry.set("furaffinity", new FurAffinityConnector({ mediaStore }));
+  registry.set("instagram", new InstagramConnector(undefined, mediaStore));
 
   // Fediverse platforms served by megalodon. The SNS is auto-detected from the instance's nodeinfo
   // at connect time; the value below is only the fallback (and the driver a few forks share, e.g.
