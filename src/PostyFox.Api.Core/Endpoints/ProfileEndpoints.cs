@@ -34,6 +34,22 @@ public static class ProfileEndpoints
         .WithDescription("Returns the current user's API keys (secret is never returned; only a prefix).")
         .Produces<IReadOnlyList<ApiKeyDto>>();
 
+        var settings = app.MapGroup("/api/profile/settings")
+            .RequireAuthorization()
+            .WithTags("profile")
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        settings.MapGet("", async (ClaimsPrincipal user, UserSettingsService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetAsync(user.UserId()!, ct)))
+        .WithSummary("Get user settings")
+        .Produces<UserSettingsDto>();
+
+        settings.MapPut("", async (UserSettingsUpdateRequest body, ClaimsPrincipal user, UserSettingsService svc, CancellationToken ct) =>
+            Results.Ok(await svc.UpdateAsync(user.UserId()!, body, ct)))
+        .WithSummary("Update user settings")
+        .WithDescription("IncludeAdvertisingLine appends a \"Sent using PostyFox\" link to every post delivered for this user.")
+        .Produces<UserSettingsDto>();
+
         group.MapDelete("{id:guid}", async (Guid id, ClaimsPrincipal user, ApiKeyService svc, CancellationToken ct) =>
             await svc.RevokeAsync(user.UserId()!, id, ct) ? Results.NoContent() : Results.NotFound())
         .WithSummary("Revoke an API key")

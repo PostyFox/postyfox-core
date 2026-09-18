@@ -30,7 +30,13 @@ public sealed record RenderRequest(
     /// target on the post) this can (and typically does) differ per target. An unrecognized name
     /// resolves to an empty string, same as an unknown <c>{variable}</c>.
     /// </summary>
-    IReadOnlyDictionary<string, string>? TextTemplateValues = null);
+    IReadOnlyDictionary<string, string>? TextTemplateValues = null,
+    /// <summary>
+    /// Appends the "Sent using PostyFox" line (linking to postyfox.com) after the body and any
+    /// woven-in tags, in a form suited to <see cref="Platform"/>. The character-limit budget for
+    /// inline hashtags is reduced to leave room for it.
+    /// </summary>
+    bool IncludeAdvertisingLine = false);
 
 /// <summary>
 /// Renders template bodies: variable substitution, conditionals, and per-platform formatting.

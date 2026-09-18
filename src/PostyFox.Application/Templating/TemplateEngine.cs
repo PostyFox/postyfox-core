@@ -50,6 +50,9 @@ public sealed partial class TemplateEngine : ITemplateEngine
         var title = string.IsNullOrEmpty(rawTitle) ? null : Substitute(rawTitle, request.Variables);
         var tags = request.IncludeTags ? request.Tags : [];
 
+        var advertisingLine = request.IncludeAdvertisingLine ? AdvertisingLineFor(request.Platform) : null;
+        var advertisingCost = advertisingLine is null ? 0 : advertisingLine.Length + AdvertisingSeparator.Length;
+
         int tagsOmitted;
         IReadOnlyList<string> deliveredTags;
         string bodyWithTags;
@@ -67,12 +70,30 @@ public sealed partial class TemplateEngine : ITemplateEngine
             // No native tags field: tags can only reach this platform woven into the text, at an
             // author-placed {tags} token or, failing that, appended to the end.
             deliveredTags = [];
-            (bodyWithTags, tagsOmitted) = InterpolateTags(rawBody, request.Variables, tags, request.MaxContentLength);
+            (bodyWithTags, tagsOmitted) = InterpolateTags(
+                rawBody, request.Variables, tags, request.MaxContentLength - advertisingCost);
         }
+
+        if (advertisingLine is not null)
+            bodyWithTags = bodyWithTags.Length == 0 ? advertisingLine : bodyWithTags + AdvertisingSeparator + advertisingLine;
 
         var body = FormatForPlatform(request.Platform, bodyWithTags);
         return new RenderedPost(title, body, deliveredTags, request.Media, request.Rating, tagsOmitted);
     }
+
+    private const string AdvertisingSeparator = "\n\n";
+    private const string AdvertisingUrl = "https://postyfox.com";
+
+    /// <summary>
+    /// Telegram and Discord render markdown links (Telegram via <see cref="FormatForPlatform"/>); every
+    /// other platform receives the text as-is, so a bare URL (which they auto-link) beats literal
+    /// markdown syntax.
+    /// </summary>
+    private static string AdvertisingLineFor(string platform) => platform.ToLowerInvariant() switch
+    {
+        "telegram" or "discordwh" => $"Sent using [PostyFox]({AdvertisingUrl})",
+        _ => $"Sent using PostyFox {AdvertisingUrl}"
+    };
 
     /// <summary>
     /// Replaces every <c>{{tt:name}}</c> token with its resolved per-target value (already picked by

@@ -60,6 +60,11 @@ public sealed class GenerateTargetHandler(
 
         var textTemplateValues = await ResolveTextTemplatesAsync(post.UserId, target.ConnectorId, ct);
 
+        var includeAdvertisingLine = await db.Users
+            .Where(u => u.Id == post.UserId)
+            .Select(u => u.IncludeAdvertisingLine)
+            .FirstOrDefaultAsync(ct);
+
         var rendered = engine.Render(new RenderRequest(
             target.Platform,
             string.IsNullOrEmpty(post.Title) ? null : post.Title,
@@ -71,7 +76,8 @@ public sealed class GenerateTargetHandler(
             target.IncludeTags,
             supportsTags,
             maxContentLength,
-            textTemplateValues));
+            textTemplateValues,
+            includeAdvertisingLine));
 
         target.RenderedContentJson = Json.Serialize(rendered);
         target.Status = TargetStatus.Ready;

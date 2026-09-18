@@ -152,6 +152,10 @@ public sealed record TextTemplateUpsertRequest(
     string DefaultValue,
     IReadOnlyDictionary<Guid, string> ConnectorValues);
 
+public sealed record UserSettingsDto(bool IncludeAdvertisingLine);
+
+public sealed record UserSettingsUpdateRequest(bool IncludeAdvertisingLine);
+
 public sealed record CreatePostRequest(
     /// <summary>
     /// Ids of the destinations to deliver to. Each entry is either a <see cref="Domain.Entities.UserConnector"/> id
