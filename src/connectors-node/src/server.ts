@@ -5,6 +5,7 @@ import {
   resolveConnector,
   type ConnectorRegistry,
 } from "./connectors/index.js";
+import { cookiePairingDiagnostics } from "./diagnostics.js";
 import type { ConnectorContext, Post } from "./types.js";
 
 function safeEqual(a: string, b: string): boolean {
@@ -54,8 +55,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   app.post<{ Params: { platform: string }; Body: ConnectorContext }>(
     "/connectors/:platform/is-authenticated",
     async (request, reply) => {
-      const connector = resolveConnector(registry, request.params.platform);
+      const platform = request.params.platform;
+      const connector = resolveConnector(registry, platform);
       if (!connector) return reply.code(404).send({ error: "unknown platform" });
+      const diagnostics = cookiePairingDiagnostics(request.body.secretJson);
+      if (diagnostics) request.log.info({ platform, ...diagnostics }, "is-authenticated: cookie session");
       return connector.isAuthenticated(request.body);
     },
   );
@@ -63,8 +67,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   app.post<{ Params: { platform: string }; Body: ConnectorContext }>(
     "/connectors/:platform/list-targets",
     async (request, reply) => {
-      const connector = resolveConnector(registry, request.params.platform);
+      const platform = request.params.platform;
+      const connector = resolveConnector(registry, platform);
       if (!connector) return reply.code(404).send({ error: "unknown platform" });
+      const diagnostics = cookiePairingDiagnostics(request.body.secretJson);
+      if (diagnostics) request.log.info({ platform, ...diagnostics }, "list-targets: cookie session");
       return connector.listTargets(request.body);
     },
   );
@@ -86,7 +93,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       const connector = resolveConnector(registry, platform);
       if (!connector) return reply.code(404).send({ error: "unknown platform" });
       const { context, post } = request.body;
-      request.log.info({ platform, mediaCount: post.media.length }, "deliver: start");
+      const diagnostics = cookiePairingDiagnostics(context.secretJson);
+      request.log.info(
+        { platform, mediaCount: post.media.length, ...diagnostics },
+        "deliver: start",
+      );
       try {
         const result = await connector.deliver(context, post);
         if (result?.success) {
