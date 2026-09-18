@@ -50,3 +50,12 @@ JSON.stringify(
 Paste the result over that field's `options` array. Values are strings, and order is preserved as-is
 from the form. Removing an ID that posts already reference will make a "post again" of one of those
 fail validation: check `ConfigSchemaValidator`'s option check before dropping entries.
+
+## toyhouse-post-options.schema.json
+
+Same arrangement as FurAffinity's: these describe an individual image upload, so they live on the
+Toyhouse connector descriptor's `PostOptionsSchema`. `AuthorizedViewers`, `PublicViewers`, and
+`Watermark` are fixed option IDs from Toyhou.se's own upload form (unlikely to change)'s Toyhouse driver, not scraped).
+Images are attached to character pages rather than a standalone gallery, so `CharacterIds` is required and
+free-text for the same reason FurAffinity's `FolderIds` is: characters belong to an individual
+account, with no static list to mirror.

@@ -105,6 +105,10 @@ test("furaffinity getLimits reports the platform's fixed media caps", async () =
     supportedMimeTypes: ["image/jpeg", "image/png", "image/gif"],
     imageSizeLimit: 10_485_760,
     videoSizeLimit: 10_485_760,
+    imageMaxWidth: null,
+    imageMaxHeight: null,
+    videoMaxWidth: null,
+    videoMaxHeight: null,
   });
 });
 

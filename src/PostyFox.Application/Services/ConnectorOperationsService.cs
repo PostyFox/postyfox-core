@@ -55,26 +55,36 @@ public sealed class ConnectorOperationsService(
             return live;
 
         // In-process connectors (Discord, Telegram) don't implement ILimitsConnector but declare a
-        // MediaSpec on their descriptor. Expose its byte caps so the frontend can surface resize
-        // warnings before the user submits a post.
+        // MediaSpec on their descriptor. Expose its byte AND dimension caps so the frontend can
+        // surface resize warnings before the user submits a post — a small file can still be
+        // oversized on width/height alone (see MediaProcessing's image/video normalizers).
         var descriptor = connector.Describe();
         return new ConnectorLimits(
             descriptor.MaxContentLength,
             descriptor.MediaSpec?.MaxAttachments,
             descriptor.MediaSpec?.Image.AllowedMimeTypes,
             descriptor.MediaSpec?.Image.MaxBytes,
-            descriptor.MediaSpec?.Video.MaxBytes);
+            descriptor.MediaSpec?.Video.MaxBytes,
+            descriptor.MediaSpec?.Image.MaxWidth,
+            descriptor.MediaSpec?.Image.MaxHeight,
+            descriptor.MediaSpec?.Video.MaxWidth,
+            descriptor.MediaSpec?.Video.MaxHeight);
     }
 
     /// <summary>
-    /// For a given file (size and MIME type), reports per-connector whether the file exceeds the
-    /// platform's size limit and will therefore be resized before delivery, plus the platform's
-    /// attachment-count cap. Takes only the file's size and type, not its bytes, so the frontend can
-    /// call this the moment a file is selected — before uploading it — to surface resize / "too many
-    /// attachments" warnings ahead of the (potentially slow) upload itself.
+    /// For a given file (size, MIME type, and — for images — pixel dimensions), reports per-connector
+    /// whether the file exceeds the platform's size OR dimension limit and will therefore be resized
+    /// before delivery, plus the platform's attachment-count cap. A small, high-resolution image can
+    /// be well under a platform's byte cap yet still exceed its max width/height (see
+    /// MediaProcessing's image normalizer), so both checks matter; a caller with no dimensions (e.g. a
+    /// non-image file, or one it couldn't decode) simply skips the dimension check. Takes only the
+    /// file's size/type/dimensions, not its bytes, so the frontend can call this the moment a file is
+    /// selected — before uploading it — to surface resize / "too many attachments" warnings ahead of
+    /// the (potentially slow) upload itself.
     /// </summary>
     public async Task<IReadOnlyList<MediaCheckResultItem>> CheckMediaAsync(
-        string userId, IReadOnlyList<Guid> connectorIds, long fileSize, string mimeType, CancellationToken ct = default)
+        string userId, IReadOnlyList<Guid> connectorIds, long fileSize, string mimeType,
+        int? width = null, int? height = null, CancellationToken ct = default)
     {
         var result = new List<MediaCheckResultItem>(connectorIds.Count);
         foreach (var connectorId in connectorIds)
@@ -89,18 +99,27 @@ public sealed class ConnectorOperationsService(
             var isImage = mimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
             var isVideo = mimeType.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
 
-            var willResize =
+            var exceedsSize =
                 (isImage && limits.ImageSizeLimit is { } imgLimit && fileSize > imgLimit) ||
                 (isVideo && limits.VideoSizeLimit is { } vidLimit && fileSize > vidLimit);
+            var exceedsDimensions =
+                (isImage && width is { } iw && limits.ImageMaxWidth is { } imw && iw > imw) ||
+                (isImage && height is { } ih && limits.ImageMaxHeight is { } imh && ih > imh) ||
+                (isVideo && width is { } vw && limits.VideoMaxWidth is { } vmw && vw > vmw) ||
+                (isVideo && height is { } vh && limits.VideoMaxHeight is { } vmh && vh > vmh);
 
             result.Add(new MediaCheckResultItem(
                 connectorId,
                 uc.ServiceDefinition.Platform,
                 uc.DisplayName,
-                willResize,
+                exceedsSize || exceedsDimensions,
                 limits.ImageSizeLimit,
                 limits.VideoSizeLimit,
-                limits.MaxMediaAttachments));
+                limits.MaxMediaAttachments,
+                limits.ImageMaxWidth,
+                limits.ImageMaxHeight,
+                limits.VideoMaxWidth,
+                limits.VideoMaxHeight));
         }
         return result;
     }

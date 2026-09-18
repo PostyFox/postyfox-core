@@ -264,6 +264,10 @@ test("bluesky getLimits reports the platform's fixed media caps", async () => {
     supportedMimeTypes: ["image/jpeg", "image/png", "image/webp", "video/mp4"],
     imageSizeLimit: 976_560,
     videoSizeLimit: 52_428_800,
+    imageMaxWidth: 2000,
+    imageMaxHeight: 2000,
+    videoMaxWidth: 1920,
+    videoMaxHeight: 1080,
   });
 });
 

@@ -352,6 +352,10 @@ test("megalodon getLimits reports character, attachment, MIME and size caps", as
     supportedMimeTypes: ["image/jpeg", "image/png", "video/mp4"],
     imageSizeLimit: 10_485_760,
     videoSizeLimit: 41_943_040,
+    imageMaxWidth: 2048,
+    imageMaxHeight: 2048,
+    videoMaxWidth: 1920,
+    videoMaxHeight: 1080,
   });
 });
 
@@ -369,6 +373,13 @@ test("megalodon getLimits returns nulls when the instance omits limits", async (
     supportedMimeTypes: null,
     imageSizeLimit: null,
     videoSizeLimit: null,
+    // Unlike the byte/mime caps above, width/height are never instance-reported (Mastodon-family
+    // servers expose a total-pixel "matrix limit" instead): the static Fediverse baseline is reported
+    // unconditionally, since that's what mergeLiveLimits actually enforces at delivery either way.
+    imageMaxWidth: 2048,
+    imageMaxHeight: 2048,
+    videoMaxWidth: 1920,
+    videoMaxHeight: 1080,
   });
 });
 
@@ -407,6 +418,10 @@ test("megalodon getLimits bypasses Pixelfed's null contact-account converter", a
     supportedMimeTypes: ["image/jpeg", "image/png"],
     imageSizeLimit: 15_000_000,
     videoSizeLimit: 100_000_000,
+    imageMaxWidth: 2048,
+    imageMaxHeight: 2048,
+    videoMaxWidth: 1920,
+    videoMaxHeight: 1080,
   });
 });
 

@@ -5,6 +5,7 @@ import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { normalizeMedia } from "../media/normalize.js";
 import { FURAFFINITY_SPEC, limitsFromSpec } from "../media/specs.js";
+import { throwIfCloudflareChallenge } from "../scraping/cloudflare.js";
 import {
   CookieScraperSession,
   type ScraperResponse,
@@ -37,6 +38,7 @@ interface FurAffinityConfig {
 
 interface FurAffinitySecret {
   CookieHeader?: string;
+  UserAgent?: string;
 }
 
 interface LoginInfo {
@@ -44,7 +46,10 @@ interface LoginInfo {
   username?: string;
 }
 
-export type FurAffinitySessionFactory = (cookieHeader: string) => Promise<ScraperSession>;
+export type FurAffinitySessionFactory = (
+  cookieHeader: string,
+  userAgent?: string,
+) => Promise<ScraperSession>;
 
 export interface FurAffinityConnectorOptions {
   mediaStore?: MediaStore;
@@ -68,7 +73,7 @@ export class FurAffinityConnector implements Connector {
     this.mediaStore = options.mediaStore ?? mediaStoreFromEnv();
     this.sessionFactory =
       options.sessionFactory ??
-      ((cookieHeader) => CookieScraperSession.create(BASE_URL, cookieHeader));
+      ((cookieHeader, userAgent) => CookieScraperSession.create(BASE_URL, cookieHeader, { userAgent }));
     this.minimumPostIntervalMs = options.minimumPostIntervalMs ?? MINIMUM_POST_INTERVAL_MS;
     this.sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
     this.now = options.now ?? Date.now;
@@ -252,7 +257,7 @@ export class FurAffinityConnector implements Connector {
       throw new Error("invalid FurAffinity secret JSON");
     }
     if (!secret.CookieHeader?.trim()) throw new Error("missing FurAffinity CookieHeader in secret");
-    return this.sessionFactory(secret.CookieHeader);
+    return this.sessionFactory(secret.CookieHeader, secret.UserAgent);
   }
 
   private parseConfig(ctx: ConnectorContext): FurAffinityConfig {
@@ -266,7 +271,6 @@ export class FurAffinityConnector implements Connector {
   private async checkLogin(session: ScraperSession): Promise<LoginInfo> {
     const response = await session.request("/controls/submissions");
     this.requireSuccess(response, "check login");
-    this.throwCloudflareError(response);
     if (!response.body.includes("logout-link")) return { authenticated: false };
     const username = parse(response.body)
       .querySelector(".loggedin_user_avatar")
@@ -276,19 +280,9 @@ export class FurAffinityConnector implements Connector {
   }
 
   private requireSuccess(response: ScraperResponse, operation: string): void {
-    this.throwCloudflareError(response);
+    throwIfCloudflareChallenge(response, "FurAffinity");
     if (response.status < 200 || response.status >= 400)
       throw new Error(`FurAffinity ${operation} failed with HTTP ${response.status}`);
-  }
-
-  private throwCloudflareError(response: ScraperResponse): void {
-    const mitigated = response.headers.get("cf-mitigated")?.toLowerCase() === "challenge";
-    const challengePage =
-      /<title[^>]*>\s*just a moment(?:\.\.\.)?\s*<\/title>/i.test(response.body) ||
-      /\/cdn-cgi\/challenge-platform\//i.test(response.body) ||
-      /window\._cf_chl_opt/i.test(response.body);
-    if (mitigated || challengePage)
-      throw new Error("FurAffinity requires a Cloudflare challenge; refresh the imported session cookies in a browser");
   }
 
   private throwPageError(body: string): void {

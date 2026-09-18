@@ -81,6 +81,10 @@ test("tumblr getLimits reports the platform's fixed media caps", async () => {
     supportedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4"],
     imageSizeLimit: 20_971_520,
     videoSizeLimit: 524_288_000,
+    imageMaxWidth: 2560,
+    imageMaxHeight: 2560,
+    videoMaxWidth: 1920,
+    videoMaxHeight: 1080,
   });
 });
 

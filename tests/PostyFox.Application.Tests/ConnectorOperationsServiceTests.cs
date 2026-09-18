@@ -158,6 +158,64 @@ public class ConnectorOperationsServiceTests
         Assert.Equal(4, results[0].MaxMediaAttachments);
     }
 
+    /// <summary>
+    /// A file well under the byte cap can still exceed the connector's max width/height and get
+    /// resized at delivery regardless (see MediaProcessing's image normalizer) — the pre-flight check
+    /// must catch that case too, not just an oversized byte count.
+    /// </summary>
+    [Fact]
+    public async Task CheckMedia_flags_small_but_oversized_dimension_image_as_will_resize()
+    {
+        using var db = TestDbContext.Create();
+        var spec = new MediaSpec(
+            new ImageSpec(2000, 2000, 10_000_000, []),
+            new VideoSpec(null, null, null, null, []));
+        var id = await SeedAsync(db, "Platform7", "{}");
+        var svc = New(db, new FakeConnectorWithMediaSpec("Platform7", spec));
+
+        var results = await svc.CheckMediaAsync(
+            "u1", [id], fileSize: 200_000, mimeType: "image/png", width: 6000, height: 4000);
+
+        Assert.Single(results);
+        Assert.True(results[0].WillResize);
+        Assert.Equal(2000, results[0].ImageMaxWidth);
+        Assert.Equal(2000, results[0].ImageMaxHeight);
+    }
+
+    [Fact]
+    public async Task CheckMedia_does_not_flag_image_within_dimension_limits()
+    {
+        using var db = TestDbContext.Create();
+        var spec = new MediaSpec(
+            new ImageSpec(2000, 2000, 10_000_000, []),
+            new VideoSpec(null, null, null, null, []));
+        var id = await SeedAsync(db, "Platform8", "{}");
+        var svc = New(db, new FakeConnectorWithMediaSpec("Platform8", spec));
+
+        var results = await svc.CheckMediaAsync(
+            "u1", [id], fileSize: 200_000, mimeType: "image/png", width: 1200, height: 800);
+
+        Assert.Single(results);
+        Assert.False(results[0].WillResize);
+    }
+
+    /// <summary>A caller with no decoded dimensions (non-image, or one it couldn't decode) skips the dimension check entirely.</summary>
+    [Fact]
+    public async Task CheckMedia_skips_dimension_check_without_reported_dimensions()
+    {
+        using var db = TestDbContext.Create();
+        var spec = new MediaSpec(
+            new ImageSpec(2000, 2000, 10_000_000, []),
+            new VideoSpec(null, null, null, null, []));
+        var id = await SeedAsync(db, "Platform9", "{}");
+        var svc = New(db, new FakeConnectorWithMediaSpec("Platform9", spec));
+
+        var results = await svc.CheckMediaAsync("u1", [id], fileSize: 200_000, mimeType: "image/png");
+
+        Assert.Single(results);
+        Assert.False(results[0].WillResize);
+    }
+
     [Fact]
     public async Task CheckMedia_skips_unknown_connector_ids()
     {

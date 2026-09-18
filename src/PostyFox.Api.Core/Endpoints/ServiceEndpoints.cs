@@ -111,9 +111,11 @@ public static class ServiceEndpoints
         .Produces(StatusCodes.Status404NotFound);
 
         connectors.MapPost("media-check", async (MediaCheckRequest body, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
-            Results.Ok(await svc.CheckMediaAsync(user.UserId()!, body.ConnectorIds ?? [], body.FileSize, body.MimeType ?? "", ct)))
+            Results.Ok(await svc.CheckMediaAsync(
+                user.UserId()!, body.ConnectorIds ?? [], body.FileSize, body.MimeType ?? "",
+                body.Width, body.Height, ct)))
         .WithSummary("Check media file compatibility across connectors")
-        .WithDescription("Given a file's size and MIME type, returns per-connector analysis: whether the file exceeds the platform's size cap and will be resized/transcoded before delivery. Use this to surface 'file too large, will be resized' warnings in the compose UI before submitting a post.")
+        .WithDescription("Given a file's size, MIME type, and (for images) pixel dimensions, returns per-connector analysis: whether the file exceeds the platform's size or dimension cap and will be resized/transcoded before delivery. Use this to surface 'file too large, will be resized' warnings in the compose UI before submitting a post.")
         .Produces<IReadOnlyList<MediaCheckResultItem>>();
 
         connectors.MapPost("{id:guid}/telegram/login", async (Guid id, TelegramLoginBody body, ClaimsPrincipal user, ConnectorOperationsService svc, CancellationToken ct) =>
@@ -154,7 +156,7 @@ public static class ServiceEndpoints
             CancellationToken ct) =>
         {
             var result = await svc.PairAsync(
-                user.UserId()!, body.Platform, body.ConnectorId, body.Cookies, ct);
+                user.UserId()!, body.Platform, body.ConnectorId, body.Cookies, body.UserAgent, ct);
             return result.Outcome switch
             {
                 ConnectorCookiePairOutcome.Connected =>
@@ -231,7 +233,7 @@ public static class ServiceEndpoints
         {
             response.Headers.AccessControlAllowOrigin = "*";
             return
-            await svc.CompleteAsync(body.PairingToken ?? "", body.Cookies, ct) switch
+            await svc.CompleteAsync(body.PairingToken ?? "", body.Cookies, body.UserAgent, ct) switch
             {
                 ConnectorCookiePairingOutcome.Completed => Results.NoContent(),
                 ConnectorCookiePairingOutcome.InvalidCookies =>
@@ -293,7 +295,13 @@ public static class ServiceEndpoints
     public sealed record TelegramLoginBody(string? Value);
     public sealed record CookiePairingCompleteBody(
         string? PairingToken,
-        IReadOnlyDictionary<string, string>? Cookies);
+        IReadOnlyDictionary<string, string>? Cookies,
+        /// <summary>
+        /// The pairing browser's own User-Agent (<c>navigator.userAgent</c>), so server-side requests
+        /// replaying these cookies match the identity Cloudflare (and similar bot checks) associated
+        /// with the challenge that was solved to obtain them. Optional for older clients.
+        /// </summary>
+        string? UserAgent = null);
 
     /// <summary>
     /// Direct pairing from a browser client holding the user's PostyFox session. Identify the target
@@ -303,5 +311,7 @@ public static class ServiceEndpoints
     public sealed record CookiePairingRequest(
         string? Platform,
         Guid? ConnectorId,
-        IReadOnlyDictionary<string, string>? Cookies);
+        IReadOnlyDictionary<string, string>? Cookies,
+        /// <summary>The pairing browser's own User-Agent; see <see cref="CookiePairingCompleteBody"/>.</summary>
+        string? UserAgent = null);
 }

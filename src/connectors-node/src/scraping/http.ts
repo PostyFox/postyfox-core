@@ -28,6 +28,8 @@ export type FetchLike = (input: string | URL | Request, init?: RequestInit) => P
  * Cookie-aware HTTP session for form-driven websites. The origin is fixed at construction time so
  * connector-controlled paths cannot become an SSRF escape hatch.
  */
+const FALLBACK_USER_AGENT = "Mozilla/5.0 (compatible; PostyFox/1.0; +http://docs.postyfox.com)";
+
 export class CookieScraperSession implements ScraperSession {
   private readonly origin: string;
   private readonly jar = new CookieJar();
@@ -37,6 +39,7 @@ export class CookieScraperSession implements ScraperSession {
     private readonly fetchImpl: FetchLike,
     private readonly timeoutMs: number,
     private readonly maxResponseBytes: number,
+    private readonly userAgent: string,
   ) {
     this.origin = baseUrl.origin;
   }
@@ -48,6 +51,13 @@ export class CookieScraperSession implements ScraperSession {
       fetch?: FetchLike;
       timeoutMs?: number;
       maxResponseBytes?: number;
+      /**
+       * The browser's own User-Agent from whichever session solved a Cloudflare-style challenge to
+       * obtain these cookies. Falls back to a self-identifying PostyFox UA when absent (cookies paired
+       * before this was captured, or a site that needs no challenge) — but a mismatched UA is the most
+       * common reason a previously-cleared challenge re-triggers on every subsequent request.
+       */
+      userAgent?: string;
     } = {},
   ): Promise<CookieScraperSession> {
     const session = new CookieScraperSession(
@@ -55,6 +65,7 @@ export class CookieScraperSession implements ScraperSession {
       options.fetch ?? fetch,
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES,
+      options.userAgent?.trim() || FALLBACK_USER_AGENT,
     );
     await session.importCookieHeader(cookieHeader);
     return session;
@@ -72,7 +83,7 @@ export class CookieScraperSession implements ScraperSession {
       const cookies = await this.jar.getCookieString(url.toString());
       if (cookies) headers.set("cookie", cookies);
       else headers.delete("cookie");
-      headers.set("user-agent", "Mozilla/5.0 (compatible; PostyFox/1.0; +http://docs.postyfox.com)"); // We might need to extend this to allow capture and injection of a users UA from PostyConnect
+      headers.set("user-agent", this.userAgent);
 
       response = await this.fetchImpl(url, {
         method,

@@ -73,6 +73,16 @@ export interface ConnectorLimits {
   imageSizeLimit: number | null;
   /** Max video (and audio) file size in bytes; null means "not reported / no cap". */
   videoSizeLimit: number | null;
+  /**
+   * Max image pixel dimensions; null means "not reported / no cap". A file well under
+   * `imageSizeLimit` can still exceed these and get resized at delivery (see media/image.ts), so a
+   * media pre-flight check needs both.
+   */
+  imageMaxWidth: number | null;
+  imageMaxHeight: number | null;
+  /** Max video pixel dimensions; null means "not reported / no cap". */
+  videoMaxWidth: number | null;
+  videoMaxHeight: number | null;
 }
 
 /** Result of deleting an already-delivered post from its platform. */

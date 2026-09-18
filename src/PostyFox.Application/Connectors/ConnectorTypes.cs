@@ -8,10 +8,20 @@ namespace PostyFox.Application.Connectors;
 /// Declaring this server-side (rather than a bare capability flag) keeps site-specific knowledge out
 /// of the extension, so a newly supported site needs no extension release.
 /// </summary>
+/// <param name="CookieNames">
+/// Must all be present or pairing fails outright (<see cref="ConnectorCookiePairOutcome.InvalidCookies"/>).
+/// Reserve this for cookies that exist whenever the user is logged in.
+/// </param>
+/// <param name="OptionalCookieNames">
+/// Collected and stored when present, never required. For a value like a Cloudflare
+/// <c>cf_clearance</c> token that only exists after the browser has solved a challenge recently:
+/// gating pairing on it would break every user who hasn't been challenged lately.
+/// </param>
 public sealed record CookiePairingSpec(
     string SiteUrl,
     string LoginUrl,
-    IReadOnlyList<string> CookieNames);
+    IReadOnlyList<string> CookieNames,
+    IReadOnlyList<string> OptionalCookieNames);
 
 /// <summary>Describes a connector's capabilities and identity.</summary>
 public sealed record ConnectorDescriptor(
@@ -160,14 +170,21 @@ public sealed record ConnectorTarget(string Id, string Name);
 /// <summary>
 /// Live, per-connector-instance limits. Fediverse instances each configure their own caps, so these
 /// are read from the instance rather than assumed per platform. Null means "not reported".
-/// <see cref="ImageSizeLimit"/> / <see cref="VideoSizeLimit"/> are in bytes.
+/// <see cref="ImageSizeLimit"/> / <see cref="VideoSizeLimit"/> are in bytes;
+/// <see cref="ImageMaxWidth"/>/<see cref="ImageMaxHeight"/>/<see cref="VideoMaxWidth"/>/
+/// <see cref="VideoMaxHeight"/> are in pixels. A file within the byte cap can still exceed the
+/// dimension cap (a small, high-resolution image) and get resized regardless — both must be checked.
 /// </summary>
 public sealed record ConnectorLimits(
     int? MaxContentLength,
     int? MaxMediaAttachments,
     IReadOnlyList<string>? SupportedMimeTypes = null,
     long? ImageSizeLimit = null,
-    long? VideoSizeLimit = null);
+    long? VideoSizeLimit = null,
+    int? ImageMaxWidth = null,
+    int? ImageMaxHeight = null,
+    int? VideoMaxWidth = null,
+    int? VideoMaxHeight = null);
 
 /// <summary>
 /// Optional capability for connectors that can report live per-instance limits (e.g. Fediverse

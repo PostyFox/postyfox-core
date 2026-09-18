@@ -4,6 +4,7 @@ import { BlueskyConnector } from "./bluesky.js";
 import { FurAffinityConnector } from "./furaffinity.js";
 import { InstagramConnector } from "./instagram.js";
 import { MegalodonConnector } from "./megalodon.js";
+import { ToyhouseConnector } from "./toyhouse.js";
 import { TumblrConnector } from "./tumblr.js";
 
 /** Registry of connectors keyed by lower-cased platform name. */
@@ -16,6 +17,7 @@ export function createDefaultRegistry(
   registry.set("bluesky", new BlueskyConnector(undefined, mediaStore));
   registry.set("tumblr", new TumblrConnector(undefined, mediaStore));
   registry.set("furaffinity", new FurAffinityConnector({ mediaStore }));
+  registry.set("toyhouse", new ToyhouseConnector({ mediaStore }));
   registry.set("instagram", new InstagramConnector(undefined, mediaStore));
 
   // Fediverse platforms served by megalodon. The SNS is auto-detected from the instance's nodeinfo

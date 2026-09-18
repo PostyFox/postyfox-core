@@ -172,9 +172,10 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
         var targets = await client.GetFromJsonAsync<List<CookiePairingTargetDto>>(
             "/api/connectors/cookie-pairing/targets");
 
-        var target = Assert.Single(targets!);
-        Assert.Equal("FurAffinity", target.Platform);
-        Assert.Null(target.ConnectorId); // nothing configured yet: pairing will create it
+        // Two cookie-authenticated platforms are registered (FurAffinity, Toyhouse); each still gets
+        // no connector yet since nothing is configured.
+        Assert.All(targets!, t => Assert.Null(t.ConnectorId));
+        var target = Assert.Single(targets!, t => t.Platform == "FurAffinity");
         Assert.Equal(["a", "b"], target.CookieNames);
         Assert.Equal("https://www.furaffinity.net/", target.SiteUrl);
         Assert.Equal("https://www.furaffinity.net/login", target.LoginUrl);
@@ -199,7 +200,10 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
 
         var targets = await client.GetFromJsonAsync<List<CookiePairingTargetDto>>(
             "/api/connectors/cookie-pairing/targets");
-        Assert.Equal(created.Id, Assert.Single(targets!).ConnectorId);
+        var furAffinity = Assert.Single(targets!, t => t.Platform == "FurAffinity");
+        Assert.Equal(created.Id, furAffinity.ConnectorId);
+        // Toyhouse is unaffected: pairing one cookie-authenticated platform creates only its connector.
+        Assert.Null(Assert.Single(targets!, t => t.Platform == "Toyhouse").ConnectorId);
     }
 
     [Fact]
@@ -245,9 +249,10 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var sites = await response.Content.ReadFromJsonAsync<List<CookiePairingTargetDto>>();
-        var site = Assert.Single(sites!);
-        Assert.Equal("FurAffinity", site.Platform);
+        var site = Assert.Single(sites!, s => s.Platform == "FurAffinity");
         Assert.Equal(["a", "b"], site.CookieNames);
         Assert.Null(site.ConnectorId);
+        // Toyhouse is the other cookie-authenticated platform this deployment supports anonymously.
+        Assert.Contains(sites!, s => s.Platform == "Toyhouse");
     }
 }

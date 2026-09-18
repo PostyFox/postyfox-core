@@ -39,10 +39,14 @@ public sealed class HttpConnector(
         int? att = r.TryGetProperty("maxMediaAttachments", out var a) && a.ValueKind == JsonValueKind.Number ? a.GetInt32() : null;
         long? img = r.TryGetProperty("imageSizeLimit", out var i) && i.ValueKind == JsonValueKind.Number ? i.GetInt64() : null;
         long? vid = r.TryGetProperty("videoSizeLimit", out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : null;
+        int? imgW = r.TryGetProperty("imageMaxWidth", out var iw) && iw.ValueKind == JsonValueKind.Number ? iw.GetInt32() : null;
+        int? imgH = r.TryGetProperty("imageMaxHeight", out var ih) && ih.ValueKind == JsonValueKind.Number ? ih.GetInt32() : null;
+        int? vidW = r.TryGetProperty("videoMaxWidth", out var vw) && vw.ValueKind == JsonValueKind.Number ? vw.GetInt32() : null;
+        int? vidH = r.TryGetProperty("videoMaxHeight", out var vh) && vh.ValueKind == JsonValueKind.Number ? vh.GetInt32() : null;
         IReadOnlyList<string>? mimes = null;
         if (r.TryGetProperty("supportedMimeTypes", out var t) && t.ValueKind == JsonValueKind.Array)
             mimes = t.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!).ToList();
-        return new ConnectorLimits(max, att, mimes, img, vid);
+        return new ConnectorLimits(max, att, mimes, img, vid, imgW, imgH, vidW, vidH);
     }
 
     public async Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, string? configJson, CancellationToken ct = default)

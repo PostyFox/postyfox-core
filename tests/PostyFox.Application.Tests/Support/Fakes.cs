@@ -82,11 +82,15 @@ public sealed class FakeMultiTargetConnector(string platform) : IConnector
 /// <summary>A connector that authenticates from a handed-over website session (see FurAffinity).</summary>
 public sealed class FakeCookiePairingConnector(string platform, params string[] cookieNames) : IConnector
 {
+    /// <summary>Mutable so a test can opt a fake platform into optional (e.g. cf_clearance-style) cookies.</summary>
+    public string[] OptionalCookieNames { get; init; } = [];
+
     public ConnectorDescriptor Describe() => new(platform, platform, true, true, false, null,
         CookiePairing: new CookiePairingSpec(
             $"https://{platform.ToLowerInvariant()}.test/",
             $"https://{platform.ToLowerInvariant()}.test/login",
-            cookieNames));
+            cookieNames,
+            OptionalCookieNames));
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);

@@ -106,6 +106,10 @@ test("instagram getLimits reports the platform's fixed media caps", async () => 
     supportedMimeTypes: ["image/jpeg", "video/mp4"],
     imageSizeLimit: 8_388_608,
     videoSizeLimit: 1_073_741_824,
+    imageMaxWidth: 1440,
+    imageMaxHeight: 1800,
+    videoMaxWidth: 1920,
+    videoMaxHeight: 1080,
   });
 });
 

@@ -8,6 +8,7 @@ are Node-only:
 - **Bluesky** via [`@atproto/api`](https://www.npmjs.com/package/@atproto/api)
 - **Tumblr** via [`tumblr.js`](https://www.npmjs.com/package/tumblr.js)
 - **FurAffinity** via its authenticated HTML forms
+- **Toyhouse** via its authenticated HTML forms
 - **Instagram** via the Instagram Content Publishing API (Business Login for Instagram)
 
 The service is intentionally small and holds no state: every request carries
@@ -49,8 +50,8 @@ If `INTERNAL_TOKEN` is not configured, all requests are allowed (dev only).
 
 ## HTTP contract
 
-`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Instagram`, and the supported Fediverse
-platforms (case-insensitive). Unknown platforms
+`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `Instagram`, and the supported
+Fediverse platforms (case-insensitive). Unknown platforms
 return `404 { "error": "unknown platform" }`.
 
 The **context object** used by every endpoint:
@@ -200,6 +201,20 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   posting interval is coordinated in-process.
 - Automated login and Cloudflare challenge solving are intentionally not attempted. When a
   challenge or expired login is detected, refresh the imported browser cookies.
+
+### Toyhouse
+
+- `secretJson` → `{ "CookieHeader": "laravel_session=…", "UserAgent": "…" }`. The cookie header must
+  come from a currently logged-in `toyhou.se` browser session; the paired User-Agent is replayed on
+  every request since Toyhou.se's own Cloudflare challenge binds to it (see
+  `PostyFox.Application.Services.ConnectorCookiePairingService`).
+- Required `configJson` field: comma-separated `CharacterIds` (at least one) and `ArtistName`.
+  Optional: `OffSiteArtistUrl`, `AuthorizedViewers`, `PublicViewers`, `Watermark`, `ContentWarning`.
+- Image delivery currently accepts exactly one JPEG, PNG, or GIF up to 4MB, requires an explicit post
+  `rating`, and follows Toyhou.se's upload form (based on
+  [PostyBirb](https://github.com/mvdicarlo/postybirb)'s driver for the same site).
+- Automated login and Cloudflare challenge solving are intentionally not attempted, same as
+  FurAffinity: when a challenge or expired login is detected, refresh the imported browser cookies.
 
 ## Running
 

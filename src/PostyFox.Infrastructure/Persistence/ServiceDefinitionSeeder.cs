@@ -72,6 +72,11 @@ public static class ServiceDefinitionSeeder
     // PostOptionsSchema and are chosen in the compose form (see ConnectorDescriptor.PostOptionsSchema).
     private const string FurAffinityConfigSchema = "{}";
 
+    // Same reasoning as FurAffinity: authenticates from a handed-over browser session, and its
+    // character/artist/privacy choices belong to an individual upload, not the account. Those live on
+    // the connector descriptor's PostOptionsSchema.
+    private const string ToyhouseConfigSchema = "{}";
+
     // Shared by every Fediverse platform (Mastodon, Pleroma, Pixelfed, …). The connect (OAuth/MiAuth)
     // flow yields the access token, so there is no user-facing secure schema. https:// is added
     // automatically when the scheme is omitted.
@@ -97,6 +102,8 @@ public static class ServiceDefinitionSeeder
                 ConfigSchema = TumblrSchema, SecureConfigSchema = null },
         new() { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true,
                 ConfigSchema = FurAffinityConfigSchema, SecureConfigSchema = null },
+        new() { Id = "Toyhouse", Name = "Toyhouse", Platform = "Toyhouse", Enabled = true,
+                ConfigSchema = ToyhouseConfigSchema, SecureConfigSchema = null },
         // Instagram credentials come from the "Business Login for Instagram" OAuth flow
         // (SupportsOAuth), not entered by hand, so there is no user-facing secure config schema.
         new() { Id = "Instagram", Name = "Instagram", Platform = "Instagram", Enabled = true,

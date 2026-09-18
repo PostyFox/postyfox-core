@@ -203,6 +203,10 @@ async function connect(site) {
     platform: site.platform,
     connectorId: site.connectorId,
     cookies,
+    // Lets the backend replay these cookies with the same browser identity that obtained them: a
+    // mismatched User-Agent is the easiest way a site's bot check invalidates an otherwise-fresh
+    // session (see e.g. FurAffinity's Cloudflare challenge).
+    userAgent: navigator.userAgent,
   });
   succeed(`${result?.displayName ?? site.displayName} is connected to PostyFox.`);
 }
@@ -226,7 +230,7 @@ async function connectWithToken() {
     method: "POST",
     credentials: "omit",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ pairingToken, cookies }),
+    body: JSON.stringify({ pairingToken, cookies, userAgent: navigator.userAgent }),
   });
   if (!response.ok) throw new Error(await problem(response));
 
@@ -277,7 +281,12 @@ async function problem(response) {
 
 // ----- cookies + tabs ---------------------------------------------------------------------------
 
-/** The site's required cookies, by name. Anything else the site has set is left behind. */
+/**
+ * The site's required cookies plus any optional ones (e.g. FurAffinity's `cf_clearance`, present
+ * only after a recent Cloudflare challenge — sent along when there, never required). Anything else
+ * the site has set is left behind. `optionalCookieNames` may be absent from an older server response;
+ * that's fine, it just means nothing optional to look for.
+ */
 async function readCookies(site) {
   let found = await getAllCookies({ url: site.siteUrl });
 
@@ -290,9 +299,10 @@ async function readCookies(site) {
     found = perStore.flat();
   }
 
+  const wanted = [...site.cookieNames, ...(site.optionalCookieNames ?? [])];
   const values = {};
   for (const cookie of found)
-    if (site.cookieNames.includes(cookie.name) && !(cookie.name in values))
+    if (wanted.includes(cookie.name) && !(cookie.name in values))
       values[cookie.name] = cookie.value;
   return values;
 }

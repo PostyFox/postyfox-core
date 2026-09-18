@@ -47,6 +47,17 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.Contains("\"Species\"", furAffinity.PostOptionsSchema);
         Assert.False(furAffinity.SupportsContentWarning);
 
+        var toyhouse = Assert.Single(defs!, d => d.Id == "Toyhouse");
+        Assert.True(toyhouse.SupportsCookiePairing);
+        Assert.True(toyhouse.SupportsRating);
+        Assert.True(toyhouse.RequiresRating);
+        Assert.False(toyhouse.SupportsTitle); // images attach to character pages, not their own title
+        Assert.False(toyhouse.SupportsTags); // no native tags field
+        Assert.Null(toyhouse.SecureConfigSchema);
+        Assert.Equal("{}", toyhouse.ConfigSchema);
+        Assert.NotNull(toyhouse.PostOptionsSchema);
+        Assert.Contains("\"CharacterIds\"", toyhouse.PostOptionsSchema);
+
         // Every Fediverse platform supports a click-to-reveal content warning, authored per submission
         // (never the post title), see megalodon.ts.
         var mastodon = Assert.Single(defs!, d => d.Id == "Mastodon");

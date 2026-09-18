@@ -1,0 +1,59 @@
+{
+  "$comment": "Toyhou.se's image-upload form options. Privacy/watermark option IDs are fixed by the site's own form; CharacterIds is free-text because characters belong to an individual account, the same reasoning as FurAffinity's FolderIds.",
+  "CharacterIds": {
+    "label": "Character IDs",
+    "placeholder": "111, 222",
+    "help": "Required. The character(s) this image belongs to: open a character page and copy the number from its URL (…/12345.name). Separate several with commas.",
+    "required": true,
+    "pattern": "^[0-9]+( *, *[0-9]+)*$",
+    "message": "Character IDs must be comma-separated numbers."
+  },
+  "ArtistName": {
+    "label": "Artist name",
+    "help": "Required. Your Toyhou.se username, unless crediting an off-site artist below.",
+    "required": true
+  },
+  "OffSiteArtistUrl": {
+    "label": "Off-site artist URL",
+    "placeholder": "https://…",
+    "help": "Optional. Credits an artist outside Toyhou.se (their profile, gallery post, etc.) instead of the artist name above."
+  },
+  "AuthorizedViewers": {
+    "label": "Visible to authorized viewers as",
+    "placeholder": "Full-Size (Toyhouse default)",
+    "help": "How the image appears to users you've explicitly authorized. Leave unset for Full-Size.",
+    "options": [
+      {"value":"0","label":"Full-Size"},
+      {"value":"1","label":"Watermarked"},
+      {"value":"2","label":"Thumbnail"},
+      {"value":"3","label":"Hidden"}
+    ]
+  },
+  "PublicViewers": {
+    "label": "Visible to the public as",
+    "placeholder": "Full-Size (Toyhouse default)",
+    "help": "How the image appears to everyone else. Leave unset for Full-Size.",
+    "options": [
+      {"value":"0","label":"Full-Size"},
+      {"value":"1","label":"Watermarked"},
+      {"value":"2","label":"Thumbnail"},
+      {"value":"3","label":"Hidden"}
+    ]
+  },
+  "Watermark": {
+    "label": "Watermark style",
+    "placeholder": "Center (Toyhouse default)",
+    "help": "Only applies when a viewer sees the watermarked version above. Leave unset for Center. Custom watermarks are not supported.",
+    "options": [
+      {"value":"1","label":"Center"},
+      {"value":"2","label":"Stretch"},
+      {"value":"3","label":"Tile"}
+    ]
+  },
+  "ContentWarning": {
+    "label": "Content warning",
+    "placeholder": "Optional",
+    "help": "Shown to viewers before the image itself.",
+    "maxLength": 200
+  }
+}

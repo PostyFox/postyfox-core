@@ -15,7 +15,10 @@ public class ConnectorCookiePairingServiceTests
     };
 
     private static FakeRegistry Registry() => new(
-        new FakeCookiePairingConnector("FurAffinity", "a", "b"),
+        new FakeCookiePairingConnector("FurAffinity", "a", "b")
+        {
+            OptionalCookieNames = ["cf_clearance"],
+        },
         new FakeConnector("BlueSky"));
 
     private static ConnectorCookiePairingService Service(
@@ -80,6 +83,50 @@ public class ConnectorCookiePairingServiceTests
         using var json = JsonDocument.Parse(stored);
         Assert.Equal("a=session-a; b=session-b", json.RootElement.GetProperty("CookieHeader").GetString());
         Assert.DoesNotContain("tracking", stored);
+    }
+
+    /// <summary>
+    /// cf_clearance-style cookies only exist after a recent challenge (see ConnectorTypes'
+    /// CookiePairingSpec.OptionalCookieNames docs): sent along and stored when present.
+    /// </summary>
+    [Fact]
+    public async Task Pairing_stores_an_optional_cookie_when_present()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedAsync(db);
+        var secrets = new FakeSecretStore();
+        var service = Service(db, secrets);
+
+        var result = await service.PairAsync("u1", "FurAffinity", null, new Dictionary<string, string>
+        {
+            ["a"] = "session-a",
+            ["b"] = "session-b",
+            ["cf_clearance"] = "cleared-token"
+        });
+
+        Assert.Equal(ConnectorCookiePairOutcome.Connected, result.Outcome);
+        var stored = secrets.Store[UserConnectorService.SecretName(connectorId, "u1")];
+        using var json = JsonDocument.Parse(stored);
+        Assert.Equal(
+            "a=session-a; b=session-b; cf_clearance=cleared-token",
+            json.RootElement.GetProperty("CookieHeader").GetString());
+    }
+
+    /// <summary>An absent optional cookie must never block pairing: it isn't always set (see the type above).</summary>
+    [Fact]
+    public async Task Pairing_succeeds_without_an_optional_cookie()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedAsync(db);
+        var secrets = new FakeSecretStore();
+        var service = Service(db, secrets);
+
+        var result = await service.PairAsync("u1", "FurAffinity", null, ValidCookies);
+
+        Assert.Equal(ConnectorCookiePairOutcome.Connected, result.Outcome);
+        var stored = secrets.Store[UserConnectorService.SecretName(connectorId, "u1")];
+        using var json = JsonDocument.Parse(stored);
+        Assert.Equal("a=session-a; b=session-b", json.RootElement.GetProperty("CookieHeader").GetString());
     }
 
     [Fact]

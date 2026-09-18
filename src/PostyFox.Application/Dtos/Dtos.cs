@@ -107,7 +107,9 @@ public sealed record CookiePairingTargetDto(
     string DisplayName,
     string SiteUrl,
     string LoginUrl,
-    IReadOnlyList<string> CookieNames);
+    IReadOnlyList<string> CookieNames,
+    /// <summary>Collected and stored when present; pairing does not fail without them. See <see cref="Connectors.CookiePairingSpec.OptionalCookieNames"/>.</summary>
+    IReadOnlyList<string> OptionalCookieNames);
 
 public sealed record UserConnectorUpsertRequest(
     Guid? Id,
@@ -307,18 +309,27 @@ public sealed record DeleteHistoryResponse(int DeletedCount);
 /// </summary>
 public sealed record MediaLimitsDto(long? MaxUploadSizeBytes);
 
-/// <summary>Request body for the media-check endpoint.</summary>
+/// <summary>
+/// Request body for the media-check endpoint. <see cref="Width"/>/<see cref="Height"/> are the
+/// decoded pixel dimensions of an image file (null for a non-image, or one the client couldn't
+/// decode): without them, a small but high-resolution image that trips a platform's dimension cap
+/// rather than its byte cap would silently pass this check yet still get resized at delivery.
+/// </summary>
 public sealed record MediaCheckRequest(
     IReadOnlyList<Guid> ConnectorIds,
     long FileSize,
-    string MimeType);
+    string MimeType,
+    int? Width = null,
+    int? Height = null);
 
 /// <summary>
-/// Per-connector result of a media pre-flight check. <see cref="WillResize"/> is true when the
-/// file exceeds the connector's size limit and the backend will resize/transcode it before delivery.
-/// <see cref="ImageSizeLimit"/> and <see cref="VideoSizeLimit"/> are in bytes; null means the
-/// connector reports no cap for that media type. <see cref="MaxMediaAttachments"/> is the connector's
-/// cap on the number of files a single post can carry; null means no reported cap.
+/// Per-connector result of a media pre-flight check. <see cref="WillResize"/> is true when the file
+/// exceeds the connector's size OR dimension limit and the backend will resize/transcode it before
+/// delivery. <see cref="ImageSizeLimit"/> and <see cref="VideoSizeLimit"/> are in bytes;
+/// <see cref="ImageMaxWidth"/>/<see cref="ImageMaxHeight"/>/<see cref="VideoMaxWidth"/>/
+/// <see cref="VideoMaxHeight"/> are in pixels — all null means the connector reports no cap for that
+/// axis. <see cref="MaxMediaAttachments"/> is the connector's cap on the number of files a single post
+/// can carry; null means no reported cap.
 /// </summary>
 public sealed record MediaCheckResultItem(
     Guid ConnectorId,
@@ -327,7 +338,11 @@ public sealed record MediaCheckResultItem(
     bool WillResize,
     long? ImageSizeLimit,
     long? VideoSizeLimit,
-    int? MaxMediaAttachments = null);
+    int? MaxMediaAttachments = null,
+    int? ImageMaxWidth = null,
+    int? ImageMaxHeight = null,
+    int? VideoMaxWidth = null,
+    int? VideoMaxHeight = null);
 
 public sealed record TriggerRegistrationRequest(
     string SourceType,

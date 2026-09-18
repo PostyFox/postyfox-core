@@ -35,4 +35,14 @@ public class ServiceDefinitionSeederTests
         Assert.Equal("{}", furAffinity.ConfigSchema);
         Assert.Null(furAffinity.SecureConfigSchema);
     }
+
+    /// <summary>Same reasoning as FurAffinity's: see ToyhousePostOptionsTests for the per-upload choices.</summary>
+    [Fact]
+    public void Toyhouse_connector_has_no_account_settings()
+    {
+        var toyhouse = ServiceDefinitionSeeder.Definitions.Single(d => d.Id == "Toyhouse");
+
+        Assert.Equal("{}", toyhouse.ConfigSchema);
+        Assert.Null(toyhouse.SecureConfigSchema);
+    }
 }

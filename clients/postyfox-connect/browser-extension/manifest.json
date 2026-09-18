@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PostyFox Connect",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "Hands your logged-in website sessions to PostyFox in one click.",
   "permissions": [
     "cookies",
@@ -11,7 +11,9 @@
     "https://app.postyfox.com/*",
     "https://dev.postyfox.com/*",
     "https://www.furaffinity.net/*",
-    "https://furaffinity.net/*"
+    "https://furaffinity.net/*",
+    "https://toyhou.se/*",
+    "https://www.toyhou.se/*"
   ],
   "action": {
     "default_title": "PostyFox Connect",

@@ -114,11 +114,18 @@ public static class ServiceCollectionExtensions
                 SupportsThreads: false,
                 MaxContentLength: null,
                 // FurAffinity has no API: delivery reuses the user's browser session, handed over by
-                // the PostyFox Connect extension. `a`/`b` are its session cookie pair.
+                // the PostyFox Connect extension. `a`/`b` are its session cookie pair, always present
+                // once logged in. `cf_clearance` is Cloudflare's own challenge-passed cookie, bound to
+                // the browser that solved it (UA and IP): optional because it only exists after a
+                // recent challenge, so requiring it would break pairing for anyone who hasn't hit one
+                // lately. Carrying it over when present (alongside the paired UA, see
+                // ConnectorCookiePairingService) avoids a guaranteed re-challenge on the very first
+                // server-side request, though a differing egress IP can still invalidate it regardless.
                 CookiePairing: new CookiePairingSpec(
                     SiteUrl: "https://www.furaffinity.net/",
                     LoginUrl: "https://www.furaffinity.net/login",
-                    CookieNames: ["a", "b"]),
+                    CookieNames: ["a", "b"],
+                    OptionalCookieNames: ["cf_clearance"]),
                 SupportsRating: true,
                 RequiresRating: true,
                 SupportsTags: true,
@@ -128,6 +135,43 @@ public static class ServiceCollectionExtensions
                 // entries, see Persistence/Schemas/README.md for provenance and regeneration.
                 PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json")
                 // No SupportsRepost/SupportsDelete: FurAffinity has no API, so both would mean scripting
+                // another multi-step, CSRF-guarded browser-session form flow. Deliberately left out of
+                // this pass rather than shipped untested against the real site.
+                ),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "Toyhouse",
+            new ConnectorDescriptor(
+                "Toyhouse",
+                "Toyhouse",
+                // Images are attached to character pages rather than posted with their own title, and
+                // the site has no tags field either (see PostOptionsSchema for the actual per-upload
+                // choices: caption maps from the post body, character IDs, artist credit, privacy).
+                SupportsTitle: false,
+                SupportsMedia: true,
+                SupportsThreads: false,
+                MaxContentLength: 255,
+                // Toyhouse has no API either: same browser-session handoff as FurAffinity, fronted by
+                // Cloudflare just as aggressively (even the anonymous homepage returns a JS challenge).
+                // `laravel_session` is the site's own auth cookie, always present once logged in.
+                // `cf_clearance` is optional for the same reason as FurAffinity's: see that comment.
+                CookiePairing: new CookiePairingSpec(
+                    SiteUrl: "https://toyhou.se/",
+                    LoginUrl: "https://toyhou.se/~account/login",
+                    CookieNames: ["laravel_session"],
+                    OptionalCookieNames: ["cf_clearance"]),
+                SupportsRating: true,
+                RequiresRating: true,
+                SupportsTags: false,
+                RequiresTags: false,
+                // Character IDs, artist credit, and privacy/watermark choices are chosen per upload on
+                // Toyhouse's own form, so they belong to the post rather than the account, the same
+                // reasoning as FurAffinity's category/species/gender/folders.
+                PostOptionsSchema: EmbeddedSchema.Load("toyhouse-post-options.schema.json")
+                // No SupportsRepost/SupportsDelete: Toyhouse has no API, so both would mean scripting
                 // another multi-step, CSRF-guarded browser-session form flow. Deliberately left out of
                 // this pass rather than shipped untested against the real site.
                 ),

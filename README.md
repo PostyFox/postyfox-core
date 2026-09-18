@@ -33,7 +33,7 @@ src/
   PostyFox.Api.Core         profile/keys, services catalogue, connector CRUD, template CRUD
   PostyFox.Api.Post         post intake + status, external-trigger webhook callback
   PostyFox.Worker.Posting   consumes generate/deliver queues; runs the pipeline
-  connectors-node/          Node/TS service: Bluesky + Tumblr + FurAffinity + Instagram + Fediverse
+  connectors-node/          Node/TS service: Bluesky + Tumblr + FurAffinity + Toyhouse + Instagram + Fediverse
 clients/
   postyfox-connect/         Chrome/Edge extension + Safari iPhone/iPad/macOS conversion scaffold
 tests/                      one project per layer (xUnit), 99 C# tests (+18 in connectors-node)
@@ -51,6 +51,7 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 | Bluesky | **Node** service | `@atproto/api`, via the `HttpConnector` adapter over internal HTTP (`X-Internal-Token`) |
 | Tumblr | **Node** service | `tumblr.js`, same adapter; OAuth1 connect flow |
 | FurAffinity | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
+| Toyhouse | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
 | Instagram | **Node** service | Instagram Content Publishing API (Business Login for Instagram), same adapter; OAuth2 connect flow with automated long-lived-token refresh; media must be publicly fetchable, so bytes are staged via a presigned object-store URL rather than uploaded directly |
 | Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon`, same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
 | ~~Twitch~~ | N/A | descoped |
@@ -67,8 +68,9 @@ site metadata at `/cookie-pairing/sites`) remains as a fallback for a browser th
 PostyFox session. See [`clients/postyfox-connect`](./clients/postyfox-connect/README.md).
 
 **Per-submission platform options.** Some platforms take choices that describe the *submission* rather
-than the account: FurAffinity's category, theme, species, gender and gallery folders; every Fediverse
-platform's content warning. A connector declares these as field descriptors on
+than the account: FurAffinity's category, theme, species, gender and gallery folders; Toyhouse's
+character IDs, artist credit and privacy/watermark choices; every Fediverse platform's content
+warning. A connector declares these as field descriptors on
 `ConnectorDescriptor.PostOptionsSchema` (surfaced as `postOptionsSchema` on `GET /api/services`); the
 compose form renders them once per selected target and sends them as `targetOptions` on
 `POST /api/posts`, keyed by connector id. They are validated against the same schema at intake, stored
@@ -82,8 +84,8 @@ Hometown and Pixelfed all support a click-to-reveal content warning (Mastodon's 
 `ConnectorDescriptor.SupportsContentWarning` and surfaced as the "Content warning" capability badge on
 `GET /api/services`. It is an explicit, optional per-submission field (`ContentWarning` in
 `PostOptionsSchema`), **never** derived from the post title, which is an unrelated field most of these
-platforms don't even render. No other connector (Bluesky, Tumblr, FurAffinity, Instagram, Discord,
-Telegram) has an equivalent mechanism.
+platforms don't even render. No other connector (Bluesky, Tumblr, FurAffinity, Toyhouse, Instagram,
+Discord, Telegram) has an equivalent mechanism.
 
 **Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }`, sizes in bytes), fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 
@@ -114,7 +116,7 @@ docker compose up --build            # full stack incl. the OIDC edge (Keycloak 
 # Swagger UI: http://localhost:8080/swagger  and  http://localhost:8081/swagger
 # OpenAPI:    http://localhost:8080/openapi/v1.json  (and :8081)
 # RabbitMQ:  http://localhost:15672   MinIO console: http://localhost:9001
-# connectors-node (Bluesky/Tumblr/FurAffinity/Instagram/Fediverse): http://localhost:8090/health
+# connectors-node (Bluesky/Tumblr/FurAffinity/Toyhouse/Instagram/Fediverse): http://localhost:8090/health
 ```
 
 Auth is always the production-representative OIDC path. There is **no DevMode bypass**. oauth2-proxy

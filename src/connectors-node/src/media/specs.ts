@@ -31,6 +31,14 @@ export const FURAFFINITY_SPEC: MediaSpec = {
   maxAttachments: 1,
 };
 
+// Toyhou.se's upload form takes one image at a time, uniformly capped at 4MB (no larger allowance
+// for GIFs, unlike FurAffinity).
+export const TOYHOUSE_SPEC: MediaSpec = {
+  image: { maxBytes: 4_194_304, allowedMimeTypes: ["image/jpeg", "image/png", "image/gif"] },
+  video: { maxBytes: 4_194_304, allowedMimeTypes: [] },
+  maxAttachments: 1,
+};
+
 /** Fallback used before an instance's live limits are known (or when it reports none). */
 export const FEDIVERSE_SPEC: MediaSpec = {
   image: { maxWidth: 2048, maxHeight: 2048, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] },
@@ -42,6 +50,7 @@ export const MEDIA_SPECS: Record<string, MediaSpec> = {
   bluesky: BLUESKY_SPEC,
   tumblr: TUMBLR_SPEC,
   furaffinity: FURAFFINITY_SPEC,
+  toyhouse: TOYHOUSE_SPEC,
   instagram: INSTAGRAM_SPEC,
 };
 
@@ -60,6 +69,10 @@ export function limitsFromSpec(spec: MediaSpec): ConnectorLimits {
     supportedMimeTypes: mimes.length > 0 ? mimes : null,
     imageSizeLimit: spec.image.maxBytes ?? null,
     videoSizeLimit: spec.video.maxBytes ?? null,
+    imageMaxWidth: spec.image.maxWidth ?? null,
+    imageMaxHeight: spec.image.maxHeight ?? null,
+    videoMaxWidth: spec.video.maxWidth ?? null,
+    videoMaxHeight: spec.video.maxHeight ?? null,
   };
 }
 
@@ -75,11 +88,15 @@ export function mergeLiveLimits(base: MediaSpec, limits: ConnectorLimits): Media
     image: {
       ...base.image,
       maxBytes: limits.imageSizeLimit ?? base.image.maxBytes,
+      maxWidth: limits.imageMaxWidth ?? base.image.maxWidth,
+      maxHeight: limits.imageMaxHeight ?? base.image.maxHeight,
       allowedMimeTypes: imageMimes && imageMimes.length > 0 ? imageMimes : base.image.allowedMimeTypes,
     },
     video: {
       ...base.video,
       maxBytes: limits.videoSizeLimit ?? base.video.maxBytes,
+      maxWidth: limits.videoMaxWidth ?? base.video.maxWidth,
+      maxHeight: limits.videoMaxHeight ?? base.video.maxHeight,
       allowedMimeTypes: videoMimes && videoMimes.length > 0 ? videoMimes : base.video.allowedMimeTypes,
     },
     maxAttachments: limits.maxMediaAttachments ?? base.maxAttachments,

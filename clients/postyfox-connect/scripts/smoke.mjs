@@ -19,7 +19,10 @@ const FUR_AFFINITY = {
   siteUrl: "https://www.furaffinity.net/",
   loginUrl: "https://www.furaffinity.net/login",
   cookieNames: ["a", "b"],
+  optionalCookieNames: ["cf_clearance"],
 };
+
+const TEST_USER_AGENT = "Mozilla/5.0 (TestHarness)";
 
 const SELECTORS = [
   "#dev-mode",
@@ -81,6 +84,7 @@ function harness({ signedIn, cookies, connectorId, devMode = false }) {
   const sandbox = {
     URL,
     console,
+    navigator: { userAgent: TEST_USER_AGENT },
     window: { close() {} },
     document: {
       listeners: {},
@@ -170,8 +174,41 @@ const scenarios = {
     assert.equal(pair.url, "https://app.postyfox.com/api/connectors/cookie-pairing/pair");
     assert.equal(pair.body.connectorId, "conn-1");
     assert.deepEqual(pair.body.cookies, { a: "session-a", b: "session-b" });
+    assert.equal(pair.body.userAgent, TEST_USER_AGENT);
     assert.match(app.status(), /is connected to PostyFox/);
     assert.equal(app.button(), null, "nothing left to do");
+  },
+
+  async "an optional cf_clearance cookie is sent along when present"() {
+    const app = harness({
+      signedIn: true,
+      cookies: { a: "session-a", b: "session-b", cf_clearance: "cleared-token" },
+      connectorId: "conn-1",
+    });
+    await app.load();
+    await app.click();
+
+    const pair = app.requests.find((r) => r.url.endsWith("/cookie-pairing/pair"));
+    assert.deepEqual(pair.body.cookies, {
+      a: "session-a",
+      b: "session-b",
+      cf_clearance: "cleared-token",
+    });
+  },
+
+  async "a missing optional cf_clearance cookie is not required"() {
+    const app = harness({
+      signedIn: true,
+      cookies: { a: "session-a", b: "session-b" },
+      connectorId: "conn-1",
+    });
+    await app.load();
+
+    assert.equal(app.button(), "Connect FurAffinity", "the required pair alone is enough to proceed");
+    await app.click();
+
+    const pair = app.requests.find((r) => r.url.endsWith("/cookie-pairing/pair"));
+    assert.deepEqual(pair.body.cookies, { a: "session-a", b: "session-b" });
   },
 
   async "one click creates the connector when the user has none"() {
@@ -276,6 +313,7 @@ const scenarios = {
     const complete = app.requests.find((r) => r.url.endsWith("/cookie-pairing/complete"));
     assert.equal(complete.body.pairingToken, "token-123");
     assert.deepEqual(complete.body.cookies, { a: "session-a", b: "session-b" });
+    assert.equal(complete.body.userAgent, TEST_USER_AGENT);
     assert.match(app.status(), /is connected to PostyFox/);
     assert.equal(app.nodes["#pairing-token"].value, "", "the token should not linger");
   },

@@ -104,6 +104,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             });
             db.ServiceDefinitions.Add(new ServiceDefinition
             {
+                Id = "Toyhouse", Name = "Toyhouse", Platform = "Toyhouse", Enabled = true,
+                ConfigSchema = "{}"
+            });
+            db.ServiceDefinitions.Add(new ServiceDefinition
+            {
                 Id = "Mastodon", Name = "Mastodon", Platform = "Mastodon", Enabled = true,
                 ConfigSchema = "{\"InstanceUrl\":\"\"}"
             });

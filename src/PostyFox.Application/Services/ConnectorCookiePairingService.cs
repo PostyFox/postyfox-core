@@ -67,7 +67,7 @@ public sealed partial class ConnectorCookiePairingService(
             .Where(x => x.spec is not null)
             .Select(x => new CookiePairingTargetDto(
                 null, x.def.Id, x.def.Platform, x.def.Name,
-                x.spec!.SiteUrl, x.spec.LoginUrl, x.spec.CookieNames))
+                x.spec!.SiteUrl, x.spec.LoginUrl, x.spec.CookieNames, x.spec.OptionalCookieNames))
             .ToList();
     }
 
@@ -92,12 +92,14 @@ public sealed partial class ConnectorCookiePairingService(
             if (mine.Count == 0)
             {
                 targets.Add(new CookiePairingTargetDto(
-                    null, def.Id, def.Platform, def.Name, spec.SiteUrl, spec.LoginUrl, spec.CookieNames));
+                    null, def.Id, def.Platform, def.Name,
+                    spec.SiteUrl, spec.LoginUrl, spec.CookieNames, spec.OptionalCookieNames));
                 continue;
             }
 
             targets.AddRange(mine.Select(c => new CookiePairingTargetDto(
-                c.Id, def.Id, def.Platform, c.DisplayName, spec.SiteUrl, spec.LoginUrl, spec.CookieNames)));
+                c.Id, def.Id, def.Platform, c.DisplayName,
+                spec.SiteUrl, spec.LoginUrl, spec.CookieNames, spec.OptionalCookieNames)));
         }
 
         return targets;
@@ -117,6 +119,7 @@ public sealed partial class ConnectorCookiePairingService(
         string? platform,
         Guid? connectorId,
         IReadOnlyDictionary<string, string>? cookies,
+        string? userAgent = null,
         CancellationToken ct = default)
     {
         UserConnector? connector = null;
@@ -173,7 +176,7 @@ public sealed partial class ConnectorCookiePairingService(
             }
         }
 
-        await StoreSessionAsync(connector.Id, userId, cookieHeader, ct);
+        await StoreSessionAsync(connector.Id, userId, cookieHeader, userAgent, ct);
         return new ConnectorCookiePairResult(
             ConnectorCookiePairOutcome.Connected, connector.Id, connector.DisplayName);
     }
@@ -213,6 +216,7 @@ public sealed partial class ConnectorCookiePairingService(
     public async Task<ConnectorCookiePairingOutcome> CompleteAsync(
         string token,
         IReadOnlyDictionary<string, string>? cookies,
+        string? userAgent = null,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(token) || token.Length > 128)
@@ -249,24 +253,36 @@ public sealed partial class ConnectorCookiePairingService(
             return ConnectorCookiePairingOutcome.InvalidOrExpired;
         }
 
-        await StoreSessionAsync(pairing.ConnectorId, pairing.UserId, cookieHeader, ct);
+        await StoreSessionAsync(pairing.ConnectorId, pairing.UserId, cookieHeader, userAgent, ct);
         return ConnectorCookiePairingOutcome.Completed;
     }
 
     private CookiePairingSpec? SpecFor(string platform) =>
         connectors.TryGet(platform, out var connector) ? connector.Describe().CookiePairing : null;
 
-    private Task StoreSessionAsync(Guid connectorId, string userId, string cookieHeader, CancellationToken ct) =>
-        secrets.SetSecretAsync(
+    /// <summary>
+    /// Persists the cookie header alongside the pairing browser's User-Agent (when supplied), so a
+    /// connector replaying these cookies server-side (see FurAffinityConnector) presents the same
+    /// browser identity that solved any Cloudflare-style challenge to obtain them — a mismatched
+    /// User-Agent invalidates that clearance immediately, regardless of how fresh the cookies are.
+    /// </summary>
+    private Task StoreSessionAsync(
+        Guid connectorId, string userId, string cookieHeader, string? userAgent, CancellationToken ct)
+    {
+        var secret = new Dictionary<string, string> { ["CookieHeader"] = cookieHeader };
+        if (!string.IsNullOrWhiteSpace(userAgent) && userAgent.Length <= 512)
+            secret["UserAgent"] = userAgent;
+        return secrets.SetSecretAsync(
             UserConnectorService.SecretName(connectorId, userId),
-            JsonSerializer.Serialize(
-                new Dictionary<string, string> { ["CookieHeader"] = cookieHeader },
-                Json.Options),
+            JsonSerializer.Serialize(secret, Json.Options),
             ct);
+    }
 
     /// <summary>
-    /// Builds the connector's <c>Cookie</c> header from exactly the names the platform declares.
-    /// Anything else the client sent (analytics, preferences, …) is dropped rather than persisted.
+    /// Builds the connector's <c>Cookie</c> header from the names the platform declares. Every
+    /// <see cref="CookiePairingSpec.CookieNames"/> entry must be present or pairing fails; each
+    /// <see cref="CookiePairingSpec.OptionalCookieNames"/> entry is included only when the client sent
+    /// it. Anything else the client sent (analytics, preferences, …) is dropped rather than persisted.
     /// </summary>
     private static bool TryCookieHeader(
         CookiePairingSpec spec,
@@ -276,12 +292,15 @@ public sealed partial class ConnectorCookiePairingService(
         cookieHeader = string.Empty;
         if (spec.CookieNames.Count == 0) return false;
 
-        var parts = new List<string>(spec.CookieNames.Count);
+        var parts = new List<string>(spec.CookieNames.Count + spec.OptionalCookieNames.Count);
         foreach (var name in spec.CookieNames)
         {
             if (!TryCookie(cookies, name, out var value)) return false;
             parts.Add($"{name}={value}");
         }
+        foreach (var name in spec.OptionalCookieNames)
+            if (TryCookie(cookies, name, out var value))
+                parts.Add($"{name}={value}");
         cookieHeader = string.Join("; ", parts);
         return true;
     }

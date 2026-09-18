@@ -382,6 +382,13 @@ export class MegalodonConnector implements Connector {
       supportedMimeTypes: media?.supported_mime_types ?? null,
       imageSizeLimit: media?.image_size_limit ?? null,
       videoSizeLimit: media?.video_size_limit ?? null,
+      // Mastodon-family instances report a total-pixel "matrix limit", not separate width/height caps,
+      // so there is nothing live to surface here. Report the static baseline instead: mergeLiveLimits
+      // never overrides these two fields from a live report, so this is exactly what delivery enforces.
+      imageMaxWidth: FEDIVERSE_SPEC.image.maxWidth ?? null,
+      imageMaxHeight: FEDIVERSE_SPEC.image.maxHeight ?? null,
+      videoMaxWidth: FEDIVERSE_SPEC.video.maxWidth ?? null,
+      videoMaxHeight: FEDIVERSE_SPEC.video.maxHeight ?? null,
     };
   }
 
