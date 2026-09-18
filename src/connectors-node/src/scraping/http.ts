@@ -72,7 +72,7 @@ export class CookieScraperSession implements ScraperSession {
       const cookies = await this.jar.getCookieString(url.toString());
       if (cookies) headers.set("cookie", cookies);
       else headers.delete("cookie");
-      headers.set("user-agent", "PostyFox/1.0");
+      headers.set("user-agent", "Mozilla/5.0 (compatible; PostyFox/1.0; +http://docs.postyfox.com)"); // We might need to extend this to allow capture and injection of a users UA from PostyConnect
 
       response = await this.fetchImpl(url, {
         method,
