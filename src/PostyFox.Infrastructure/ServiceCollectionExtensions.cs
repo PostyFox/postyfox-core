@@ -156,13 +156,21 @@ public static class ServiceCollectionExtensions
                 MaxContentLength: 255,
                 // Toyhouse has no API either: same browser-session handoff as FurAffinity, fronted by
                 // Cloudflare just as aggressively (even the anonymous homepage returns a JS challenge).
-                // `laravel_session` is the site's own auth cookie, always present once logged in.
-                // `cf_clearance` is optional for the same reason as FurAffinity's: see that comment.
+                // The required cookie is Laravel's own "remember me" cookie, not `laravel_session`:
+                // that session cookie is short-lived (Laravel's default is 120 minutes of inactivity)
+                // and gets purged from the jar once expired, so most of the time a browser that's
+                // "logged in" from the user's perspective (auto re-authenticated via remember-me on
+                // its next visit) simply won't have one to hand over. `remember_web_<hash>` is
+                // long-lived (years) and alone is enough for Laravel's SessionGuard to re-authenticate
+                // a request and mint a fresh session — the hash is `sha1('Illuminate\Auth\SessionGuard')`,
+                // a fixed constant for any default-configuration Laravel app's "web" guard, not a
+                // per-site or per-user secret. `laravel_session`/`cf_clearance` are collected as
+                // optional extras when present, never required.
                 CookiePairing: new CookiePairingSpec(
                     SiteUrl: "https://toyhou.se/",
                     LoginUrl: "https://toyhou.se/~account/login",
-                    CookieNames: ["laravel_session"],
-                    OptionalCookieNames: ["cf_clearance"]),
+                    CookieNames: ["remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d"],
+                    OptionalCookieNames: ["laravel_session", "cf_clearance"]),
                 SupportsRating: true,
                 RequiresRating: true,
                 SupportsTags: false,

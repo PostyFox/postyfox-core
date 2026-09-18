@@ -204,9 +204,12 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
 
 ### Toyhouse
 
-- `secretJson` → `{ "CookieHeader": "laravel_session=…", "UserAgent": "…" }`. The cookie header must
-  come from a currently logged-in `toyhou.se` browser session; the paired User-Agent is replayed on
-  every request since Toyhou.se's own Cloudflare challenge binds to it (see
+- `secretJson` → `{ "CookieHeader": "remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d=…", "UserAgent": "…" }`.
+  The required cookie is Laravel's long-lived "remember me" cookie, not the short-lived
+  `laravel_session` (which expires after 120 minutes of inactivity and is usually already purged from
+  the jar by the time a user opens the pairing flow) — see `CookiePairingSpec` in
+  `ServiceCollectionExtensions` for why. The paired User-Agent is replayed on every request since
+  Toyhou.se's own Cloudflare challenge binds to it (see
   `PostyFox.Application.Services.ConnectorCookiePairingService`).
 - Required `configJson` field: comma-separated `CharacterIds` (at least one) and `ArtistName`.
   Optional: `OffSiteArtistUrl`, `AuthorizedViewers`, `PublicViewers`, `Watermark`, `ContentWarning`.

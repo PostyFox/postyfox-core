@@ -49,7 +49,9 @@ const context: ConnectorContext = {
     CharacterIds: "111, 222",
     ArtistName: "FoxArtist",
   }),
-  secretJson: JSON.stringify({ CookieHeader: "laravel_session=one" }),
+  secretJson: JSON.stringify({
+    CookieHeader: "remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d=one",
+  }),
   targetId: null,
 };
 
