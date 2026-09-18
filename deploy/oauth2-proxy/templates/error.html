@@ -46,6 +46,15 @@
     <h1>We'll be right back</h1>
     <p>PostyFox is temporarily unavailable — this may be scheduled maintenance or a brief restart.</p>
     <p>Please check back in a few minutes.</p>
+    {{ else if eq .StatusCode 500 }}
+    {{/*
+      Covers OAuthCallback's redeem-code failures (expired/reused code, Keycloak unreachable, or an
+      unverified email on a freshly registered account — oauth2-proxy doesn't tell us which, see
+      OAuthCallback in oauthproxy.go), so the copy stays generic across all of those causes.
+    */}}
+    <h1>Sign-in didn't complete</h1>
+    <p>If you just created your account, check your email for a verification link — some accounts need to be verified before you can sign in.</p>
+    <p>Otherwise, this may have been a one-off error. Please try signing in again.</p>
     {{ else }}
     <h1>{{.StatusCode}} {{.Title}}</h1>
     {{ end }}
@@ -61,6 +70,10 @@
     <form method="GET" action="{{.ProxyPrefix}}/sign_in">
       <input type="hidden" name="rd" value="{{.Redirect}}">
       <button type="submit">Sign in</button>
+    </form>
+    {{ else if eq .StatusCode 500 }}
+    <form method="GET" action="{{.ProxyPrefix}}/sign_in">
+      <button type="submit">Try signing in again</button>
     </form>
     {{ end }}
   </div>
