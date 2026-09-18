@@ -60,7 +60,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (!connector) return reply.code(404).send({ error: "unknown platform" });
       const diagnostics = cookiePairingDiagnostics(request.body.secretJson);
       if (diagnostics) request.log.info({ platform, ...diagnostics }, "is-authenticated: cookie session");
-      return connector.isAuthenticated(request.body);
+      const result = await connector.isAuthenticated(request.body);
+      request.log.info({ platform, ...result }, "is-authenticated: result");
+      return result;
     },
   );
 
@@ -72,7 +74,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (!connector) return reply.code(404).send({ error: "unknown platform" });
       const diagnostics = cookiePairingDiagnostics(request.body.secretJson);
       if (diagnostics) request.log.info({ platform, ...diagnostics }, "list-targets: cookie session");
-      return connector.listTargets(request.body);
+      const result = await connector.listTargets(request.body);
+      request.log.info({ platform, targetCount: result.targets.length }, "list-targets: result");
+      return result;
     },
   );
 

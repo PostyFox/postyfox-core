@@ -282,13 +282,28 @@ async function problem(response) {
 // ----- cookies + tabs ---------------------------------------------------------------------------
 
 /**
- * The site's required cookies plus any optional ones (e.g. FurAffinity's `cf_clearance`, present
- * only after a recent Cloudflare challenge — sent along when there, never required). Anything else
- * the site has set is left behind. `optionalCookieNames` may be absent from an older server response;
- * that's fine, it just means nothing optional to look for.
+ * The site's required cookies plus any optional ones (e.g. a Cloudflare `cf_clearance`, present only
+ * after a recent challenge — sent along when there, never required). Anything else the site has set
+ * is left behind. `optionalCookieNames` may be absent from an older server response; that's fine, it
+ * just means nothing optional to look for.
  */
 async function readCookies(site) {
   let found = await getAllCookies({ url: site.siteUrl });
+
+  // CHIPS: a cookie can be "Partitioned" (Cloudflare's cf_clearance commonly is, even for an
+  // ordinary top-level visit) and a plain query only ever returns the unpartitioned jar — Chrome
+  // hides it entirely otherwise, despite it being present and valid. Every site we pair with is
+  // visited directly (never embedded in a third-party page), so its partition is always its own
+  // top-level origin: ask for that partition explicitly, alongside the unpartitioned query above.
+  // A browser that doesn't understand `partitionKey` (or has nothing in that partition) just
+  // contributes nothing extra here — see getAllCookies.
+  found = [
+    ...found,
+    ...(await getAllCookies({
+      url: site.siteUrl,
+      partitionKey: { topLevelSite: originOf(site.siteUrl) },
+    })),
+  ];
 
   // Safari has shipped versions where URL-only queries return no rows unless a storeId is supplied.
   if (found.length === 0 && extensionApi.cookies.getAllCookieStores) {

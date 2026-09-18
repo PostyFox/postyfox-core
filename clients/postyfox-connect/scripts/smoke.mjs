@@ -64,11 +64,12 @@ async function settle() {
 /**
  * @param {object} options
  * @param {boolean} options.signedIn        PostyFox recognises the session
- * @param {object|null} options.cookies     what the site has set, or null for "no access"
+ * @param {object|null} options.cookies     what the site has set (unpartitioned), or null for "no access"
+ * @param {object} [options.partitionedCookies] cookies visible only via a matching CHIPS partitionKey query
  * @param {string|null} options.connectorId the user's existing connector, if any
  * @param {boolean} [options.devMode]       Dev switch already persisted on
  */
-function harness({ signedIn, cookies, connectorId, devMode = false }) {
+function harness({ signedIn, cookies, partitionedCookies = {}, connectorId, devMode = false }) {
   const nodes = Object.fromEntries(SELECTORS.map((selector) => [selector, element()]));
   const requests = [];
   const openedTabs = [];
@@ -106,8 +107,10 @@ function harness({ signedIn, cookies, connectorId, devMode = false }) {
         request: async () => true,
       },
       cookies: {
-        getAll: async () =>
-          Object.entries(cookies ?? {}).map(([name, value]) => ({ name, value })),
+        getAll: async (query) =>
+          Object.entries(query?.partitionKey ? partitionedCookies : cookies ?? {}).map(
+            ([name, value]) => ({ name, value }),
+          ),
       },
       tabs: {
         query: async () => [{ url: "https://www.furaffinity.net/msg/others/" }],
@@ -183,6 +186,27 @@ const scenarios = {
     const app = harness({
       signedIn: true,
       cookies: { a: "session-a", b: "session-b", cf_clearance: "cleared-token" },
+      connectorId: "conn-1",
+    });
+    await app.load();
+    await app.click();
+
+    const pair = app.requests.find((r) => r.url.endsWith("/cookie-pairing/pair"));
+    assert.deepEqual(pair.body.cookies, {
+      a: "session-a",
+      b: "session-b",
+      cf_clearance: "cleared-token",
+    });
+  },
+
+  async "a partitioned cf_clearance cookie (CHIPS) is still captured"() {
+    // Cloudflare's cf_clearance is commonly set with the Partitioned attribute even for an ordinary
+    // top-level visit, which makes it invisible to a plain chrome.cookies.getAll query — only a
+    // matching partitionKey query surfaces it. readCookies must ask for both.
+    const app = harness({
+      signedIn: true,
+      cookies: { a: "session-a", b: "session-b" },
+      partitionedCookies: { cf_clearance: "cleared-token" },
       connectorId: "conn-1",
     });
     await app.load();
