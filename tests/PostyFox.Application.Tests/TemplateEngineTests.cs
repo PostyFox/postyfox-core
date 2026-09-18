@@ -211,4 +211,47 @@ public class TemplateEngineTests
         Assert.Equal("0123456789 #aaaaaaaaaa", rendered.Body);
         Assert.Equal(1, rendered.TagsOmitted);
     }
+
+    [Fact]
+    public void Render_advertising_line_off_by_default()
+    {
+        var req = new RenderRequest("Tumblr", null, "Body", new Dictionary<string, string>(), [], []);
+        Assert.Equal("Body", _engine.Render(req).Body);
+    }
+
+    [Fact]
+    public void Render_advertising_line_appends_bare_url_for_plain_platforms()
+    {
+        var req = new RenderRequest("Bluesky", null, "Body", new Dictionary<string, string>(), [], [],
+            IncludeAdvertisingLine: true);
+        Assert.Equal("Body\n\nSent using PostyFox https://postyfox.com", _engine.Render(req).Body);
+    }
+
+    [Fact]
+    public void Render_advertising_line_is_a_markdown_link_on_discord_and_html_on_telegram()
+    {
+        var discord = _engine.Render(new RenderRequest("DiscordWH", null, "Body", new Dictionary<string, string>(), [], [],
+            IncludeAdvertisingLine: true));
+        Assert.Equal("Body\n\nSent using [PostyFox](https://postyfox.com)", discord.Body);
+
+        var telegram = _engine.Render(new RenderRequest("Telegram", null, "Body", new Dictionary<string, string>(), [], [],
+            IncludeAdvertisingLine: true));
+        Assert.Equal("Body\n\nSent using <a href=\"https://postyfox.com\">PostyFox</a>", telegram.Body);
+    }
+
+    [Fact]
+    public void Render_advertising_line_follows_woven_tags_and_reserves_room_for_them()
+    {
+        const string line = "\n\nSent using PostyFox https://postyfox.com";
+        var req = new RenderRequest("Bluesky", null, "0123456789", new Dictionary<string, string>(),
+            ["aaaaaaaaaa"], [], SupportsTags: false, MaxContentLength: 10 + 2 + 11 + line.Length,
+            IncludeAdvertisingLine: true);
+        var rendered = _engine.Render(req);
+        Assert.Equal("0123456789\n\n#aaaaaaaaaa" + line, rendered.Body);
+        Assert.Equal(0, rendered.TagsOmitted);
+
+        var tight = _engine.Render(req with { MaxContentLength = 10 + 2 + 10 + line.Length });
+        Assert.Equal("0123456789" + line, tight.Body);
+        Assert.Equal(1, tight.TagsOmitted);
+    }
 }

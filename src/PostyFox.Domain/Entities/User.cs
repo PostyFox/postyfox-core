@@ -9,4 +9,7 @@ public class User
     public string Id { get; set; } = string.Empty;
     public string? DisplayName { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>When true, every delivered post gets a "Sent using PostyFox" line appended.</summary>
+    public bool IncludeAdvertisingLine { get; set; }
 }

@@ -37,4 +37,17 @@ public class ProfileEndpointsTests(CustomWebApplicationFactory factory) : IClass
         var resp = await external.GetAsync("/api/templates");
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
     }
+
+    [Fact]
+    public async Task Settings_default_off_and_round_trip()
+    {
+        var initial = await _client.GetFromJsonAsync<UserSettingsDto>("/api/profile/settings");
+        Assert.False(initial!.IncludeAdvertisingLine);
+
+        var put = await _client.PutAsJsonAsync("/api/profile/settings", new { includeAdvertisingLine = true });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var after = await _client.GetFromJsonAsync<UserSettingsDto>("/api/profile/settings");
+        Assert.True(after!.IncludeAdvertisingLine);
+    }
 }
