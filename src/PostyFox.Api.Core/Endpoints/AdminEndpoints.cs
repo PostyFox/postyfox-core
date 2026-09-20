@@ -9,6 +9,7 @@ namespace PostyFox.Api.Core.Endpoints;
 public static class AdminEndpoints
 {
     public sealed record SetOperationalSecretRequest(string? Value);
+    public sealed record SetPairedUserAgentRequest(bool UsePairedUserAgent);
 
     public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
@@ -62,6 +63,30 @@ public static class AdminEndpoints
             await service.DeleteAsync(key, ct) ? Results.NoContent() : Results.NotFound())
         .WithSummary("Delete an operational secret")
         .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status404NotFound);
+
+        var userAgents = app.MapGroup("/api/admin/paired-user-agents")
+            .RequireAuthorization(AuthConstants.AdminPolicy)
+            .WithTags("admin")
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        userAgents.MapGet("", async (PairedUserAgentService service, CancellationToken ct) =>
+            Results.Ok(await service.ListAsync(ct)))
+        .WithSummary("List cookie-paired platforms and whether they replay the pairing browser's User-Agent")
+        .Produces<IReadOnlyList<PairedUserAgentSetting>>();
+
+        userAgents.MapPut("{platform}", async (
+            string platform,
+            SetPairedUserAgentRequest body,
+            PairedUserAgentService service,
+            CancellationToken ct) =>
+        {
+            var setting = await service.SetAsync(platform, body.UsePairedUserAgent, ct);
+            return setting is null ? Results.NotFound() : Results.Ok(setting);
+        })
+        .WithSummary("Choose whether a platform replays the pairing browser's User-Agent or always sends the default")
+        .Produces<PairedUserAgentSetting>()
         .Produces(StatusCodes.Status404NotFound);
     }
 }

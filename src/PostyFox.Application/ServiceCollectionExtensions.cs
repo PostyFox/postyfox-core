@@ -30,6 +30,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ConnectorDestinationService>();
         services.AddScoped<ConnectorCookiePairingService>();
         services.AddScoped<OperationalSecretService>();
+        services.AddScoped<PairedUserAgentService>();
         services.AddScoped<PostIntakeService>();
         services.AddScoped<PostStatusService>();
         services.AddScoped<PostLifecycleService>();

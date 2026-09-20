@@ -266,13 +266,19 @@ public sealed partial class ConnectorCookiePairingService(
     /// browser identity that solved any Cloudflare-style challenge to obtain them — a mismatched
     /// User-Agent invalidates that clearance immediately, regardless of how fresh the cookies are.
     /// </summary>
-    private Task StoreSessionAsync(
+    private async Task StoreSessionAsync(
         Guid connectorId, string userId, string cookieHeader, string? userAgent, CancellationToken ct)
     {
         var secret = new Dictionary<string, string> { ["CookieHeader"] = cookieHeader };
-        if (!string.IsNullOrWhiteSpace(userAgent) && userAgent.Length <= 512)
+        // Admin-controlled per platform: when off, the connector always sends PostyFox's default.
+        var platform = await db.UserConnectors
+            .Where(c => c.Id == connectorId)
+            .Select(c => c.ServiceDefinition!.Platform)
+            .FirstOrDefaultAsync(ct);
+        if (!string.IsNullOrWhiteSpace(userAgent) && userAgent.Length <= 512
+            && (platform is null || await PairedUserAgentService.AllowsPairedAsync(db, platform, ct)))
             secret["UserAgent"] = userAgent;
-        return secrets.SetSecretAsync(
+        await secrets.SetSecretAsync(
             UserConnectorService.SecretName(connectorId, userId),
             JsonSerializer.Serialize(secret, Json.Options),
             ct);

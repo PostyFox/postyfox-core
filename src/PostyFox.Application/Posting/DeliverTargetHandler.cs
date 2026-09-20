@@ -64,6 +64,7 @@ public sealed class DeliverTargetHandler(
             var uc = await db.UserConnectors.FirstOrDefaultAsync(c => c.Id == connectorId, ct);
             configJson = uc?.ConfigJson ?? "{}";
             secretJson = await secrets.GetSecretAsync(UserConnectorService.SecretName(connectorId, userId), ct);
+            secretJson = await PairedUserAgentService.ApplyAsync(db, target.Platform, secretJson, ct);
         }
 
         var rendered = Json.Deserialize<RenderedPost>(target.RenderedContentJson)!;

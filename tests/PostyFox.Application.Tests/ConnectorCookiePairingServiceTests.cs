@@ -60,6 +60,35 @@ public class ConnectorCookiePairingServiceTests
         return id;
     }
 
+    [Fact]
+    public async Task Pairing_keeps_the_user_agent_by_default()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedAsync(db);
+        var secrets = new FakeSecretStore();
+
+        await Service(db, secrets).PairAsync("u1", "FurAffinity", null, ValidCookies, "Browser/1.0");
+
+        using var json = JsonDocument.Parse(secrets.Store[UserConnectorService.SecretName(connectorId, "u1")]);
+        Assert.Equal("Browser/1.0", json.RootElement.GetProperty("UserAgent").GetString());
+    }
+
+    [Fact]
+    public async Task Pairing_drops_the_user_agent_when_the_admin_selects_the_default()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedAsync(db);
+        db.ServiceDefinitions.Single(s => s.Id == "FurAffinity").UsePairedUserAgent = false;
+        await db.SaveChangesAsync();
+        var secrets = new FakeSecretStore();
+
+        await Service(db, secrets).PairAsync("u1", "FurAffinity", null, ValidCookies, "Browser/1.0");
+
+        var stored = secrets.Store[UserConnectorService.SecretName(connectorId, "u1")];
+        Assert.DoesNotContain("UserAgent", stored);
+        Assert.Contains("CookieHeader", stored);
+    }
+
     // ----- direct pairing (the browser extension's one-click path) --------------------------------
 
     [Fact]

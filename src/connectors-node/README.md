@@ -230,9 +230,10 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
 > `rettiwt-api` drives X's internal web API with a logged-in session. Its own README warns the
 > account can be banned. Users must be told before they connect (the connect UI does).
 
-- `secretJson` → `{ "CookieHeader": "auth_token=…; ct0=…; twid=…" }`, paired by PostyFox Connect. The
+- `secretJson` → `{ "CookieHeader": "auth_token=…; ct0=…; twid=…", "UserAgent": "…" }`, paired by PostyFox Connect. The
   connector rebuilds the three cookies into `rettiwt-api`'s base64 "API key" (see `apiKeyFromCookies`);
-  any other cookie is ignored. No `configJson` fields.
+  any other cookie is ignored. When the secret carries a paired `UserAgent` it is sent as the
+  `User-Agent` header, otherwise `rettiwt-api`'s own default applies. No `configJson` fields.
 - `list-targets` returns the logged-in account as `{ id: userName, name: "X: @userName" }`.
 - `deliver` posts `post.body` (at most 280 characters, the standard account limit) with up to four
   images (JPEG, PNG or WebP, normalized to 5MB and 4096px). A post needs text or an image. Video and

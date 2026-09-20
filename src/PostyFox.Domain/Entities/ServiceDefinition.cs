@@ -18,4 +18,10 @@ public class ServiceDefinition
 
     /// <summary>Connector implementation key used to route delivery/auth operations.</summary>
     public string Platform { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Admin-controlled, cookie-paired platforms only. True: connector requests replay the User-Agent
+    /// of the browser that paired the session. False: they always use PostyFox's default User-Agent.
+    /// </summary>
+    public bool UsePairedUserAgent { get; set; } = true;
 }
