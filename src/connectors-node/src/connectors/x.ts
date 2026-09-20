@@ -19,6 +19,7 @@ const REQUIRED_COOKIES = ["auth_token", "ct0", "twid"] as const;
 
 interface XSecret {
   CookieHeader?: string;
+  UserAgent?: string;
 }
 
 /** The slice of rettiwt-api's `Rettiwt` this connector uses, so tests can substitute a fake. */
@@ -30,7 +31,7 @@ export interface XClient {
   };
 }
 
-export type XClientFactory = (apiKey: string) => XClient;
+export type XClientFactory = (apiKey: string, userAgent?: string) => XClient;
 
 export interface XConnectorOptions {
   mediaStore?: MediaStore;
@@ -43,7 +44,10 @@ export class XConnector implements Connector {
 
   constructor(options: XConnectorOptions = {}) {
     this.mediaStore = options.mediaStore ?? mediaStoreFromEnv();
-    this.clientFactory = options.clientFactory ?? ((apiKey) => new Rettiwt({ apiKey }) as XClient);
+    this.clientFactory = options.clientFactory ??
+      ((apiKey, userAgent) =>
+        // Without a paired User-Agent the library's own browser default applies.
+        new Rettiwt({ apiKey, ...(userAgent ? { headers: { "User-Agent": userAgent } } : {}) }) as XClient);
   }
 
   async isAuthenticated(ctx: ConnectorContext): Promise<IsAuthenticatedResult> {
@@ -117,7 +121,7 @@ export class XConnector implements Connector {
       throw new Error("invalid X session cookies");
     }
     if (!secret.CookieHeader) throw new Error("missing X session cookies");
-    return this.clientFactory(apiKeyFromCookies(secret.CookieHeader));
+    return this.clientFactory(apiKeyFromCookies(secret.CookieHeader), secret.UserAgent?.trim() || undefined);
   }
 }
 

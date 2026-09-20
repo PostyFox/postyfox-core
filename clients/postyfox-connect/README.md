@@ -69,6 +69,9 @@ source so Chrome/Edge/Safari behavior stays aligned.
   the cookies to.
 - Only the cookie names the platform's descriptor declares are read, sent, or stored. Values are
   never displayed or persisted by the extension.
+- The extension always sends its `navigator.userAgent`. Whether a platform replays it or uses
+  PostyFox's default is an admin setting (Administration page, "Connector User-Agent"), enforced
+  server-side at pairing and at delivery. Users cannot change it.
 - `/cookie-pairing/pair` is authorized by the caller's own PostyFox session, so a browser that is not
   signed in cannot connect anything.
 - `/cookie-pairing/sites` is anonymous but carries platform metadata only: no user context.

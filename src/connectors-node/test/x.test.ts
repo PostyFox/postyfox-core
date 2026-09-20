@@ -77,6 +77,23 @@ function connectorWith(client: FakeClient, keys: string[] = []): XConnector {
   });
 }
 
+test("x hands the paired user agent to the client, or none when absent", async () => {
+  const agents: (string | undefined)[] = [];
+  const connector = new XConnector({
+    mediaStore: { fetch: async () => imageBytes(), ...noopStoreExtras },
+    clientFactory: (_key, userAgent) => {
+      agents.push(userAgent);
+      return new FakeClient();
+    },
+  });
+  const withAgent = { ...context, secretJson: JSON.stringify({ CookieHeader: cookieHeader, UserAgent: " Browser/1.0 " }) };
+
+  await connector.isAuthenticated(withAgent);
+  await connector.isAuthenticated(context);
+
+  assert.deepEqual(agents, ["Browser/1.0", undefined]);
+});
+
 test("x api key is built from only the three required cookies, with trailing semicolons", () => {
   const key = apiKeyFromCookies(cookieHeader);
   assert.equal(Buffer.from(key, "base64").toString(), "auth_token=tok;ct0=csrf;twid=u%3D12345;");

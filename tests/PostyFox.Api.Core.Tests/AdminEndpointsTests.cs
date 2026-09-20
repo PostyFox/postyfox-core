@@ -49,4 +49,35 @@ public class AdminEndpointsTests
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
     }
 
+    [Fact]
+    public async Task Paired_user_agent_settings_require_the_admin_role()
+    {
+        using var factory = new CustomWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/admin/paired-user-agents")).StatusCode);
+        var put = await client.PutAsJsonAsync(
+            "/api/admin/paired-user-agents/FurAffinity", new { usePairedUserAgent = false });
+        Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_can_switch_a_cookie_platform_to_the_default_user_agent()
+    {
+        using var factory = new CustomWebApplicationFactory { DevAdmin = true };
+        using var client = factory.CreateClient();
+
+        var before = await client.GetFromJsonAsync<List<PairedUserAgentSetting>>("/api/admin/paired-user-agents");
+        Assert.Contains(before!, s => s.Platform == "FurAffinity" && s.UsePairedUserAgent);
+        Assert.DoesNotContain(before!, s => s.Platform == "BlueSky");
+
+        var put = await client.PutAsJsonAsync(
+            "/api/admin/paired-user-agents/FurAffinity", new { usePairedUserAgent = false });
+        var after = await client.GetFromJsonAsync<List<PairedUserAgentSetting>>("/api/admin/paired-user-agents");
+
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        Assert.False(after!.Single(s => s.Platform == "FurAffinity").UsePairedUserAgent);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(
+            "/api/admin/paired-user-agents/BlueSky", new { usePairedUserAgent = false })).StatusCode);
+    }
 }
