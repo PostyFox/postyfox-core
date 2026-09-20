@@ -177,6 +177,8 @@ public static class ServiceCollectionExtensions
                 RequiresRating: true,
                 SupportsTags: false,
                 RequiresTags: false,
+                // An upload is an image on a character page; the connector rejects a post with none.
+                RequiresMedia: true,
                 // Character IDs, artist credit, and privacy/watermark choices are chosen per upload on
                 // Toyhouse's own form, so they belong to the post rather than the account, the same
                 // reasoning as FurAffinity's category/species/gender/folders.
