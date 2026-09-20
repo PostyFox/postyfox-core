@@ -39,6 +39,7 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.True(furAffinity.SupportsCookiePairing);
         Assert.True(furAffinity.SupportsRating);
         Assert.True(furAffinity.RequiresRating);
+        Assert.True(furAffinity.SupportsTextOnly);
         Assert.Null(furAffinity.SecureConfigSchema);
         // The FurAffinity account itself carries no settings: category/species/gender/folders are
         // chosen per submission, so they reach the compose form as post options, not connector config.

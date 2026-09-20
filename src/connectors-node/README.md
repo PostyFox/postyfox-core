@@ -193,10 +193,14 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
 
 - `secretJson` → `{ "CookieHeader": "a=…; b=…" }`. The cookie header must come from a currently
   logged-in `furaffinity.net` browser session and is stored by core's configured secret provider.
-- Optional `configJson` fields: `Category`, `Theme`, `Species`, `Gender`, and comma-separated
-  `FolderIds`. Missing values use FurAffinity's general-purpose defaults.
-- Gallery delivery currently accepts exactly one JPEG, PNG, or GIF, requires an explicit post
-  `rating` plus at least three tags, and follows FurAffinity's upload/finalize forms.
+- Optional `configJson` fields: `Category`, `Theme`, `Species`, `Gender`, comma-separated
+  `FolderIds`, and `Feature` (`"true"` features a journal). Missing values use FurAffinity's
+  general-purpose defaults.
+- Gallery delivery (a post with an image) currently accepts exactly one JPEG, PNG, or GIF, requires an
+  explicit post `rating` plus at least three tags, and follows FurAffinity's upload/finalize forms.
+- A post with no image is posted as a journal (`/controls/journal`): a title of at most 60 characters
+  and a body, no rating or tags. The journal flow follows PostyBirb and has not been exercised against
+  the live site.
 - Run a single connectors-node replica while FurAffinity is enabled; its required per-account
   posting interval is coordinated in-process.
 - Automated login and Cloudflare challenge solving are intentionally not attempted. When a

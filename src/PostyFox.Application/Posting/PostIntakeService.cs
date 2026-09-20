@@ -267,7 +267,9 @@ public sealed class PostIntakeService(
         {
             registry.TryGet(destination.Platform, out var connector);
             var descriptor = connector?.Describe();
-            var requiresTags = descriptor?.RequiresTags ?? false;
+            // A text-only post to a platform that supports one (FurAffinity journals) needs no tags.
+            var requiresTags = (descriptor?.RequiresTags ?? false)
+                && (hasMedia || !(descriptor?.SupportsTextOnly ?? false));
             if (requiresTags && !hasTags)
                 throw new ConnectorValidationException($"{destination.DisplayName}: at least one tag is required for this platform.");
 

@@ -52,7 +52,9 @@ public sealed record ServiceDefinitionDto(
     /// <summary>True when the platform can delete an already-delivered post (see <see cref="Connectors.ConnectorDescriptor.SupportsDelete"/>).</summary>
     bool SupportsDelete = false,
     /// <summary>True when a delivery to this platform must include at least one media attachment (see <see cref="Connectors.ConnectorDescriptor.RequiresMedia"/>).</summary>
-    bool RequiresMedia = false);
+    bool RequiresMedia = false,
+    /// <summary>True when a post with no media is delivered as text-only, exempt from required tags and rating (see <see cref="Connectors.ConnectorDescriptor.SupportsTextOnly"/>).</summary>
+    bool SupportsTextOnly = false);
 
 public sealed record UserConnectorDto(
     Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled,

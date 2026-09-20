@@ -45,12 +45,12 @@ public sealed class FakeObjectStore : IObjectStore
 
 public sealed class FakeConnector(
     string platform, Func<RenderedPost, DeliveryResult>? deliver = null, bool supportsTags = true, bool requiresTags = false,
-    int? maxContentLength = null, bool supportsRepost = false, bool supportsDelete = false, bool requiresMedia = false) : IConnector
+    int? maxContentLength = null, bool supportsRepost = false, bool supportsDelete = false, bool requiresMedia = false, bool supportsTextOnly = false) : IConnector
 {
     public int DeliverCount { get; private set; }
     public ConnectorDescriptor Describe() => new(platform, platform, true, false, false, maxContentLength,
         SupportsTags: supportsTags, RequiresTags: requiresTags, SupportsRepost: supportsRepost, SupportsDelete: supportsDelete,
-        RequiresMedia: requiresMedia);
+        RequiresMedia: requiresMedia, SupportsTextOnly: supportsTextOnly);
     public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
     public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
         => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
