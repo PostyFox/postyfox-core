@@ -26,7 +26,8 @@ connector's config at delivery. (They were connector settings before, see `Deliv
 
 `Category` (`cat`), `Theme` (`atype`), `Species` and `Gender` are numeric IDs chosen from fixed lists
 on FurAffinity's own submission form, so they can be mirrored verbatim. `FolderIds` cannot: gallery
-folders belong to an individual account, so it stays a free-text field.
+folders belong to an individual account, so it stays a free-text field. `Feature` applies only to
+journals (a post with no image) and features the journal on the profile when set to `true`.
 
 Leaving a field unset is valid: the Node connector then applies FurAffinity's own defaults (`cat=1`,
 `atype=1`, `species=1`, `gender=0`), which is why those values must stay selectable.

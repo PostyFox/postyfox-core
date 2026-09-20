@@ -532,5 +532,13 @@
     "help": "Optional. Folders are specific to your account: open a folder in your gallery and copy the number from its URL (…/gallery/you/folder/123/name). Separate several with commas.",
     "pattern": "^[0-9]+( *, *[0-9]+)*$",
     "message": "Folder IDs must be comma-separated numbers."
+  },
+  "Feature": {
+    "label": "Feature journal",
+    "placeholder": "No",
+    "help": "Journals only (posts with no image). Choose Yes to set the journal as your featured journal.",
+    "options": [
+      {"value":"true","label":"Yes"}
+    ]
   }
 }

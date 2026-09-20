@@ -207,13 +207,93 @@ test("furaffinity rejects a missing rating before making requests", async () => 
   assert.equal(session.requests.length, 0);
 });
 
-test("furaffinity requires at least one image", async () => {
-  const session = new FakeSession([]);
-  const result = await connectorWith(session).deliver(context, { ...post, media: [] });
+const journalPost: Post = { title: "News", body: "Hello journal", tags: [], media: [], rating: null };
+const journalForm = '<form id="journal-form"><input name="key" value="journal-key"></form>';
 
-  assert.equal(result.success, false);
-  assert.match(result.error ?? "", /require an image/);
+test("furaffinity posts a text-only post as a journal", async () => {
+  const session = new FakeSession([
+    response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),
+    response(journalForm, "https://www.furaffinity.net/controls/journal"),
+    response("<html>ok</html>", "https://www.furaffinity.net/journal/777/"),
+  ]);
+
+  const result = await connectorWith(session).deliver(context, journalPost);
+
+  assert.deepEqual(result, {
+    success: true,
+    externalId: "777",
+    externalUrl: "https://www.furaffinity.net/journal/777/",
+  });
+  assert.deepEqual(session.requests.map((r) => r.path), [
+    "/controls/submissions",
+    "/controls/journal",
+    "/controls/journal/",
+  ]);
+  const form = session.requests[2].request?.body;
+  assert.ok(form instanceof URLSearchParams);
+  assert.equal(form.get("key"), "journal-key");
+  assert.equal(form.get("subject"), "News");
+  assert.equal(form.get("message"), "Hello journal");
+  assert.equal(form.get("id"), "0");
+  assert.equal(form.get("do"), "update");
+  assert.equal(form.has("make_featured"), false);
+});
+
+test("furaffinity features a journal when the Feature option is chosen", async () => {
+  const session = new FakeSession([
+    response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),
+    response(journalForm, "https://www.furaffinity.net/controls/journal"),
+    response("<html>ok</html>", "https://www.furaffinity.net/journal/777/"),
+  ]);
+
+  await connectorWith(session).deliver({ ...context, configJson: '{"Feature":"true"}' }, journalPost);
+
+  const form = session.requests[2].request?.body;
+  assert.ok(form instanceof URLSearchParams);
+  assert.equal(form.get("make_featured"), "on");
+});
+
+test("furaffinity validates a journal title before making requests", async () => {
+  const session = new FakeSession([]);
+  const connector = connectorWith(session);
+
+  assert.match((await connector.deliver(context, { ...journalPost, title: " " })).error ?? "", /requires a title/);
+  const long = await connector.deliver(context, { ...journalPost, title: "x".repeat(61) });
+  assert.match(long.error ?? "", /60 characters/);
   assert.equal(session.requests.length, 0);
+});
+
+test("furaffinity reports a journal that is not confirmed", async () => {
+  const session = new FakeSession([
+    response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),
+    response(journalForm, "https://www.furaffinity.net/controls/journal"),
+    response("<html>nope</html>", "https://www.furaffinity.net/controls/journal/"),
+  ]);
+
+  const result = await connectorWith(session).deliver(context, journalPost);
+  assert.equal(result.success, false);
+  assert.match(result.error ?? "", /did not confirm the journal/);
+});
+
+test("furaffinity surfaces a journal form error and a missing form token", async () => {
+  const rejected = new FakeSession([
+    response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),
+    response(journalForm, "https://www.furaffinity.net/controls/journal"),
+    response('<div class="redirect-message">Journal too long</div>', "https://www.furaffinity.net/controls/journal/"),
+  ]);
+  assert.match((await connectorWith(rejected).deliver(context, journalPost)).error ?? "", /Journal too long/);
+
+  const noToken = new FakeSession([
+    response(loggedInPage, "https://www.furaffinity.net/controls/submissions"),
+    response("<html></html>", "https://www.furaffinity.net/controls/journal"),
+  ]);
+  assert.match((await connectorWith(noToken).deliver(context, journalPost)).error ?? "", /form token was not found/);
+});
+
+test("furaffinity journal requires a logged-in session", async () => {
+  const session = new FakeSession([response("<html>Login</html>", "https://www.furaffinity.net/login")]);
+  const result = await connectorWith(session).deliver(context, journalPost);
+  assert.match(result.error ?? "", /not logged in/);
 });
 
 test("furaffinity submits the author's chosen default when several images are attached", async () => {

@@ -88,6 +88,10 @@ public class FurAffinityPostOptionsTests
         // validated as a required field.
         Assert.Null(ConfigSchemaValidator.Validate(schema, "{}"));
         Assert.Null(ConfigSchemaValidator.Validate(schema, """{"Category":"13","Gender":"2"}"""));
+        Assert.Null(ConfigSchemaValidator.Validate(schema, """{"Feature":"true"}"""));
+        Assert.Equal(
+            "Feature journal is not one of the available choices.",
+            ConfigSchemaValidator.Validate(schema, """{"Feature":"maybe"}"""));
         Assert.Equal(
             "Category is not one of the available choices.",
             ConfigSchemaValidator.Validate(schema, """{"Category":"999999"}"""));

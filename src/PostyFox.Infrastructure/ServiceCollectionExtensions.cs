@@ -133,7 +133,9 @@ public static class ServiceCollectionExtensions
                 // Category/theme/species/gender/folders are chosen per submission on FurAffinity's own
                 // form, so they belong to the post rather than the account. The lists run to ~500
                 // entries, see Persistence/Schemas/README.md for provenance and regeneration.
-                PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json")
+                PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json"),
+                // A post with no media becomes a journal, which takes no tags or rating.
+                SupportsTextOnly: true
                 // No SupportsRepost/SupportsDelete: FurAffinity has no API, so both would mean scripting
                 // another multi-step, CSRF-guarded browser-session form flow. Deliberately left out of
                 // this pass rather than shipped untested against the real site.

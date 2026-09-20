@@ -348,6 +348,32 @@ public class PostIntakeServiceTests
                 [connectorId], "Title", "Body", null, null, null, null, null, null)));
     }
 
+    [Theory]
+    [InlineData(false, false)] // text-only, no tags: exempt
+    [InlineData(true, true)]   // with media, no tags: still required
+    public async Task Create_exempts_text_only_posts_from_required_tags_only_when_the_platform_supports_them(bool withMedia, bool rejected)
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "FurAffinity", Name = "FurAffinity", Platform = "FurAffinity", Enabled = true });
+        var connectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = connectorId, UserId = "u1", ServiceDefinitionId = "FurAffinity", DisplayName = "FA", Enabled = true
+        });
+        await db.SaveChangesAsync();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), new FakeBus(), new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("FurAffinity", requiresTags: true, supportsTextOnly: true)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+        var request = new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null,
+            withMedia ? [new MediaRef("media", "u1/abc/pic.png", "image/png")] : null, null, null, null);
+
+        if (rejected)
+            await Assert.ThrowsAsync<PostyFox.Application.Connectors.ConnectorValidationException>(() => svc.CreateAsync("u1", request));
+        else
+            Assert.NotNull(await svc.CreateAsync("u1", request));
+    }
+
     [Fact]
     public async Task Create_accepts_a_target_that_requires_media_when_media_supplied()
     {

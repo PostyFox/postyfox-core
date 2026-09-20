@@ -34,6 +34,7 @@ interface FurAffinityConfig {
   Scraps?: boolean;
   DisableComments?: boolean;
   FolderIds?: string;
+  Feature?: string;
 }
 
 interface FurAffinitySecret {
@@ -111,6 +112,7 @@ export class FurAffinityConnector implements Connector {
   }
 
   async deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {
+    if (post.media.length === 0) return this.deliverJournal(ctx, post);
     try {
       const input = this.validatePost(post);
       const session = await this.createSession(ctx);
@@ -199,6 +201,49 @@ export class FurAffinityConnector implements Connector {
     }
   }
 
+  /** A post with no image becomes a journal: no rating, tags, upload or flood-protection wait. */
+  private async deliverJournal(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {
+    try {
+      const title = post.title?.trim();
+      if (!title) throw new Error("FurAffinity requires a title");
+      if (title.length > 60) throw new Error("FurAffinity titles may not exceed 60 characters");
+      const config = this.parseConfig(ctx);
+      const session = await this.createSession(ctx);
+      const login = await this.checkLogin(session);
+      if (!login.authenticated) throw new Error("FurAffinity session is not logged in");
+
+      const page = await session.request("/controls/journal", {
+        headers: { referer: `${BASE_URL}/controls/journal` },
+      });
+      this.requireSuccess(page, "load journal form");
+      const key = this.inputValue(page.body, ['#journal-form input[name="key"]']);
+
+      const form = new URLSearchParams();
+      form.set("key", key);
+      form.set("message", post.body);
+      form.set("subject", title);
+      form.set("id", "0");
+      form.set("do", "update");
+      if (config.Feature === "true") form.set("make_featured", "on");
+
+      const posted = await session.request("/controls/journal/", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          referer: `${BASE_URL}/controls/journal`,
+        },
+        body: form,
+      });
+      this.requireSuccess(posted, "post journal");
+      this.throwPageError(posted.body);
+      const externalId = /\/journal\/(\d+)\/?$/.exec(posted.url)?.[1];
+      if (!externalId) throw new Error("FurAffinity did not confirm the journal");
+      return { success: true, externalId, externalUrl: posted.url };
+    } catch (error) {
+      return { success: false, error: describeError(error) };
+    }
+  }
+
   private validatePost(post: Post): {
     title: string;
     keywords: string;
@@ -210,7 +255,6 @@ export class FurAffinityConnector implements Connector {
     if (!post.rating) throw new Error("FurAffinity requires an explicit content rating");
     if (!["general", "mature", "adult", "extreme"].includes(post.rating))
       throw new Error(`unsupported FurAffinity content rating '${post.rating}'`);
-    if (post.media.length === 0) throw new Error("FurAffinity gallery submissions require an image");
 
     // FurAffinity's gallery form takes exactly one file. A post authored for several multi-image
     // platforms at once may carry more than one attachment here; rather than rejecting the whole

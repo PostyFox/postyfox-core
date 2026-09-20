@@ -104,7 +104,13 @@ public sealed record ConnectorDescriptor(
     /// <see cref="RequiresTags"/>: <c>PostIntakeService</c> rejects a target with no media attached
     /// at intake, and the compose form surfaces it before the post is even queued.
     /// </summary>
-    bool RequiresMedia = false)
+    bool RequiresMedia = false,
+    /// <summary>
+    /// True when a post with no media is delivered as a text-only post (FurAffinity journals). Such a
+    /// post is exempt from <see cref="RequiresTags"/> and <see cref="RequiresRating"/>, which then
+    /// apply only when media is attached.
+    /// </summary>
+    bool SupportsTextOnly = false)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;
