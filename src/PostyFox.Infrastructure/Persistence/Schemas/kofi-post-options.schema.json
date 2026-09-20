@@ -1,0 +1,13 @@
+{
+  "$comment": "Ko-fi's per-post audience choice. Option values are the site's own audience identifiers, as used by PostyBirb's Ko-fi module.",
+  "Audience": {
+    "label": "Audience",
+    "placeholder": "Public (Ko-fi default)",
+    "help": "Who can see the post. Leave unset for Public.",
+    "options": [
+      {"value":"public","label":"Public"},
+      {"value":"supporter","label":"All Supporters (One-off & Monthly)"},
+      {"value":"recurringSupporter","label":"All Monthly Supporters (Members)"}
+    ]
+  }
+}

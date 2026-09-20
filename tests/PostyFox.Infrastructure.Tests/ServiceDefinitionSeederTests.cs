@@ -54,4 +54,13 @@ public class ServiceDefinitionSeederTests
         Assert.Equal("{}", x.ConfigSchema);
         Assert.Null(x.SecureConfigSchema);
     }
+
+    [Fact]
+    public void Kofi_connector_has_no_account_settings()
+    {
+        var kofi = ServiceDefinitionSeeder.Definitions.Single(d => d.Id == "Kofi");
+
+        Assert.Equal("{}", kofi.ConfigSchema);
+        Assert.Null(kofi.SecureConfigSchema);
+    }
 }

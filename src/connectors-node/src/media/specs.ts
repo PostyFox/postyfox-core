@@ -47,6 +47,14 @@ export const X_SPEC: MediaSpec = {
   maxAttachments: 4,
 };
 
+// Ko-fi's gallery upload takes up to 10 images per post (PostyBirb's batch size). No byte cap is
+// documented, so none is asserted here.
+export const KOFI_SPEC: MediaSpec = {
+  image: { allowedMimeTypes: ["image/jpeg", "image/png", "image/gif"] },
+  video: { allowedMimeTypes: [] },
+  maxAttachments: 10,
+};
+
 /** Fallback used before an instance's live limits are known (or when it reports none). */
 export const FEDIVERSE_SPEC: MediaSpec = {
   image: { maxWidth: 2048, maxHeight: 2048, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] },

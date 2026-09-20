@@ -240,6 +240,34 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
             sp.GetRequiredService<IServiceScopeFactory>()));
 
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "Kofi",
+            new ConnectorDescriptor(
+                "Kofi",
+                "Ko-fi",
+                // Ko-fi has no posting API: same browser-session handoff as FurAffinity/Toyhouse. Posts
+                // without media become articles, posts with images become gallery items. Both need a
+                // title. The audience is chosen per post (see PostOptionsSchema).
+                SupportsTitle: true,
+                SupportsMedia: true,
+                SupportsThreads: false,
+                MaxContentLength: null,
+                // kofi_identity_cookie is the login cookie. kofiweb.session, the ASP.NET antiforgery
+                // cookie and Cloudflare's cf_clearance are collected when present, never required: the
+                // antiforgery cookie is also re-issued by the site on the first request.
+                CookiePairing: new CookiePairingSpec(
+                    SiteUrl: "https://ko-fi.com/",
+                    LoginUrl: "https://ko-fi.com/account/login",
+                    CookieNames: ["kofi_identity_cookie"],
+                    OptionalCookieNames: ["kofiweb.session", ".AspNetCore.Antiforgery.vfD8k5plZXs", "cf_clearance"]),
+                PostOptionsSchema: EmbeddedSchema.Load("kofi-post-options.schema.json")
+                // No SupportsRepost/SupportsDelete: no API, and untested against the real site.
+                ),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
+
         // Fediverse platforms: all delivered by the megalodon connector in the Node service, all via
         // an instance-scoped OAuth/MiAuth connect flow. They differ only in display name and the
         // default max content length (a UI hint; instances configure their own limit). MaxContentLength

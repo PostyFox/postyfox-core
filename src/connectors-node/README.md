@@ -10,6 +10,7 @@ are Node-only:
 - **FurAffinity** via its authenticated HTML forms
 - **Toyhouse** via its authenticated HTML forms
 - **X** via [`rettiwt-api`](https://github.com/Rishikant181/Rettiwt-API) and a paired browser session
+- **Ko-fi** via its authenticated site forms
 - **Instagram** via the Instagram Content Publishing API (Business Login for Instagram)
 
 The service is intentionally small and holds no state: every request carries
@@ -51,7 +52,7 @@ If `INTERNAL_TOKEN` is not configured, all requests are allowed (dev only).
 
 ## HTTP contract
 
-`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Instagram`, and the supported
+`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Kofi`, `Instagram`, and the supported
 Fediverse platforms (case-insensitive). Unknown platforms
 return `404 { "error": "unknown platform" }`.
 
@@ -240,6 +241,20 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   alt text are not supported: `rettiwt-api`'s upload is unchunked and has no alt-text field.
   `externalUrl` is `https://x.com/i/status/<id>`.
 - Not exercised against the live site: X changes its internal API and anti-automation checks often.
+
+### Ko-fi
+
+- `secretJson` → `{ "CookieHeader": "kofi_identity_cookie=…", "UserAgent": "…" }`. `kofi_identity_cookie`
+  is the required login cookie; `kofiweb.session`, the ASP.NET antiforgery cookie and `cf_clearance` are
+  paired when present.
+- Optional `configJson` field: `Audience` (`public` default, `supporter`, `recurringSupporter`).
+- Ko-fi has no posting API. A post with no media becomes an article (`/Blog/AddBlogPost`); a post with
+  1 to 10 JPEG, PNG or GIF images becomes a gallery item (`/gallery-item/upload` then
+  `/Gallery/AddGalleryItem`). A title is required. The antiforgery token is read from `/settings` and
+  sent with each request. Endpoints and fields follow
+  [PostyBirb](https://github.com/mvdicarlo/postybirb)'s Ko-fi module and are not yet verified against
+  the live site. Ko-fi's Terms restrict automated interaction, so use is at the account holder's risk.
+- No delete or repost support, and no Cloudflare challenge solving (refresh the imported cookies).
 
 ## Running
 

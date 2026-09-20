@@ -268,6 +268,7 @@ the connector-ops endpoints never hard-code a platform.
 | FurAffinity | connectors-node | Cookie-authenticated HTML form workflow |
 | Toyhouse | connectors-node | Cookie-authenticated HTML form workflow |
 | X | connectors-node | `rettiwt-api` over paired browser cookies (against X's terms of service) |
+| Ko-fi | connectors-node | Cookie-authenticated site form workflow |
 
 The C# **`HttpConnector`** adapter fulfils `IConnector` for Node-hosted platforms by forwarding to
 connectors-node over HTTP (`POST /connectors/{platform}/{is-authenticated|list-targets|deliver}`),
