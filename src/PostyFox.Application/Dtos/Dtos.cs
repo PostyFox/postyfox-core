@@ -54,7 +54,9 @@ public sealed record ServiceDefinitionDto(
     /// <summary>True when a delivery to this platform must include at least one media attachment (see <see cref="Connectors.ConnectorDescriptor.RequiresMedia"/>).</summary>
     bool RequiresMedia = false,
     /// <summary>True when a post with no media is delivered as text-only, exempt from required tags and rating (see <see cref="Connectors.ConnectorDescriptor.SupportsTextOnly"/>).</summary>
-    bool SupportsTextOnly = false);
+    bool SupportsTextOnly = false,
+    /// <summary>Risk to show the user before they connect (see <see cref="Connectors.ConnectorDescriptor.Warning"/>); null for none.</summary>
+    Connectors.ConnectorWarning? Warning = null);
 
 public sealed record UserConnectorDto(
     Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled,

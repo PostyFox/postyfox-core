@@ -23,6 +23,14 @@ public sealed record CookiePairingSpec(
     IReadOnlyList<string> CookieNames,
     IReadOnlyList<string> OptionalCookieNames);
 
+/// <summary>
+/// A risk the user must see before connecting a platform, e.g. that PostyFox posts through their
+/// browser session and the site's terms may not allow it. <paramref name="Href"/> links to the
+/// source for it (the site's terms); the link is shown only when both it and
+/// <paramref name="LinkText"/> are set.
+/// </summary>
+public sealed record ConnectorWarning(string Text, string? Href = null, string? LinkText = null);
+
 /// <summary>Describes a connector's capabilities and identity.</summary>
 public sealed record ConnectorDescriptor(
     string Platform,
@@ -110,7 +118,9 @@ public sealed record ConnectorDescriptor(
     /// post is exempt from <see cref="RequiresTags"/> and <see cref="RequiresRating"/>, which then
     /// apply only when media is attached.
     /// </summary>
-    bool SupportsTextOnly = false)
+    bool SupportsTextOnly = false,
+    /// <summary>Risk shown to the user in the connect UI before they connect (see <see cref="ConnectorWarning"/>). Null for none.</summary>
+    ConnectorWarning? Warning = null)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;

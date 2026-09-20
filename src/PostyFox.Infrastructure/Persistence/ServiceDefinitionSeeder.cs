@@ -77,6 +77,9 @@ public static class ServiceDefinitionSeeder
     // the connector descriptor's PostOptionsSchema.
     private const string ToyhouseConfigSchema = "{}";
 
+    // X authenticates from a handed-over browser session and has nothing to configure per account.
+    private const string XConfigSchema = "{}";
+
     // Shared by every Fediverse platform (Mastodon, Pleroma, Pixelfed, …). The connect (OAuth/MiAuth)
     // flow yields the access token, so there is no user-facing secure schema. https:// is added
     // automatically when the scheme is omitted.
@@ -104,6 +107,8 @@ public static class ServiceDefinitionSeeder
                 ConfigSchema = FurAffinityConfigSchema, SecureConfigSchema = null },
         new() { Id = "Toyhouse", Name = "Toyhouse", Platform = "Toyhouse", Enabled = true,
                 ConfigSchema = ToyhouseConfigSchema, SecureConfigSchema = null },
+        new() { Id = "X", Name = "X", Platform = "X", Enabled = true,
+                ConfigSchema = XConfigSchema, SecureConfigSchema = null },
         // Instagram credentials come from the "Business Login for Instagram" OAuth flow
         // (SupportsOAuth), not entered by hand, so there is no user-facing secure config schema.
         new() { Id = "Instagram", Name = "Instagram", Platform = "Instagram", Enabled = true,

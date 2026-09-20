@@ -254,5 +254,9 @@ public class ConnectorOpsEndpointsTests(CustomWebApplicationFactory factory) : I
         Assert.Null(site.ConnectorId);
         // Toyhouse is the other cookie-authenticated platform this deployment supports anonymously.
         Assert.Contains(sites!, s => s.Platform == "Toyhouse");
+        // X hands over the three cookies rettiwt-api builds its session from.
+        var x = Assert.Single(sites!, s => s.Platform == "X");
+        Assert.Equal(["auth_token", "ct0", "twid"], x.CookieNames);
+        Assert.Equal("https://x.com/", x.SiteUrl);
     }
 }

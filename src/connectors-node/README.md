@@ -9,6 +9,7 @@ are Node-only:
 - **Tumblr** via [`tumblr.js`](https://www.npmjs.com/package/tumblr.js)
 - **FurAffinity** via its authenticated HTML forms
 - **Toyhouse** via its authenticated HTML forms
+- **X** via [`rettiwt-api`](https://github.com/Rishikant181/Rettiwt-API) and a paired browser session
 - **Instagram** via the Instagram Content Publishing API (Business Login for Instagram)
 
 The service is intentionally small and holds no state: every request carries
@@ -50,7 +51,7 @@ If `INTERNAL_TOKEN` is not configured, all requests are allowed (dev only).
 
 ## HTTP contract
 
-`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `Instagram`, and the supported
+`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Instagram`, and the supported
 Fediverse platforms (case-insensitive). Unknown platforms
 return `404 { "error": "unknown platform" }`.
 
@@ -222,6 +223,22 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   [PostyBirb](https://github.com/mvdicarlo/postybirb)'s driver for the same site).
 - Automated login and Cloudflare challenge solving are intentionally not attempted, same as
   FurAffinity: when a challenge or expired login is detected, refresh the imported browser cookies.
+
+### X
+
+> **Terms of service:** X's terms prohibit automated access outside its paid official API, and
+> `rettiwt-api` drives X's internal web API with a logged-in session. Its own README warns the
+> account can be banned. Users must be told before they connect (the connect UI does).
+
+- `secretJson` → `{ "CookieHeader": "auth_token=…; ct0=…; twid=…" }`, paired by PostyFox Connect. The
+  connector rebuilds the three cookies into `rettiwt-api`'s base64 "API key" (see `apiKeyFromCookies`);
+  any other cookie is ignored. No `configJson` fields.
+- `list-targets` returns the logged-in account as `{ id: userName, name: "X: @userName" }`.
+- `deliver` posts `post.body` (at most 280 characters, the standard account limit) with up to four
+  images (JPEG, PNG or WebP, normalized to 5MB and 4096px). A post needs text or an image. Video and
+  alt text are not supported: `rettiwt-api`'s upload is unchunked and has no alt-text field.
+  `externalUrl` is `https://x.com/i/status/<id>`.
+- Not exercised against the live site: X changes its internal API and anti-automation checks often.
 
 ## Running
 

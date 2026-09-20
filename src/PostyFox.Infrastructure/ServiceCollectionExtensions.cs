@@ -135,7 +135,13 @@ public static class ServiceCollectionExtensions
                 // entries, see Persistence/Schemas/README.md for provenance and regeneration.
                 PostOptionsSchema: EmbeddedSchema.Load("furaffinity-post-options.schema.json"),
                 // A post with no media becomes a journal, which takes no tags or rating.
-                SupportsTextOnly: true
+                SupportsTextOnly: true,
+                Warning: new ConnectorWarning(
+                    "FurAffinity has no API, so PostyFox posts through your logged-in browser session. "
+                    + "Its terms of service prohibit automated access that negatively impacts site performance "
+                    + "(section 3.9.4), and the account is yours to answer for.",
+                    "https://www.furaffinity.net/tos",
+                    "FurAffinity Terms of Service")
                 // No SupportsRepost/SupportsDelete: FurAffinity has no API, so both would mean scripting
                 // another multi-step, CSRF-guarded browser-session form flow. Deliberately left out of
                 // this pass rather than shipped untested against the real site.
@@ -182,10 +188,52 @@ public static class ServiceCollectionExtensions
                 // Character IDs, artist credit, and privacy/watermark choices are chosen per upload on
                 // Toyhouse's own form, so they belong to the post rather than the account, the same
                 // reasoning as FurAffinity's category/species/gender/folders.
-                PostOptionsSchema: EmbeddedSchema.Load("toyhouse-post-options.schema.json")
+                PostOptionsSchema: EmbeddedSchema.Load("toyhouse-post-options.schema.json"),
+                Warning: new ConnectorWarning(
+                    "Toyhouse has no API, so PostyFox posts through your logged-in browser session. "
+                    + "That is not an officially supported method, and the site may restrict the account.",
+                    "https://toyhou.se/~tos",
+                    "Toyhouse Terms of Service")
                 // No SupportsRepost/SupportsDelete: Toyhouse has no API, so both would mean scripting
                 // another multi-step, CSRF-guarded browser-session form flow. Deliberately left out of
                 // this pass rather than shipped untested against the real site.
+                ),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
+
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "X",
+            new ConnectorDescriptor(
+                "X",
+                "X",
+                SupportsTitle: false,
+                SupportsMedia: true,
+                SupportsThreads: false,
+                // Hashtags are woven into the body by the template engine, as for Bluesky.
+                SupportsTags: false,
+                // The 280-character limit of a standard account; longer posts need X Premium, which
+                // the connector does not attempt.
+                MaxContentLength: 280,
+                // X's official API is paid, so delivery reuses the user's browser session through the
+                // rettiwt-api library, handed over by the PostyFox Connect extension. The library's
+                // "API key" is just these three cookies: the session token, the CSRF token and the
+                // account id. This breaks X's terms of service on automated access and can get the
+                // account suspended; the Warning below is shown before the user connects.
+                CookiePairing: new CookiePairingSpec(
+                    SiteUrl: "https://x.com/",
+                    LoginUrl: "https://x.com/i/flow/login",
+                    CookieNames: ["auth_token", "ct0", "twid"],
+                    OptionalCookieNames: []),
+                Warning: new ConnectorWarning(
+                    "X has no free posting API, so PostyFox posts through your logged-in browser session "
+                    + "using the open-source Rettiwt-API library. This goes against X's terms of service on "
+                    + "automated access, and X may suspend or ban the account. Connect only an account you "
+                    + "can afford to lose.",
+                    "https://github.com/Rishikant181/Rettiwt-API#readme",
+                    "Rettiwt-API documentation and warning")
+                // No SupportsRepost/SupportsDelete: not wired up in this pass.
                 ),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),

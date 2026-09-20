@@ -13,7 +13,9 @@
     "https://www.furaffinity.net/*",
     "https://furaffinity.net/*",
     "https://toyhou.se/*",
-    "https://www.toyhou.se/*"
+    "https://www.toyhou.se/*",
+    "https://x.com/*",
+    "https://www.x.com/*"
   ],
   "action": {
     "default_title": "PostyFox Connect",

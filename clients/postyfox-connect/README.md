@@ -2,7 +2,7 @@
 
 One Manifest V3 extension codebase for Chrome, Edge, and Safari. It hands a website session that the
 user is already logged into over to PostyFox, so connectors for sites with no API (FurAffinity,
-Toyhouse) can post on their behalf.
+Toyhouse, X) can post on their behalf.
 
 ## How the one-click flow works
 
