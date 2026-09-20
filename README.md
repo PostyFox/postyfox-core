@@ -53,6 +53,7 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 | FurAffinity | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
 | Toyhouse | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
 | X | **Node** service | `rettiwt-api` over the user's browser session, paired by PostyFox Connect. **Breaks X's terms of service on automated access and can get the account suspended** |
+| Ko-fi | **Node** service | Authenticated site forms (no API); browser session paired by PostyFox Connect; text posts and image gallery posts |
 | Instagram | **Node** service | Instagram Content Publishing API (Business Login for Instagram), same adapter; OAuth2 connect flow with automated long-lived-token refresh; media must be publicly fetchable, so bytes are staged via a presigned object-store URL rather than uploaded directly |
 | Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon`, same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
 | ~~Twitch~~ | N/A | descoped |

@@ -3,6 +3,7 @@ import type { Connector } from "../types.js";
 import { BlueskyConnector } from "./bluesky.js";
 import { FurAffinityConnector } from "./furaffinity.js";
 import { InstagramConnector } from "./instagram.js";
+import { KofiConnector } from "./kofi.js";
 import { MegalodonConnector } from "./megalodon.js";
 import { ToyhouseConnector } from "./toyhouse.js";
 import { TumblrConnector } from "./tumblr.js";
@@ -19,6 +20,7 @@ export function createDefaultRegistry(
   registry.set("tumblr", new TumblrConnector(undefined, mediaStore));
   registry.set("furaffinity", new FurAffinityConnector({ mediaStore }));
   registry.set("toyhouse", new ToyhouseConnector({ mediaStore }));
+  registry.set("kofi", new KofiConnector({ mediaStore }));
   registry.set("instagram", new InstagramConnector(undefined, mediaStore));
   registry.set("x", new XConnector({ mediaStore }));
 

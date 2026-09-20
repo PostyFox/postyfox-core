@@ -15,7 +15,9 @@
     "https://toyhou.se/*",
     "https://www.toyhou.se/*",
     "https://x.com/*",
-    "https://www.x.com/*"
+    "https://www.x.com/*",
+    "https://ko-fi.com/*",
+    "https://www.ko-fi.com/*"
   ],
   "action": {
     "default_title": "PostyFox Connect",

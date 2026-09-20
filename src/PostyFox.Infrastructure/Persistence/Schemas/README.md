@@ -52,6 +52,11 @@ Paste the result over that field's `options` array. Values are strings, and orde
 from the form. Removing an ID that posts already reference will make a "post again" of one of those
 fail validation: check `ConfigSchemaValidator`'s option check before dropping entries.
 
+## kofi-post-options.schema.json
+
+Ko-fi's per-post audience choice, on the Ko-fi connector descriptor's `PostOptionsSchema`. The option
+values are the site's own audience identifiers (from PostyBirb's Ko-fi module).
+
 ## toyhouse-post-options.schema.json
 
 Same arrangement as FurAffinity's: these describe an individual image upload, so they live on the

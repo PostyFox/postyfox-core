@@ -75,6 +75,15 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.Null(x.SecureConfigSchema);
         Assert.Equal("{}", x.ConfigSchema);
 
+        var kofi = Assert.Single(defs!, d => d.Id == "Kofi");
+        Assert.True(kofi.SupportsCookiePairing);
+        Assert.True(kofi.SupportsTitle);
+        Assert.True(kofi.SupportsMedia);
+        Assert.False(kofi.SupportsRating);
+        Assert.Null(kofi.SecureConfigSchema);
+        Assert.Equal("{}", kofi.ConfigSchema);
+        Assert.Contains("\"Audience\"", kofi.PostOptionsSchema);
+
         // Every Fediverse platform supports a click-to-reveal content warning, authored per submission
         // (never the post title), see megalodon.ts.
         var mastodon = Assert.Single(defs!, d => d.Id == "Mastodon");
