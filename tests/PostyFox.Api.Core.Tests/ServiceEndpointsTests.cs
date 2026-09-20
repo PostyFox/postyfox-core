@@ -52,6 +52,7 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.True(toyhouse.SupportsCookiePairing);
         Assert.True(toyhouse.SupportsRating);
         Assert.True(toyhouse.RequiresRating);
+        Assert.True(toyhouse.RequiresMedia);
         Assert.False(toyhouse.SupportsTitle); // images attach to character pages, not their own title
         Assert.False(toyhouse.SupportsTags); // no native tags field
         Assert.Null(toyhouse.SecureConfigSchema);
