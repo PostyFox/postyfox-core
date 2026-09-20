@@ -33,7 +33,7 @@ src/
   PostyFox.Api.Core         profile/keys, services catalogue, connector CRUD, template CRUD
   PostyFox.Api.Post         post intake + status, external-trigger webhook callback
   PostyFox.Worker.Posting   consumes generate/deliver queues; runs the pipeline
-  connectors-node/          Node/TS service: Bluesky + Tumblr + FurAffinity + Toyhouse + Instagram + Fediverse
+  connectors-node/          Node/TS service: Bluesky + Tumblr + FurAffinity + Toyhouse + X + Instagram + Fediverse
 clients/
   postyfox-connect/         Chrome/Edge extension + Safari iPhone/iPad/macOS conversion scaffold
 tests/                      one project per layer (xUnit), 99 C# tests (+18 in connectors-node)
@@ -52,6 +52,7 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 | Tumblr | **Node** service | `tumblr.js`, same adapter; OAuth1 connect flow |
 | FurAffinity | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
 | Toyhouse | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
+| X | **Node** service | `rettiwt-api` over the user's browser session, paired by PostyFox Connect. **Breaks X's terms of service on automated access and can get the account suspended** |
 | Instagram | **Node** service | Instagram Content Publishing API (Business Login for Instagram), same adapter; OAuth2 connect flow with automated long-lived-token refresh; media must be publicly fetchable, so bytes are staged via a presigned object-store URL rather than uploaded directly |
 | Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon`, same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
 | ~~Twitch~~ | N/A | descoped |
@@ -116,7 +117,7 @@ docker compose up --build            # full stack incl. the OIDC edge (Keycloak 
 # Swagger UI: http://localhost:8080/swagger  and  http://localhost:8081/swagger
 # OpenAPI:    http://localhost:8080/openapi/v1.json  (and :8081)
 # RabbitMQ:  http://localhost:15672   MinIO console: http://localhost:9001
-# connectors-node (Bluesky/Tumblr/FurAffinity/Toyhouse/Instagram/Fediverse): http://localhost:8090/health
+# connectors-node (Bluesky/Tumblr/FurAffinity/Toyhouse/X/Instagram/Fediverse): http://localhost:8090/health
 ```
 
 Auth is always the production-representative OIDC path. There is **no DevMode bypass**. oauth2-proxy

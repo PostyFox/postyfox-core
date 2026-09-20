@@ -32,6 +32,7 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.True(bluesky.SupportsRating);
         Assert.False(bluesky.RequiresRating);
         Assert.Null(bluesky.PostOptionsSchema); // nothing to choose per submission
+        Assert.Null(bluesky.Warning); // an official API, nothing to warn about
         // Bluesky has no click-to-reveal content warning mechanism.
         Assert.False(bluesky.SupportsContentWarning);
 
@@ -40,6 +41,7 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.True(furAffinity.SupportsRating);
         Assert.True(furAffinity.RequiresRating);
         Assert.True(furAffinity.SupportsTextOnly);
+        Assert.Equal("https://www.furaffinity.net/tos", furAffinity.Warning?.Href);
         Assert.Null(furAffinity.SecureConfigSchema);
         // The FurAffinity account itself carries no settings: category/species/gender/folders are
         // chosen per submission, so they reach the compose form as post options, not connector config.
@@ -53,12 +55,25 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.True(toyhouse.SupportsRating);
         Assert.True(toyhouse.RequiresRating);
         Assert.True(toyhouse.RequiresMedia);
+        Assert.Equal("https://toyhou.se/~tos", toyhouse.Warning?.Href);
         Assert.False(toyhouse.SupportsTitle); // images attach to character pages, not their own title
         Assert.False(toyhouse.SupportsTags); // no native tags field
         Assert.Null(toyhouse.SecureConfigSchema);
         Assert.Equal("{}", toyhouse.ConfigSchema);
         Assert.NotNull(toyhouse.PostOptionsSchema);
         Assert.Contains("\"CharacterIds\"", toyhouse.PostOptionsSchema);
+
+        var x = Assert.Single(defs!, d => d.Id == "X");
+        Assert.True(x.SupportsCookiePairing);
+        Assert.True(x.SupportsMedia);
+        Assert.False(x.SupportsTitle);
+        Assert.False(x.SupportsTags);
+        Assert.False(x.RequiresMedia); // text-only posts are fine
+        Assert.Equal(280, x.MaxContentLength);
+        Assert.Contains("terms of service", x.Warning?.Text);
+        Assert.Equal("https://github.com/Rishikant181/Rettiwt-API#readme", x.Warning?.Href);
+        Assert.Null(x.SecureConfigSchema);
+        Assert.Equal("{}", x.ConfigSchema);
 
         // Every Fediverse platform supports a click-to-reveal content warning, authored per submission
         // (never the post title), see megalodon.ts.

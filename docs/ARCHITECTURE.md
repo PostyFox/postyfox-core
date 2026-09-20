@@ -25,7 +25,7 @@ event arrives. This repo is the backend + infrastructure only (the control-panel
 - **Uniform extensibility**: adding a platform means implementing one connector contract; adding an
   event source means implementing one trigger-source contract.
 - **Two language stacks by fit**: C# for the bulk; Node/TypeScript where its libraries or web-form
-  tooling are materially better (Bluesky, Tumblr, FurAffinity, Toyhouse), behind the same connector
+  tooling are materially better (Bluesky, Tumblr, FurAffinity, Toyhouse, X), behind the same connector
   contract.
 
 ---
@@ -41,7 +41,7 @@ flowchart TB
         core["core-api (C#)<br/>profile/keys, services,<br/>connectors, templates, triggers"]
         post["post-api (C#)<br/>post intake + status,<br/>webhook callbacks"]
         worker["posting-worker (C#)<br/>generate → deliver pipeline"]
-        node["connectors-node (TS)<br/>Bluesky, Tumblr, FurAffinity, Toyhouse"]
+        node["connectors-node (TS)<br/>Bluesky, Tumblr, FurAffinity, Toyhouse, X"]
     end
 
     subgraph backing["Backing services"]
@@ -52,7 +52,7 @@ flowchart TB
         otel["OTel Collector"]
     end
 
-    ext["External platforms<br/>Discord · Telegram · Bluesky · Tumblr · FurAffinity · Toyhouse"]
+    ext["External platforms<br/>Discord · Telegram · Bluesky · Tumblr · FurAffinity · Toyhouse · X"]
     src["External event sources<br/>(signed webhooks)"]
 
     client --> edge --> core & post
@@ -80,7 +80,7 @@ flowchart TB
 | **core-api** | ASP.NET Core (.NET 10) | Identity/API keys, service catalogue, connector CRUD + auth/target ops, templates, trigger registration. Applies EF migrations + seeds catalogue on boot. |
 | **post-api** | ASP.NET Core (.NET 10) | Post intake + status; inbound external-trigger webhook callbacks. Publishes pipeline commands. |
 | **posting-worker** | .NET Worker | Consumes `generate`/`deliver` queues; renders + delivers each target; owns retries/backoff/DLQ + status rollup. |
-| **connectors-node** | Node 24 / Fastify | Bluesky (`@atproto/api`), Tumblr (`tumblr.js`), FurAffinity and Toyhouse (authenticated HTML forms), and Fediverse connectors behind an `IConnector`-shaped HTTP contract; internal-token auth; stateless. |
+| **connectors-node** | Node 24 / Fastify | Bluesky (`@atproto/api`), Tumblr (`tumblr.js`), FurAffinity and Toyhouse (authenticated HTML forms), X (`rettiwt-api` over a paired browser session), and Fediverse connectors behind an `IConnector`-shaped HTTP contract; internal-token auth; stateless. |
 | PostgreSQL | n/a | System of record. |
 | S3 / MinIO | n/a | Media, post payloads, Telegram MTProto sessions. |
 | RabbitMQ | n/a | Pipeline queues; delayed-message exchange for scheduling + retry backoff. |
@@ -267,6 +267,7 @@ the connector-ops endpoints never hard-code a platform.
 | Tumblr | connectors-node | `tumblr.js` |
 | FurAffinity | connectors-node | Cookie-authenticated HTML form workflow |
 | Toyhouse | connectors-node | Cookie-authenticated HTML form workflow |
+| X | connectors-node | `rettiwt-api` over paired browser cookies (against X's terms of service) |
 
 The C# **`HttpConnector`** adapter fulfils `IConnector` for Node-hosted platforms by forwarding to
 connectors-node over HTTP (`POST /connectors/{platform}/{is-authenticated|list-targets|deliver}`),

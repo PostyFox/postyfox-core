@@ -45,4 +45,13 @@ public class ServiceDefinitionSeederTests
         Assert.Equal("{}", toyhouse.ConfigSchema);
         Assert.Null(toyhouse.SecureConfigSchema);
     }
+
+    [Fact]
+    public void X_connector_has_no_account_settings()
+    {
+        var x = ServiceDefinitionSeeder.Definitions.Single(d => d.Id == "X");
+
+        Assert.Equal("{}", x.ConfigSchema);
+        Assert.Null(x.SecureConfigSchema);
+    }
 }

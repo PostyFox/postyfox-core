@@ -39,6 +39,14 @@ export const TOYHOUSE_SPEC: MediaSpec = {
   maxAttachments: 1,
 };
 
+// X's web composer takes up to four images per post. The sizes are conservative defaults: rettiwt-api
+// sends each upload as a single unchunked request, so video is deliberately not offered.
+export const X_SPEC: MediaSpec = {
+  image: { maxWidth: 4096, maxHeight: 4096, maxBytes: 5_242_880, allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"] },
+  video: { maxBytes: 5_242_880, allowedMimeTypes: [] },
+  maxAttachments: 4,
+};
+
 /** Fallback used before an instance's live limits are known (or when it reports none). */
 export const FEDIVERSE_SPEC: MediaSpec = {
   image: { maxWidth: 2048, maxHeight: 2048, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] },
@@ -52,6 +60,7 @@ export const MEDIA_SPECS: Record<string, MediaSpec> = {
   furaffinity: FURAFFINITY_SPEC,
   toyhouse: TOYHOUSE_SPEC,
   instagram: INSTAGRAM_SPEC,
+  x: X_SPEC,
 };
 
 /**
