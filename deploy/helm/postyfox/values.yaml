@@ -157,7 +157,7 @@ rabbitmq:
 # ---------------------------------------------------------------------------------------------
 redis:
   enabled: true
-  image: "valkey/valkey:9.1.1-alpine"
+  image: "valkey/valkey:9.2-alpine"
   password: "change-me"
   resources:
     requests: { cpu: "50m", memory: "64Mi" }
@@ -171,7 +171,7 @@ redis:
 # ---------------------------------------------------------------------------------------------
 vault:
   enabled: true
-  image: "hashicorp/vault:2.0.4"
+  image: "hashicorp/vault:2.1.1"
   keyShares: 5
   keyThreshold: 3
   appRoleName: "postyfox"
@@ -211,8 +211,8 @@ otelCollector:
 # Service doesn't exist/isn't ready yet. Ships a fluent-bit sidecar shipping its logs via OTLP.
 # ---------------------------------------------------------------------------------------------
 gateway:
-  image: "nginx:1.27-alpine"
-  fluentBitImage: "fluent/fluent-bit:3.1"
+  image: "nginx:1.30.1-alpine"
+  fluentBitImage: "fluent/fluent-bit:5.1.2"
   maintenanceMode: false           # set true (or --set during an upgrade) to force a 503 + maintenance page
   # In-cluster Service name (in THIS namespace) of an optionally, separately-deployed frontend/SPA.
   # "/" proxies here when frontend.enabled is true; otherwise "/" falls through to core-api.

@@ -91,7 +91,7 @@ services:
   redis:
     # Valkey is the drop-in, wire-protocol-compatible fork of Redis (Redis moved to a non-OSS
     # license after 7.x): same RESP protocol, same redis-cli/redis:// clients work unchanged.
-    image: valkey/valkey:9.1.1-alpine
+    image: valkey/valkey:9.2-alpine
     command: ["valkey-server", "--save", "", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
@@ -105,7 +105,7 @@ services:
   # at `secret/` — so unlike docker-compose.server.yml's vault there's no vault-init bootstrap
   # sidecar or AppRole provisioning step needed. Not for anything you'd mind losing on `down -v`.
   vault:
-    image: "hashicorp/vault:2.0.4"
+    image: "hashicorp/vault:2.1.1"
     command: ["server", "-dev", "-dev-root-token-id=postyfox-dev-root-token"]
     environment:
       # The `vault` CLI defaults to https://127.0.0.1:8200 without this — needed for the

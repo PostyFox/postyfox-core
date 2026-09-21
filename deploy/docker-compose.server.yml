@@ -90,7 +90,7 @@ services:
   redis:
     # Valkey is the drop-in, wire-protocol-compatible fork of Redis (Redis moved to a non-OSS
     # license after 7.x): same RESP protocol, same redis-cli/redis:// clients work unchanged.
-    image: valkey/valkey:9.1.1-alpine
+    image: valkey/valkey:9.2-alpine
     command:
       [
         "valkey-server",
@@ -129,7 +129,7 @@ services:
   # HashiCorp Vault: file storage backend + Shamir seal. Stays on the internal network (never
   # publishes a host port, same rule as the APIs). Initialised + auto-unsealed by `vault-init`.
   vault:
-    image: "hashicorp/vault:${VAULT_VERSION:-2.0.4}"
+    image: "hashicorp/vault:${VAULT_VERSION:-2.1.1}"
     command: ["vault", "server", "-config=/vault/config/vault.hcl"]
     environment:
       VAULT_ADDR: "http://127.0.0.1:8200"
@@ -151,7 +151,7 @@ services:
   # unseal keys + root token to the `vaultkeys` volume; thereafter it watches Vault and re-applies
   # the saved keys whenever it is sealed, so the stack comes up unsealed unattended.
   vault-init:
-    image: "hashicorp/vault:${VAULT_VERSION:-2.0.4}"
+    image: "hashicorp/vault:${VAULT_VERSION:-2.1.1}"
     entrypoint: ["/bin/sh", "/usr/local/bin/vault-bootstrap.sh"]
     environment:
       VAULT_ADDR: "http://vault:8200"
