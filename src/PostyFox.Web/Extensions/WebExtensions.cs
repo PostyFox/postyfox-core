@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,11 @@ public static class WebExtensions
     public static IServiceCollection AddPostyFoxAuth(this IServiceCollection services, IConfiguration config)
     {
         services.Configure<PostyFoxAuthOptions>(config.GetSection(PostyFoxAuthOptions.SectionName));
+
+        services.AddHttpContextAccessor();
+        // Issue #409: resolves "act as" account delegation for every authenticated request, regardless
+        // of which scheme authenticated it — see ActAsClaimsTransformation.
+        services.AddTransient<IClaimsTransformation, ActAsClaimsTransformation>();
 
         services.AddHttpClient("jwks");
         services.AddSingleton<IJwksProvider, CachedJwksProvider>();

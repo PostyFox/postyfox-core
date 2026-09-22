@@ -22,6 +22,8 @@ public sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbC
     public DbSet<PostTarget> PostTargets => Set<PostTarget>();
     public DbSet<PostTargetAutomation> PostTargetAutomations => Set<PostTargetAutomation>();
     public DbSet<WebhookDedupe> WebhookDedupes => Set<WebhookDedupe>();
+    public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
+    public DbSet<AccountMember> AccountMembers => Set<AccountMember>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -31,6 +33,7 @@ public sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbC
         b.Entity<ConnectorCookiePairing>().HasKey(x => x.TokenHash);
         b.Entity<ConnectorDestination>().HasOne(x => x.Connector).WithMany().HasForeignKey(x => x.ConnectorId);
         b.Entity<PostTargetAutomation>().HasOne(x => x.PostTarget).WithMany(x => x.Automations).HasForeignKey(x => x.PostTargetId);
+        b.Entity<AccountMember>().HasKey(x => new { x.OwnerUserId, x.MemberUserId });
     }
 
     public static TestDbContext Create()

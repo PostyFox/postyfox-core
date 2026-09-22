@@ -24,6 +24,22 @@ public sealed class FakeBus : IMessageBus
     }
 }
 
+public sealed record SentEmail(string To, string Subject, string Body);
+
+public sealed class FakeEmailSender : IEmailSender
+{
+    public List<SentEmail> Sent { get; } = new();
+    /// <summary>Set to make SendAsync throw, exercising the "delivery failed" path.</summary>
+    public bool ThrowOnSend { get; set; }
+
+    public Task SendAsync(string to, string subject, string bodyText, CancellationToken ct = default)
+    {
+        if (ThrowOnSend) throw new InvalidOperationException("SMTP unavailable");
+        Sent.Add(new SentEmail(to, subject, bodyText));
+        return Task.CompletedTask;
+    }
+}
+
 public sealed class FakeObjectStore : IObjectStore
 {
     public Dictionary<string, string> Text { get; } = new();

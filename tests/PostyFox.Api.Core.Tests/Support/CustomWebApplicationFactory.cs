@@ -33,6 +33,15 @@ public sealed class FakeBus : IMessageBus
     { Messages.Add(message); return Task.CompletedTask; }
 }
 
+public sealed record SentEmail(string To, string Subject, string Body);
+
+public sealed class FakeEmailSender : IEmailSender
+{
+    public ConcurrentBag<SentEmail> Sent { get; } = new();
+    public Task SendAsync(string to, string subject, string bodyText, CancellationToken ct = default)
+    { Sent.Add(new SentEmail(to, subject, bodyText)); return Task.CompletedTask; }
+}
+
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
@@ -71,11 +80,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             Remove<IObjectStore>(services);
             Remove<IMessageBus>(services);
             Remove<ISecretsProvider>(services);
+            Remove<IEmailSender>(services);
 
             services.AddDbContext<AppDbContext>(o => o.UseSqlite(_connection));
             services.AddSingleton<IObjectStore, FakeObjectStore>();
             services.AddSingleton<IMessageBus, FakeBus>();
             services.AddInMemorySecretsProvider();
+            services.AddSingleton<IEmailSender, FakeEmailSender>();
         });
     }
 

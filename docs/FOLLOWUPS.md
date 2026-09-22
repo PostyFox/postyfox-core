@@ -22,3 +22,7 @@ Residual media follow-ups (smaller):
 - **Auth option B**: currently the APIs trust the oauth2-proxy identity header; optionally add
   in-app JWT (JWKS) validation as defence-in-depth.
 - **Autoscaling**: wire KEDA (K8s) / ACA scale rules on RabbitMQ queue depth for the worker.
+- **Account delegation** (issue #409): expired invites are computed at read time (`IsExpired`), not
+  purged — a low-volume table, so acceptable for now, but a retention sweep would keep it tidy.
+  Access is currently all-or-nothing (a member can do everything the owner can); a permission subset
+  (e.g. posting only, no API keys/billing) was considered and deferred — see the ticket discussion.

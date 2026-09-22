@@ -134,6 +134,8 @@ erDiagram
     users ||--o{ templates : owns
     users ||--o{ posts : creates
     users ||--o{ external_triggers : registers
+    users ||--o{ account_invites : sends
+    users ||--o{ account_members : "grants access as owner"
     service_definitions ||--o{ user_connectors : "instance of"
     posts ||--o{ post_targets : "fans out to"
     user_connectors ||--o{ post_targets : "delivered via"
@@ -208,6 +210,24 @@ erDiagram
         string MessageId PK
         datetime SeenAt
     }
+    account_invites {
+        guid Id PK
+        string OwnerUserId
+        string OwnerEmail
+        string InviteeEmail
+        string TokenHash
+        string TokenPrefix
+        string Status
+        datetime ExpiresAt
+        string AcceptedByUserId
+    }
+    account_members {
+        string OwnerUserId PK
+        string MemberUserId PK
+        string OwnerEmail
+        string MemberEmail
+        guid InviteId
+    }
 ```
 
 Notes:
@@ -250,6 +270,14 @@ flowchart LR
   stored.
 - Webhook callbacks are anonymous at the auth layer and instead authenticated per-source by
   **signature verification** (see point 8).
+- **Account delegation** (issue #409): after the scheme above resolves a `ClaimsPrincipal`, an
+  `IClaimsTransformation` (`ActAsClaimsTransformation`) checks for an `X-Act-As` header naming an
+  owner UserId. If an `AccountMember` row grants the caller access to that owner, `NameIdentifier`
+  is swapped to the owner's id for the rest of the request — every endpoint reads the current user
+  from that one claim, so nothing downstream needs to know delegation exists. A missing/invalid
+  membership is ignored (the header is dropped, not rejected), since nothing is granted beyond what
+  the membership check itself allows. Access is invited by email (`AccountInvite`, delivered by
+  SMTP) and cross-checked against the invitee's own OIDC email at accept time.
 
 ---
 

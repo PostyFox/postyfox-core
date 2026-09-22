@@ -21,6 +21,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PostTarget> PostTargets => Set<PostTarget>();
     public DbSet<PostTargetAutomation> PostTargetAutomations => Set<PostTargetAutomation>();
     public DbSet<WebhookDedupe> WebhookDedupes => Set<WebhookDedupe>();
+    public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
+    public DbSet<AccountMember> AccountMembers => Set<AccountMember>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -150,6 +152,24 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             e.ToTable("webhook_dedupe");
             e.HasKey(x => new { x.Source, x.MessageId });
+        });
+
+        b.Entity<AccountInvite>(e =>
+        {
+            e.ToTable("account_invites");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.OwnerUserId);
+            e.HasIndex(x => x.InviteeEmail);
+            e.HasIndex(x => x.TokenPrefix);
+            e.Property(x => x.TokenPrefix).HasMaxLength(16);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        });
+
+        b.Entity<AccountMember>(e =>
+        {
+            e.ToTable("account_members");
+            e.HasKey(x => new { x.OwnerUserId, x.MemberUserId });
+            e.HasIndex(x => x.MemberUserId);
         });
     }
 }

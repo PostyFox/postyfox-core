@@ -8,6 +8,27 @@ public sealed record ApiKeyDto(Guid Id, string Prefix, string? Name, DateTimeOff
 /// <summary>Returned once at creation; the plaintext key is never retrievable again.</summary>
 public sealed record ApiKeyCreatedDto(Guid Id, string ApiKey, string Prefix);
 
+// ---------------------------------------------------------------------------
+// Account delegation (issue #409: invite other users to manage your account)
+// ---------------------------------------------------------------------------
+
+/// <summary>An invite the current user sent, or one addressed to them awaiting acceptance.</summary>
+public sealed record AccountInviteDto(
+    Guid Id,
+    string OwnerEmail,
+    string InviteeEmail,
+    InviteStatus Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset ExpiresAt,
+    DateTimeOffset? AcceptedAt,
+    bool IsExpired);
+
+/// <summary>An account the current user can act as: themselves, or an owner who's granted them access.</summary>
+public sealed record AccountAccessDto(string UserId, string? Email, bool IsSelf);
+
+/// <summary>A member with delegated access to the current user's (owner's) account.</summary>
+public sealed record AccountMemberDto(string MemberUserId, string MemberEmail, DateTimeOffset CreatedAt);
+
 public sealed record ServiceDefinitionDto(
     string Id,
     string Name,
