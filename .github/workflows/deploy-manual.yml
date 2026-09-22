@@ -296,8 +296,13 @@ jobs:
             internalToken: "${{ secrets.INTERNAL_TOKEN }}"
             objectStoreAccessKey: "${{ secrets.RUSTFS_ACCESS_KEY }}"
             objectStoreSecretKey: "${{ secrets.RUSTFS_SECRET_KEY }}"
+            emailPassword: "${{ secrets.EMAIL_SMTP_PASSWORD }}"
           config:
             hashiCorpVaultRoleId: "${{ secrets.VAULT_ROLE_ID }}"
+            email:
+              host: "${{ vars.EMAIL_SMTP_HOST }}"
+              user: "${{ vars.EMAIL_SMTP_USER }}"
+              from: "${{ vars.EMAIL_SMTP_FROM }}"
           oauth2Proxy:
             clientSecret: "${{ secrets.OIDC_CLIENT_SECRET }}"
             cookieSecret: "${{ secrets.OAUTH2_PROXY_COOKIE_SECRET }}"

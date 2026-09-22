@@ -28,6 +28,12 @@ these (the self-hosted runner deploys locally); `production` needs the Kubernete
 - `INTERNAL_TOKEN`: shared token between core/worker and connectors-node
 - `RUSTFS_ACCESS_KEY` / `RUSTFS_SECRET_KEY`: object store credentials
 - `OIDC_CLIENT_SECRET`, `OAUTH2_PROXY_COOKIE_SECRET`: OIDC edge secrets
+- `EMAIL_SMTP_PASSWORD`: SMTP relay password (issue #409: account-invite delivery).
+
+**`production` environment variables** (not secrets — Settings → Environments → production →
+Environment variables; kept out of the repo the same way, just not treated as sensitive by GitHub):
+- `EMAIL_SMTP_HOST`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_FROM`: SMTP relay host/username/from-address.
+  Leaving these unset still works: invites are created, the email just doesn't send (logged).
 
 These are rendered into a workflow-local, gitignored values file at deploy time (never committed,
 see the "Render secret overrides" step in `release.yml`/`deploy-manual.yml`) and layered on top of

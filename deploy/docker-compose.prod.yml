@@ -36,6 +36,14 @@ x-dotnet-env: &dotnet-env
   Secrets__BitWarden__OrganizationId: "${BITWARDEN_ORGANIZATION_ID:-}"
   Secrets__BitWarden__IdentityUrl: "${BITWARDEN_IDENTITY_URL:-}"
   Auth__UserHeader: "X-Auth-Request-User"
+  # SMTP relay for outbound transactional email (issue #409: account-invite delivery). Blank host
+  # means invites are still created but the email send fails (logged, not fatal - see FOLLOWUPS.md).
+  Email__Host: "${EMAIL_SMTP_HOST:-}"
+  Email__Port: "${EMAIL_SMTP_PORT:-587}"
+  Email__User: "${EMAIL_SMTP_USER:-}"
+  Email__Password: "${EMAIL_SMTP_PASSWORD:-}"
+  Email__From: "${EMAIL_FROM:-}"
+  Email__EnableSsl: "${EMAIL_ENABLE_SSL:-true}"
   # Reported by GET /api/media/limits for client-side upload validation; must match the gateway's
   # client_max_body_size for /api/media (./gateway/conf.d/routes/10-apis.conf) — kept in sync by hand.
   Media__MaxUploadSizeBytes: "31457280"

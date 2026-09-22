@@ -24,6 +24,8 @@ public interface IAppDbContext
     DbSet<PostTarget> PostTargets { get; }
     DbSet<PostTargetAutomation> PostTargetAutomations { get; }
     DbSet<WebhookDedupe> WebhookDedupes { get; }
+    DbSet<AccountInvite> AccountInvites { get; }
+    DbSet<AccountMember> AccountMembers { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

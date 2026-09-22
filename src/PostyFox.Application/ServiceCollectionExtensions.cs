@@ -20,6 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConnectorRegistry, ConnectorRegistry>();
 
         services.AddScoped<ApiKeyService>();
+        services.AddScoped<AccountAccessService>();
         services.AddScoped<UserSettingsService>();
         services.AddScoped<ServiceCatalogService>();
         services.AddScoped<TemplateService>();

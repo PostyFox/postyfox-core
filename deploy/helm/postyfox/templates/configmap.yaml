@@ -20,6 +20,13 @@ data:
   Secrets__BitWarden__ServerUrl: {{ .Values.config.bitwardenServerUrl | quote }}
   Secrets__BitWarden__OrganizationId: {{ .Values.config.bitwardenOrganizationId | quote }}
   Secrets__BitWarden__IdentityUrl: {{ .Values.config.bitwardenIdentityUrl | quote }}
+  # SMTP relay for outbound transactional email (issue #409: account-invite delivery). Password is
+  # in the Secret (Email__Password).
+  Email__Host: {{ .Values.config.email.host | quote }}
+  Email__Port: {{ .Values.config.email.port | quote }}
+  Email__User: {{ .Values.config.email.user | quote }}
+  Email__From: {{ .Values.config.email.from | quote }}
+  Email__EnableSsl: {{ .Values.config.email.enableSsl | quote }}
   # In-app OIDC bearer validation (defence-in-depth): the edge forwards the token, the APIs re-validate
   # it. The APIs trust no injected header, so this MUST be enabled or they reject every request.
   Auth__Oidc__Enabled: {{ .Values.config.authOidcEnabled | quote }}

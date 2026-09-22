@@ -56,6 +56,14 @@ config:
   bitwardenServerUrl: ""
   bitwardenOrganizationId: ""
   bitwardenIdentityUrl: ""
+  # SMTP relay for outbound transactional email (currently: account-invite delivery, issue #409).
+  # Password is a secret - see secrets.emailPassword below.
+  email:
+    host: ""
+    port: "587"
+    user: ""
+    from: ""
+    enableSsl: "true"
   rateLimit:
     enabled: "true"
     requestsPerMinute: "300"
@@ -89,6 +97,7 @@ secrets:
   internalToken: "change-me"        # shared token core/worker <-> connectors-node
   objectStoreAccessKey: "change-me"
   objectStoreSecretKey: "change-me"
+  emailPassword: ""
   # Only used when rabbitmq.enabled=false (bring-your-own RabbitMQ).
   externalRabbitMqHost: "rabbitmq.example.com"
   externalRabbitMqUser: "guest"

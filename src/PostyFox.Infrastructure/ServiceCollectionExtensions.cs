@@ -13,6 +13,7 @@ using PostyFox.Application.Messaging;
 using PostyFox.Application.Options;
 using PostyFox.Application.Posting;
 using PostyFox.Infrastructure.Connectors;
+using PostyFox.Infrastructure.Email;
 using PostyFox.Infrastructure.Media;
 using PostyFox.Infrastructure.Messaging;
 using PostyFox.Infrastructure.Persistence;
@@ -42,6 +43,8 @@ public static class ServiceCollectionExtensions
         services.Configure<RetentionOptions>(config.GetSection(RetentionOptions.SectionName));
         services.Configure<ConnectorRefreshOptions>(config.GetSection(ConnectorRefreshOptions.SectionName));
         services.Configure<MediaOptions>(config.GetSection(MediaOptions.SectionName));
+        services.Configure<EmailOptions>(config.GetSection(EmailOptions.SectionName));
+        services.AddSingleton<IEmailSender, SmtpEmailSender>();
 
         var conn = config.GetConnectionString("Postgres")
                    ?? "Host=localhost;Port=5432;Database=postyfox;Username=postyfox;Password=postyfox";

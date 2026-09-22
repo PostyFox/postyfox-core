@@ -61,3 +61,14 @@ public enum AutomationStatus
     /// <summary>Cancelled by the user, or by its target being cancelled, before it ran.</summary>
     Cancelled = 3
 }
+
+/// <summary>Lifecycle of a single <see cref="Entities.AccountInvite"/> (issue #409: account delegation).</summary>
+public enum InviteStatus
+{
+    /// <summary>Sent, not yet accepted, revoked or expired.</summary>
+    Pending = 0,
+    /// <summary>Accepted; an <see cref="Entities.AccountMember"/> row now exists for it.</summary>
+    Accepted = 1,
+    /// <summary>Revoked by the inviting owner before it was accepted.</summary>
+    Revoked = 2
+}

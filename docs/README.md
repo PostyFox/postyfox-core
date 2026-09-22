@@ -25,6 +25,12 @@ The **interactive API contract** is served by each API at `/swagger` (UI) and `/
 | GET | `/healthz`, `/readyz` | Liveness / readiness |
 | GET | `/swagger`, `/openapi/v1.json` | API docs |
 | POST/GET/DELETE | `/api/profile/keys[/{id}]` | Create / list / revoke API keys |
+| POST/GET/DELETE | `/api/profile/invites[/{id}]` | Invite someone by email to manage your account (issue #409); revoke a pending invite |
+| GET | `/api/profile/invites/pending` | Invites addressed to your own email, awaiting acceptance |
+| POST | `/api/profile/invites/accept` | Accept an invite by its emailed token |
+| POST | `/api/profile/invites/{id}/accept` | Accept an invite from the "pending" list, by id |
+| GET | `/api/profile/accounts` | Accounts you can act as (self + accepted memberships); switch with the `X-Act-As` header |
+| GET/DELETE | `/api/profile/members[/{memberUserId}]` | Who has delegated access to your account; revoke it |
 | GET | `/api/services[/{id}]` | Platform catalogue |
 | GET/PUT/DELETE | `/api/connectors[/{id}]` | Configured connector CRUD |
 | GET | `/api/connectors/{id}/authenticated` | Connector auth check |
