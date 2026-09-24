@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PostyFox Connect",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Hands your logged-in website sessions to PostyFox in one click.",
   "permissions": [
     "cookies",
