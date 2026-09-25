@@ -24,6 +24,15 @@ export function describeError(err: unknown): string {
       return body ? `HTTP ${status}: ${truncate(body, 2000)}` : `HTTP ${status}`;
     }
 
+    // rettiwt-api TwitterError: numeric status + X's error entries on `details` (empty fields when X
+    // sent no error body).
+    if (typeof e.status === "number" && Array.isArray(e.details)) {
+      const details = (e.details as Record<string, unknown>[]).filter((d) => d?.code !== undefined || d?.message);
+      const msg = typeof e.message === "string" && e.message ? `: ${e.message}` : "";
+      const body = details.length ? `: ${truncate(stringifyDetail(details), 2000)}` : "";
+      return `HTTP ${e.status}${msg}${body}`;
+    }
+
     // atproto XRPCError: numeric status + machine-readable error code + message.
     if (typeof e.status === "number" && (typeof e.error === "string" || typeof e.message === "string")) {
       const code = typeof e.error === "string" && e.error ? ` ${e.error}` : "";
@@ -42,7 +51,11 @@ export function describeError(err: unknown): string {
     }
   }
 
-  return err instanceof Error ? err.message : String(err);
+  if (err instanceof Error) {
+    // A wrapped error (e.g. rettiwt-api's "Unknown error") keeps the real failure on `cause`.
+    return err.cause !== undefined ? `${err.message} (cause: ${describeError(err.cause)})` : err.message;
+  }
+  return String(err);
 }
 
 function stringifyDetail(value: unknown): string {

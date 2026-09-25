@@ -32,6 +32,33 @@ test("describeError includes status + code for an atproto XRPCError", () => {
   assert.equal(describeError(xrpcErr), "HTTP 401 AuthRequired: Invalid app password");
 });
 
+test("describeError includes X's error entries for a rettiwt TwitterError", () => {
+  const twitterErr = Object.assign(new Error("Request failed with status code 403"), {
+    status: 403,
+    details: [{ code: 353, message: "This request requires a matching csrf cookie and header.", name: "", type: undefined }],
+  });
+  const detail = describeError(twitterErr);
+  assert.match(detail, /^HTTP 403: Request failed with status code 403: /);
+  assert.match(detail, /matching csrf cookie/);
+});
+
+test("describeError omits empty rettiwt TwitterError details", () => {
+  const twitterErr = Object.assign(new Error("Request failed with status code 403"), {
+    status: 403,
+    details: [{ code: undefined, message: undefined, name: undefined, type: undefined }],
+  });
+  assert.equal(describeError(twitterErr), "HTTP 403: Request failed with status code 403");
+});
+
+test("describeError follows the cause of a wrapped error", () => {
+  const inner = new Error("Unable to resolve the X ondemand chunk URL from the homepage runtime.");
+  const wrapped = new Error("Unknown error", { cause: inner });
+  assert.equal(
+    describeError(wrapped),
+    "Unknown error (cause: Unable to resolve the X ondemand chunk URL from the homepage runtime.)",
+  );
+});
+
 test("describeError attaches a parsed body when present (tumblr-style)", () => {
   const tumblrErr = Object.assign(new Error("API error: 400 Bad Request"), {
     body: { errors: [{ title: "Bad Request", detail: "tags too long", code: 1016 }] },

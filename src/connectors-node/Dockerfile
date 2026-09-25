@@ -3,6 +3,8 @@ FROM node:24 AS build
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
+# npm ci's postinstall applies these (patch-package) to node_modules.
+COPY patches ./patches
 RUN npm ci
 
 COPY tsconfig.json ./

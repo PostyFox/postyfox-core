@@ -54,6 +54,10 @@ public sealed partial class ConnectorCookiePairingService(
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
 
+    // Browsers cap a cookie at 4096 bytes. ASP.NET Core auth cookies (Ko-fi's kofi_identity_cookie)
+    // routinely run past 1000 characters, so a tighter limit rejects real sessions.
+    private const int MaxCookieValueLength = 4096;
+
     /// <summary>
     /// The cookie-authenticated sites this deployment supports, with no user context: which cookies to
     /// collect and where to log in. Lets a browser client stay useful (and drive the token handshake)
@@ -318,7 +322,7 @@ public sealed partial class ConnectorCookiePairingService(
     {
         value = string.Empty;
         if (cookies is null || !cookies.TryGetValue(name, out var candidate)
-            || string.IsNullOrWhiteSpace(candidate) || candidate.Length > 512
+            || string.IsNullOrWhiteSpace(candidate) || candidate.Length > MaxCookieValueLength
             || !CookieValueRegex().IsMatch(candidate))
             return false;
         value = candidate;

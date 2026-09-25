@@ -1,0 +1,111 @@
+diff --git a/node_modules/rettiwt-api/dist/services/internal/ErrorService.js b/node_modules/rettiwt-api/dist/services/internal/ErrorService.js
+index dedc575..d2749b4 100644
+--- a/node_modules/rettiwt-api/dist/services/internal/ErrorService.js
++++ b/node_modules/rettiwt-api/dist/services/internal/ErrorService.js
+@@ -20,8 +20,9 @@ class ErrorService {
+     /**
+      * Handle unknown error.
+      */
+-    _handleUnknownError() {
+-        throw new Error('Unknown error');
++    _handleUnknownError(error) {
++        // PostyFox patch: keep the original error as the cause instead of discarding it.
++        throw new Error('Unknown error', { cause: error });
+     }
+     /**
+      * The method called when an error response is received from Twitter API.
+@@ -33,7 +34,7 @@ class ErrorService {
+             this._handleAxiosError(error);
+         }
+         else {
+-            this._handleUnknownError();
++            this._handleUnknownError(error);
+         }
+     }
+ }
+diff --git a/node_modules/rettiwt-api/dist/services/public/FetcherService.js b/node_modules/rettiwt-api/dist/services/public/FetcherService.js
+index 2181949..cd45a9a 100644
+--- a/node_modules/rettiwt-api/dist/services/public/FetcherService.js
++++ b/node_modules/rettiwt-api/dist/services/public/FetcherService.js
+@@ -49,6 +49,15 @@ const TwitterError_1 = require("../../models/errors/TwitterError");
+ const AuthService_1 = require("../internal/AuthService");
+ const ErrorService_1 = require("../internal/ErrorService");
+ const LogService_1 = require("../internal/LogService");
++// PostyFox patch: X now serves its new "x-web" app to most logged-out x.com/home requests. x-web lacks
++// the webpack runtime x-client-transaction-id needs to find the ondemand.s chunk. Logged-in requests
++// still get the legacy app, so fetch the homepage with the session cookies, falling back to
++// anonymous retries (the legacy app still comes back on some) when there is no user credential.
++// The resulting ClientTransaction is reused instead of refetching the homepage before every call.
++const TRANSACTION_TTL_MS = 30 * 60 * 1000;
++const TRANSACTION_FETCH_ATTEMPTS = 15;
++let cachedTransaction;
++let pendingTransaction;
+ /**
+  * The base service that handles all HTTP requests.
+  *
+@@ -119,10 +128,7 @@ class FetcherService {
+      * @returns The header containing the transaction ID.
+      */
+     async _getTransactionHeader(method, url) {
+-        // Get the X homepage HTML document (using utility function)
+-        const document = await this._handleXMigration();
+-        // Create and initialize ClientTransaction instance
+-        const transaction = await x_client_transaction_id_1.ClientTransaction.create(document);
++        const transaction = await this._getClientTransaction();
+         // Getting the URL path excluding all params
+         const path = new URL(url).pathname.split('?')[0].trim();
+         // Generating the transaction ID
+@@ -133,6 +139,53 @@ class FetcherService {
+             /* eslint-enable @typescript-eslint/naming-convention */
+         };
+     }
++    async _getClientTransaction() {
++        if (cachedTransaction && Date.now() - cachedTransaction.createdAt < TRANSACTION_TTL_MS) {
++            return cachedTransaction.transaction;
++        }
++        // Share one refresh between concurrent requests.
++        pendingTransaction ??= this._createClientTransaction().finally(() => {
++            pendingTransaction = undefined;
++        });
++        try {
++            const transaction = await pendingTransaction;
++            cachedTransaction = { transaction, createdAt: Date.now() };
++            return transaction;
++        }
++        catch (err) {
++            // A stale generator is more likely to work than none; X changes its keys only on deploys.
++            if (cachedTransaction)
++                return cachedTransaction.transaction;
++            throw err;
++        }
++    }
++    async _createClientTransaction() {
++        const cookie = this.config.apiKey ? AuthService_1.AuthService.decodeCookie(this.config.apiKey) : undefined;
++        let lastError;
++        for (let attempt = 0; attempt < TRANSACTION_FETCH_ATTEMPTS; attempt++) {
++            // Retry an authenticated fetch once, then fall back to anonymous fetches.
++            const document = await this._fetchHomeDocument(attempt < 2 ? cookie : undefined);
++            try {
++                return await x_client_transaction_id_1.ClientTransaction.create(document);
++            }
++            catch (err) {
++                // Only a missing ondemand chunk URL (the x-web app) is worth retrying.
++                if (err?.name !== 'OnDemandFileUrlResolutionError')
++                    throw err;
++                lastError = err;
++            }
++        }
++        throw new Error(`X served no page with the ondemand.s runtime after ${TRANSACTION_FETCH_ATTEMPTS} attempts`, { cause: lastError });
++    }
++    async _fetchHomeDocument(cookie) {
++        const response = await axios_1.default.get('https://x.com/home', {
++            headers: { ...this.config.headers, ...(cookie ? { Cookie: cookie } : {}) },
++            httpAgent: this.config.httpAgent,
++            httpsAgent: this.config.httpsAgent,
++            proxy: this.config.axiosProxyConfig,
++        });
++        return (0, linkedom_1.parseHTML)(response.data).document;
++    }
+     async _handleXMigration() {
+         // Fetch X.com homepage
+         const homePageResponse = await axios_1.default.get('https://x.com/home', {

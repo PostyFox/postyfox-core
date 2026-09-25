@@ -230,6 +230,40 @@ public class ConnectorCookiePairingServiceTests
         Assert.Empty(db.UserConnectors);
     }
 
+    [Fact]
+    public async Task Pairing_accepts_a_long_cookie_value()
+    {
+        using var db = TestDbContext.Create();
+        SeedDefinition(db, "FurAffinity");
+        await db.SaveChangesAsync();
+        var service = Service(db);
+
+        var result = await service.PairAsync("u1", "FurAffinity", null, new Dictionary<string, string>
+        {
+            ["a"] = new string('x', 1500),
+            ["b"] = "session-b"
+        });
+
+        Assert.Equal(ConnectorCookiePairOutcome.Connected, result.Outcome);
+    }
+
+    [Fact]
+    public async Task Pairing_rejects_a_cookie_value_over_the_browser_limit()
+    {
+        using var db = TestDbContext.Create();
+        SeedDefinition(db, "FurAffinity");
+        await db.SaveChangesAsync();
+        var service = Service(db);
+
+        var result = await service.PairAsync("u1", "FurAffinity", null, new Dictionary<string, string>
+        {
+            ["a"] = new string('x', 4097),
+            ["b"] = "session-b"
+        });
+
+        Assert.Equal(ConnectorCookiePairOutcome.InvalidCookies, result.Outcome);
+    }
+
     // ----- discovery ------------------------------------------------------------------------------
 
     [Fact]
