@@ -43,6 +43,7 @@ data:
     skip_provider_button = true
 
     custom_templates_dir = "/etc/oauth2-proxy/templates"
+    footer = "-"
   error.html: |
     {{ "{{" }}/*
       Custom error.html for oauth2-proxy. Overrides ONLY this template (sign_in.html etc. still use

@@ -391,6 +391,7 @@ services:
       # ./oauth2-proxy/templates/sign_in.html). error.html is also overridden for the
       # gateway-unreachable case; any other template still falls back to oauth2-proxy's defaults.
       OAUTH2_PROXY_CUSTOM_TEMPLATES_DIR: "/etc/oauth2-proxy/templates"
+      OAUTH2_PROXY_FOOTER: "-"
     volumes:
       - ./oauth2-proxy/templates:/etc/oauth2-proxy/templates:ro
     depends_on:
