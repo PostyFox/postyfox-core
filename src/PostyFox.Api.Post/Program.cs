@@ -9,6 +9,7 @@ using OpenTelemetry;
 using OpenTelemetry.Logs;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(o => o.AddServerHeader = false);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
