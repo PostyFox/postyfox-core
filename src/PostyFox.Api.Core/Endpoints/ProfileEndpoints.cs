@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Services;
@@ -50,8 +51,32 @@ public static class ProfileEndpoints
         settings.MapPut("", async (UserSettingsUpdateRequest body, ClaimsPrincipal user, UserSettingsService svc, CancellationToken ct) =>
             Results.Ok(await svc.UpdateAsync(user.UserId()!, body, ct)))
         .WithSummary("Update user settings")
-        .WithDescription("IncludeAdvertisingLine appends a \"Sent using PostyFox\" link to every post delivered for this user.")
+        .WithDescription("IncludeAdvertisingLine appends a \"Sent using PostyFox\" link to every post delivered for this user. " +
+                         "UseGravatar opts in to serving the user's Gravatar from /api/profile/avatar.")
         .Produces<UserSettingsDto>();
+
+        // Issue #420: always the signed-in person's own avatar, even while acting as another account,
+        // since the email claim is theirs. Proxied so the browser never contacts Gravatar itself.
+        app.MapGet("/api/profile/avatar", async (int? size, ClaimsPrincipal user, UserSettingsService settingsSvc,
+                IAvatarProvider avatars, HttpResponse response, CancellationToken ct) =>
+        {
+            var email = user.Email();
+            if (string.IsNullOrWhiteSpace(email)) return Results.NotFound();
+            if (!(await settingsSvc.GetAsync(user.CallerUserId()!, ct)).UseGravatar) return Results.NotFound();
+
+            var image = await avatars.GetAsync(email, Math.Clamp(size ?? 80, 16, 512), ct);
+            if (image is null) return Results.NotFound();
+
+            response.Headers.CacheControl = "private, max-age=3600";
+            return Results.File(image.Content, image.ContentType);
+        })
+        .RequireAuthorization()
+        .WithTags("profile")
+        .WithSummary("Get your profile image")
+        .WithDescription("Your Gravatar, when you've opted in via settings (UseGravatar). 404 when disabled or none is registered.")
+        .Produces<byte[]>(StatusCodes.Status200OK, "image/png", "image/jpeg", "image/gif", "image/webp")
+        .Produces(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         group.MapDelete("{id:guid}", async (Guid id, ClaimsPrincipal user, ApiKeyService svc, CancellationToken ct) =>
             await svc.RevokeAsync(user.UserId()!, id, ct) ? Results.NoContent() : Results.NotFound())

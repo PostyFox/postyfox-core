@@ -12,4 +12,7 @@ public class User
 
     /// <summary>When true, every delivered post gets a "Sent using PostyFox" line appended.</summary>
     public bool IncludeAdvertisingLine { get; set; }
+
+    /// <summary>Opt-in (issue #420): show the user's Gravatar, fetched server-side by email hash.</summary>
+    public bool UseGravatar { get; set; }
 }

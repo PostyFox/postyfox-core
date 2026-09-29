@@ -42,6 +42,19 @@ public sealed class FakeEmailSender : IEmailSender
     { Sent.Add(new SentEmail(to, subject, bodyText)); return Task.CompletedTask; }
 }
 
+public sealed class FakeAvatarProvider : IAvatarProvider
+{
+    public const string EmailWithAvatar = "has-avatar@example.com";
+    public static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47];
+    public ConcurrentBag<(string Email, int Size)> Requests { get; } = new();
+
+    public Task<AvatarImage?> GetAsync(string email, int size, CancellationToken ct = default)
+    {
+        Requests.Add((email, size));
+        return Task.FromResult(email == EmailWithAvatar ? new AvatarImage(Png, "image/png") : null);
+    }
+}
+
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
@@ -81,12 +94,14 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             Remove<IMessageBus>(services);
             Remove<ISecretsProvider>(services);
             Remove<IEmailSender>(services);
+            Remove<IAvatarProvider>(services);
 
             services.AddDbContext<AppDbContext>(o => o.UseSqlite(_connection));
             services.AddSingleton<IObjectStore, FakeObjectStore>();
             services.AddSingleton<IMessageBus, FakeBus>();
             services.AddInMemorySecretsProvider();
             services.AddSingleton<IEmailSender, FakeEmailSender>();
+            services.AddSingleton<IAvatarProvider, FakeAvatarProvider>();
         });
     }
 
