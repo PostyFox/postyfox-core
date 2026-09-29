@@ -11,7 +11,7 @@ public sealed class UserSettingsService(IAppDbContext db, IClock clock)
     public async Task<UserSettingsDto> GetAsync(string userId, CancellationToken ct = default)
     {
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
-        return new UserSettingsDto(user?.IncludeAdvertisingLine ?? false);
+        return new UserSettingsDto(user?.IncludeAdvertisingLine ?? false, user?.UseGravatar ?? false);
     }
 
     public async Task<UserSettingsDto> UpdateAsync(string userId, UserSettingsUpdateRequest request, CancellationToken ct = default)
@@ -24,7 +24,8 @@ public sealed class UserSettingsService(IAppDbContext db, IClock clock)
         }
 
         user.IncludeAdvertisingLine = request.IncludeAdvertisingLine;
+        user.UseGravatar = request.UseGravatar;
         await db.SaveChangesAsync(ct);
-        return new UserSettingsDto(user.IncludeAdvertisingLine);
+        return new UserSettingsDto(user.IncludeAdvertisingLine, user.UseGravatar);
     }
 }

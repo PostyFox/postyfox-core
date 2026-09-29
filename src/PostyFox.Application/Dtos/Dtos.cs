@@ -177,9 +177,9 @@ public sealed record TextTemplateUpsertRequest(
     string DefaultValue,
     IReadOnlyDictionary<Guid, string> ConnectorValues);
 
-public sealed record UserSettingsDto(bool IncludeAdvertisingLine);
+public sealed record UserSettingsDto(bool IncludeAdvertisingLine, bool UseGravatar);
 
-public sealed record UserSettingsUpdateRequest(bool IncludeAdvertisingLine);
+public sealed record UserSettingsUpdateRequest(bool IncludeAdvertisingLine, bool UseGravatar = false);
 
 public sealed record TermsDto(int Version, string Content, DateTimeOffset PublishedAt);
 

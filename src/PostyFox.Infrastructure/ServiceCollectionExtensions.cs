@@ -12,6 +12,7 @@ using PostyFox.Application.Connectors;
 using PostyFox.Application.Messaging;
 using PostyFox.Application.Options;
 using PostyFox.Application.Posting;
+using PostyFox.Infrastructure.Avatars;
 using PostyFox.Infrastructure.Connectors;
 using PostyFox.Infrastructure.Email;
 using PostyFox.Infrastructure.Media;
@@ -45,6 +46,11 @@ public static class ServiceCollectionExtensions
         services.Configure<MediaOptions>(config.GetSection(MediaOptions.SectionName));
         services.Configure<EmailOptions>(config.GetSection(EmailOptions.SectionName));
         services.AddSingleton<IEmailSender, SmtpEmailSender>();
+
+        // Profile images (issue #420): proxied from Gravatar so the browser never contacts it.
+        services.AddMemoryCache();
+        services.AddHttpClient(nameof(GravatarAvatarProvider), c => c.Timeout = TimeSpan.FromSeconds(5));
+        services.AddSingleton<IAvatarProvider, GravatarAvatarProvider>();
 
         var conn = config.GetConnectionString("Postgres")
                    ?? "Host=localhost;Port=5432;Database=postyfox;Username=postyfox;Password=postyfox";
