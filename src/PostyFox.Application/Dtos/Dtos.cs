@@ -181,6 +181,14 @@ public sealed record UserSettingsDto(bool IncludeAdvertisingLine);
 
 public sealed record UserSettingsUpdateRequest(bool IncludeAdvertisingLine);
 
+public sealed record TermsDto(int Version, string Content, DateTimeOffset PublishedAt);
+
+/// <summary>
+/// <see cref="Current"/> is null when no terms are in force. <see cref="OwnerAccepted"/> covers the
+/// account being acted as (issue #409) and equals <see cref="Accepted"/> when acting as yourself.
+/// </summary>
+public sealed record TermsStatusDto(TermsDto? Current, bool Accepted, bool OwnerAccepted);
+
 public sealed record CreatePostRequest(
     /// <summary>
     /// Ids of the destinations to deliver to. Each entry is either a <see cref="Domain.Entities.UserConnector"/> id

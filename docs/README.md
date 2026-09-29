@@ -31,6 +31,9 @@ The **interactive API contract** is served by each API at `/swagger` (UI) and `/
 | POST | `/api/profile/invites/{id}/accept` | Accept an invite from the "pending" list, by id |
 | GET | `/api/profile/accounts` | Accounts you can act as (self + accepted memberships); switch with the `X-Act-As` header |
 | GET/DELETE | `/api/profile/members[/{memberUserId}]` | Who has delegated access to your account; revoke it |
+| GET | `/api/terms` | Current terms of service and whether you (and the account acted as) accepted them (issue #417) |
+| POST | `/api/terms/accept` | Accept the current terms version; 409 if the version is stale |
+| PUT | `/api/admin/terms` | Admin: publish a new terms version (forces re-acceptance); blank content turns terms off |
 | GET | `/api/services[/{id}]` | Platform catalogue |
 | GET/PUT/DELETE | `/api/connectors[/{id}]` | Configured connector CRUD |
 | GET | `/api/connectors/{id}/authenticated` | Connector auth check |

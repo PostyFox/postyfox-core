@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using PostyFox.Application.Dtos;
 using PostyFox.Application.Services;
 using PostyFox.Web.Auth;
 
@@ -10,11 +12,13 @@ public static class AdminEndpoints
 {
     public sealed record SetOperationalSecretRequest(string? Value);
     public sealed record SetPairedUserAgentRequest(bool UsePairedUserAgent);
+    public sealed record PublishTermsRequest(string? Content);
 
     public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/admin/access", () => Results.Ok(new { isAdmin = true }))
         .RequireAuthorization(AuthConstants.AdminPolicy)
+        .AllowWithoutTermsAcceptance()
         .WithTags("admin")
         .WithSummary("Confirm that the current Keycloak identity has admin access")
         .Produces(StatusCodes.Status200OK)
@@ -88,5 +92,24 @@ public static class AdminEndpoints
         .WithSummary("Choose whether a platform replays the pairing browser's User-Agent or always sends the default")
         .Produces<PairedUserAgentSetting>()
         .Produces(StatusCodes.Status404NotFound);
+
+        app.MapPut("/api/admin/terms", async (
+            PublishTermsRequest body,
+            ClaimsPrincipal user,
+            TermsOfServiceService service,
+            CancellationToken ct) =>
+            await service.PublishAsync(user.CallerUserId()!, body.Content, ct) is { } terms
+                ? Results.Ok(terms)
+                : Results.NoContent())
+        .RequireAuthorization(AuthConstants.AdminPolicy)
+        // Exempt so an admin can fix or turn off a bad publish without first accepting it.
+        .AllowWithoutTermsAcceptance()
+        .WithTags("admin")
+        .WithSummary("Publish a new terms of service version")
+        .WithDescription("Every publish requires all users to accept again. Empty content turns the terms off (204).")
+        .Produces<TermsDto>()
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status403Forbidden);
     }
 }

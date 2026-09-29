@@ -26,6 +26,8 @@ public interface IAppDbContext
     DbSet<WebhookDedupe> WebhookDedupes { get; }
     DbSet<AccountInvite> AccountInvites { get; }
     DbSet<AccountMember> AccountMembers { get; }
+    DbSet<TermsOfService> TermsOfService { get; }
+    DbSet<TermsAcceptance> TermsAcceptances { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

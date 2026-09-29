@@ -38,6 +38,7 @@ app.UsePostyFoxSecurityHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+app.UsePostyFoxTermsOfService();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapGet("/readyz", async (AppDbContext db) =>

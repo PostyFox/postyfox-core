@@ -136,6 +136,8 @@ erDiagram
     users ||--o{ external_triggers : registers
     users ||--o{ account_invites : sends
     users ||--o{ account_members : "grants access as owner"
+    users ||--o{ terms_acceptances : accepts
+    terms_of_service ||--o{ terms_acceptances : "accepted as"
     service_definitions ||--o{ user_connectors : "instance of"
     posts ||--o{ post_targets : "fans out to"
     user_connectors ||--o{ post_targets : "delivered via"
@@ -228,6 +230,17 @@ erDiagram
         string MemberEmail
         guid InviteId
     }
+    terms_of_service {
+        int Version PK
+        string Content
+        string PublishedByUserId
+        datetime PublishedAt
+    }
+    terms_acceptances {
+        string UserId PK
+        int TermsVersion PK
+        datetime AcceptedAt
+    }
 ```
 
 Notes:
@@ -278,6 +291,15 @@ flowchart LR
   membership is ignored (the header is dropped, not rejected), since nothing is granted beyond what
   the membership check itself allows. Access is invited by email (`AccountInvite`, delivered by
   SMTP) and cross-checked against the invitee's own OIDC email at accept time.
+- **Terms of service** (issue #417): admins publish terms (Markdown) via `PUT /api/admin/terms`.
+  Each publish is a new `terms_of_service` version; blank content turns the terms off. While terms
+  are in force, `TermsOfServiceMiddleware` (both APIs, after authorization) returns 403 with a
+  `code` of `terms_not_accepted` for any authenticated request, OIDC or API key, until the signed-in
+  person has a `terms_acceptances` row for the current version. When acting as another account, the
+  owner must also have accepted (`owner_terms_not_accepted`). Anonymous endpoints (webhooks,
+  health, version), `/api/terms`, `/api/admin/access` and `PUT /api/admin/terms` are exempt, so
+  an admin can fix or turn off a bad publish without accepting it. Background delivery of
+  already-scheduled posts and triggers is not gated.
 
 ---
 
