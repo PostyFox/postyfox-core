@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 const isFurAffinityPermission = (entry) => {
   try {
@@ -25,6 +25,11 @@ if (!manifest.host_permissions?.some((entry) => isFurAffinityPermission(entry)))
 for (const origin of ["https://app.postyfox.com/*", "https://dev.postyfox.com/*"])
   if (!manifest.host_permissions?.includes(origin))
     throw new Error(`${origin} must be declared in host_permissions`);
+
+for (const path of new Set([...Object.values(manifest.icons ?? {}), ...Object.values(manifest.action?.default_icon ?? {})]))
+  await access(new URL(`../browser-extension/${path}`, import.meta.url)).catch(() => {
+    throw new Error(`icon ${path} is missing`);
+  });
 
 // popup.js reads the environment origins from its own table; keep the two in step.
 const popup = await readFile(new URL("../browser-extension/popup.js", import.meta.url), "utf8");
