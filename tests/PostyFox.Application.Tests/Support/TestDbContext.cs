@@ -24,6 +24,8 @@ public sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbC
     public DbSet<WebhookDedupe> WebhookDedupes => Set<WebhookDedupe>();
     public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
     public DbSet<AccountMember> AccountMembers => Set<AccountMember>();
+    public DbSet<TermsOfService> TermsOfService => Set<TermsOfService>();
+    public DbSet<TermsAcceptance> TermsAcceptances => Set<TermsAcceptance>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -34,6 +36,8 @@ public sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbC
         b.Entity<ConnectorDestination>().HasOne(x => x.Connector).WithMany().HasForeignKey(x => x.ConnectorId);
         b.Entity<PostTargetAutomation>().HasOne(x => x.PostTarget).WithMany(x => x.Automations).HasForeignKey(x => x.PostTargetId);
         b.Entity<AccountMember>().HasKey(x => new { x.OwnerUserId, x.MemberUserId });
+        b.Entity<TermsOfService>().HasKey(x => x.Version);
+        b.Entity<TermsAcceptance>().HasKey(x => new { x.UserId, x.TermsVersion });
     }
 
     public static TestDbContext Create()

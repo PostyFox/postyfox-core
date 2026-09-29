@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,4 +57,8 @@ public static class WebExtensions
                 policy.RequireAuthenticatedUser().RequireRole(adminRole)));
         return services;
     }
+
+    /// <summary>Issue #417 terms gate. Runs after authorization (unauthenticated calls still get 401) and rate limiting.</summary>
+    public static IApplicationBuilder UsePostyFoxTermsOfService(this IApplicationBuilder app) =>
+        app.UseMiddleware<TermsOfServiceMiddleware>();
 }

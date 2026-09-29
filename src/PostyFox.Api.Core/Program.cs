@@ -47,6 +47,7 @@ app.UsePostyFoxSecurityHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+app.UsePostyFoxTermsOfService();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapGet("/readyz", async (AppDbContext db) =>
@@ -59,6 +60,7 @@ app.MapGet("/api/version",
     () => Results.Ok(new { service = "postyfox-core-api", version = coreVersion })).AllowAnonymous();
 
 app.MapProfileEndpoints();
+app.MapTermsEndpoints();
 app.MapAdminEndpoints();
 app.MapServiceEndpoints();
 app.MapTemplateEndpoints();

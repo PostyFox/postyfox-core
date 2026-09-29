@@ -23,6 +23,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<WebhookDedupe> WebhookDedupes => Set<WebhookDedupe>();
     public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
     public DbSet<AccountMember> AccountMembers => Set<AccountMember>();
+    public DbSet<TermsOfService> TermsOfService => Set<TermsOfService>();
+    public DbSet<TermsAcceptance> TermsAcceptances => Set<TermsAcceptance>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -170,6 +172,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.ToTable("account_members");
             e.HasKey(x => new { x.OwnerUserId, x.MemberUserId });
             e.HasIndex(x => x.MemberUserId);
+        });
+
+        b.Entity<TermsOfService>(e =>
+        {
+            e.ToTable("terms_of_service");
+            e.HasKey(x => x.Version);
+        });
+
+        b.Entity<TermsAcceptance>(e =>
+        {
+            e.ToTable("terms_acceptances");
+            e.HasKey(x => new { x.UserId, x.TermsVersion });
         });
     }
 }

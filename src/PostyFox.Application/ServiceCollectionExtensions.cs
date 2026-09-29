@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ApiKeyService>();
         services.AddScoped<AccountAccessService>();
         services.AddScoped<UserSettingsService>();
+        services.AddScoped<TermsOfServiceService>();
         services.AddScoped<ServiceCatalogService>();
         services.AddScoped<TemplateService>();
         services.AddScoped<TagPresetService>();
