@@ -63,9 +63,11 @@ public class TermsOfServiceServiceTests
         using var db = TestDbContext.Create();
         var svc = Create(db);
         await svc.PublishAsync("admin", "v1");
+        Assert.Equal("v1", (await svc.GetCurrentAsync())!.Content);
 
         Assert.Null(await svc.PublishAsync("admin", "  "));
         Assert.Null(await svc.GetCurrentVersionAsync());
+        Assert.Null(await svc.GetCurrentAsync());
         Assert.Null((await svc.GetStatusAsync("user-1", "user-1")).Current);
     }
 

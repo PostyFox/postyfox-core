@@ -24,14 +24,20 @@ public sealed class TermsOfServiceService(IAppDbContext db, IClock clock)
     public Task<bool> HasAcceptedAsync(string userId, int version, CancellationToken ct = default) =>
         db.TermsAcceptances.AnyAsync(a => a.UserId == userId && a.TermsVersion == version, ct);
 
-    public async Task<TermsStatusDto> GetStatusAsync(string userId, string ownerUserId, CancellationToken ct = default)
+    /// <summary>The terms in force, or null when there are none.</summary>
+    public async Task<TermsDto?> GetCurrentAsync(CancellationToken ct = default)
     {
         var latest = await db.TermsOfService.AsNoTracking().OrderByDescending(t => t.Version).FirstOrDefaultAsync(ct);
-        if (latest is null || latest.Content == "") return new TermsStatusDto(null, true, true);
+        return latest is null || latest.Content == "" ? null : ToDto(latest);
+    }
 
-        var accepted = await HasAcceptedAsync(userId, latest.Version, ct);
-        var ownerAccepted = ownerUserId == userId ? accepted : await HasAcceptedAsync(ownerUserId, latest.Version, ct);
-        return new TermsStatusDto(ToDto(latest), accepted, ownerAccepted);
+    public async Task<TermsStatusDto> GetStatusAsync(string userId, string ownerUserId, CancellationToken ct = default)
+    {
+        if (await GetCurrentAsync(ct) is not { } current) return new TermsStatusDto(null, true, true);
+
+        var accepted = await HasAcceptedAsync(userId, current.Version, ct);
+        var ownerAccepted = ownerUserId == userId ? accepted : await HasAcceptedAsync(ownerUserId, current.Version, ct);
+        return new TermsStatusDto(current, accepted, ownerAccepted);
     }
 
     /// <summary>Returns false when <paramref name="version"/> is not the current version (a stale page).</summary>
