@@ -89,6 +89,26 @@ public class TermsEndpointsTests
     }
 
     [Fact]
+    public async Task Current_terms_are_readable_anonymously()
+    {
+        using var anonymous = new CustomWebApplicationFactory { DevMode = false };
+        using var client = anonymous.CreateClient();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.GetAsync("/api/terms/current")).StatusCode);
+
+        using (var scope = anonymous.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.TermsOfService.Add(new TermsOfService { Content = "# Terms", PublishedByUserId = "admin", PublishedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        var terms = await client.GetFromJsonAsync<TermsDto>("/api/terms/current");
+        Assert.Equal("# Terms", terms!.Content);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/terms")).StatusCode);
+    }
+
+    [Fact]
     public async Task Publishing_requires_the_admin_role()
     {
         using var factory = new CustomWebApplicationFactory();
