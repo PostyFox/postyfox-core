@@ -4,9 +4,21 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
+# Dependabot's proxy only allows egress to declared registries; nuget.config also pulls from the
+# (public, anonymous) neillans feed, so both must be listed or NuGet updates fail with a 403.
+registries:
+  nuget-org:
+    type: nuget-feed
+    url: https://api.nuget.org/v3/index.json
+  neillans:
+    type: nuget-feed
+    url: https://packages.neillans.co.uk/nuget/dotNet/v3/index.json
 updates:
   - package-ecosystem: "nuget" # See documentation for possible values
     directory: "/" # Location of package manifests
+    registries:
+      - nuget-org
+      - neillans
     schedule:
       interval: "weekly"
   - package-ecosystem: "github-actions" # See documentation for possible values
