@@ -50,6 +50,22 @@ public class AdminEndpointsTests
     }
 
     [Fact]
+    public async Task Admin_can_configure_the_SoFurry_oauth_app()
+    {
+        using var factory = new CustomWebApplicationFactory { DevAdmin = true };
+        using var client = factory.CreateClient();
+
+        foreach (var key in new[] { OperationalSecretService.SofurryClientId, OperationalSecretService.SofurryClientSecret })
+            Assert.Equal(HttpStatusCode.OK,
+                (await client.PutAsJsonAsync($"/api/admin/operational-secrets/{key}", new { value = "v" })).StatusCode);
+        var list = await client.GetFromJsonAsync<List<OperationalSecretStatus>>("/api/admin/operational-secrets");
+
+        var sofurry = list!.Where(item => item.Component == "SoFurry").ToList();
+        Assert.Equal(2, sofurry.Count);
+        Assert.All(sofurry, item => Assert.True(item.Configured));
+    }
+
+    [Fact]
     public async Task Paired_user_agent_settings_require_the_admin_role()
     {
         using var factory = new CustomWebApplicationFactory();

@@ -136,14 +136,14 @@ export interface OAuthCompleteResult {
 }
 
 /**
- * Interactive OAuth flow a connector can expose. OAuth1.0a for Tumblr: begin → the user authorizes
+ * Interactive OAuth flow a connector can expose. OAuth1.0a for Tumblr: begin → the user authorises
  * at `authorizeUrl` → the provider calls back with a verifier → complete exchanges for the token.
  */
 export interface OAuthProvider {
   startAuthorization(input: {
     callbackUrl: string;
     operationalSecretJson?: string | null;
-    /** JSON string of the connector's non-secret config. Needed by providers whose authorization is
+    /** JSON string of the connector's non-secret config. Needed by providers whose authorisation is
      * instance-scoped (e.g. Fediverse: the instance URL lives in config). OAuth1 providers ignore it. */
     configJson?: string;
   }): Promise<OAuthStartResult>;

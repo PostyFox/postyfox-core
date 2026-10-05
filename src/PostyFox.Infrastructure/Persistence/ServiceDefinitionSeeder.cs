@@ -66,6 +66,10 @@ public static class ServiceDefinitionSeeder
     // is linked, so there is nothing for the user to fill in here.
     private const string InstagramConfigSchema = "{}";
 
+    // SoFurry's account comes from its OAuth2 connect flow, and the category, privacy and folders are
+    // chosen per submission (see the connector descriptor's PostOptionsSchema).
+    private const string SofurryConfigSchema = "{}";
+
     // FurAffinity's connector holds nothing but the account itself: it authenticates from a browser
     // session handed over by PostyFox Connect, and its category/species/gender/folder choices belong
     // to an individual submission, not the account. Those live on the connector descriptor's
@@ -83,6 +87,10 @@ public static class ServiceDefinitionSeeder
     // Same reasoning again: browser-session auth, and the audience is chosen per post (see the
     // connector descriptor's PostOptionsSchema).
     private const string KofiConfigSchema = "{}";
+
+    // Same again for Artconomy: browser-session auth, and artist credit/privacy/comments are chosen per
+    // post (see the connector descriptor's PostOptionsSchema).
+    private const string ArtconomyConfigSchema = "{}";
 
     // Shared by every Fediverse platform (Mastodon, Pleroma, Pixelfed, …). The connect (OAuth/MiAuth)
     // flow yields the access token, so there is no user-facing secure schema. https:// is added
@@ -116,10 +124,15 @@ public static class ServiceDefinitionSeeder
 
         new() { Id = "Kofi", Name = "Ko-fi", Platform = "Kofi", Enabled = true,
                 ConfigSchema = KofiConfigSchema, SecureConfigSchema = null },
+        new() { Id = "Artconomy", Name = "Artconomy", Platform = "Artconomy", Enabled = true,
+                ConfigSchema = ArtconomyConfigSchema, SecureConfigSchema = null },
         // Instagram credentials come from the "Business Login for Instagram" OAuth flow
         // (SupportsOAuth), not entered by hand, so there is no user-facing secure config schema.
         new() { Id = "Instagram", Name = "Instagram", Platform = "Instagram", Enabled = true,
                 ConfigSchema = InstagramConfigSchema, SecureConfigSchema = null },
+        // SoFurry credentials come from its OAuth2 "connect" flow (SupportsOAuth), not entered by hand.
+        new() { Id = "SoFurry", Name = "SoFurry", Platform = "SoFurry", Enabled = true,
+                ConfigSchema = SofurryConfigSchema, SecureConfigSchema = null },
         // Fediverse platforms: credentials come from the OAuth/MiAuth "connect" flow (SupportsOAuth),
         // not entered by hand, so there is no user-facing secure config schema. All share one config
         // schema (just the instance URL); the connector auto-detects the server software at connect.

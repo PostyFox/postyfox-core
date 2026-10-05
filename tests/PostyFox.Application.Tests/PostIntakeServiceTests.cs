@@ -327,6 +327,34 @@ public class PostIntakeServiceTests
                 [connectorId], "Title", "Body", null, null, null, null, null, null)));
     }
 
+    [Theory]
+    [InlineData(new[] { "a", "b", "c", "d" }, true)]            // one short
+    [InlineData(new[] { "a", "b", "c", "d", "A", " " }, true)]  // duplicates and blanks don't count
+    [InlineData(new[] { "a", "b", "c", "d", "e" }, false)]
+    public async Task Create_enforces_a_platforms_minimum_tag_count(string[] tags, bool rejected)
+    {
+        using var db = TestDbContext.Create();
+        db.ServiceDefinitions.Add(new ServiceDefinition { Id = "Artconomy", Name = "Artconomy", Platform = "Artconomy", Enabled = true });
+        var connectorId = Guid.NewGuid();
+        db.UserConnectors.Add(new UserConnector
+        {
+            Id = connectorId, UserId = "u1", ServiceDefinitionId = "Artconomy", DisplayName = "AC", Enabled = true
+        });
+        await db.SaveChangesAsync();
+        var svc = new PostIntakeService(db, new FakeObjectStore(), new FakeBus(), new FixedClock(DateTimeOffset.UnixEpoch),
+            new FakeRegistry(new FakeConnector("Artconomy", requiresTags: true, minTags: 5)),
+            Microsoft.Extensions.Options.Options.Create(new PipelineOptions()));
+        var request = new CreatePostRequest([connectorId], "Title", "Body", null, tags, null, null, null, null);
+
+        if (rejected)
+        {
+            var error = await Assert.ThrowsAsync<PostyFox.Application.Connectors.ConnectorValidationException>(() => svc.CreateAsync("u1", request));
+            Assert.Contains("at least 5 tags", error.Message);
+        }
+        else
+            Assert.NotNull(await svc.CreateAsync("u1", request));
+    }
+
     [Fact]
     public async Task Create_rejects_a_target_that_requires_media_when_none_supplied()
     {

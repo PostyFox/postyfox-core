@@ -54,6 +54,8 @@ Adding a platform = implement `IConnector` + a `ServiceDefinition` row.
 | Toyhouse | **Node** service | Authenticated HTML forms; browser session paired by PostyFox Connect |
 | X | **Node** service | `rettiwt-api` over the user's browser session, paired by PostyFox Connect. **Breaks X's terms of service on automated access and can get the account suspended** |
 | Ko-fi | **Node** service | Authenticated site forms (no API); browser session paired by PostyFox Connect; text posts and image gallery posts |
+| SoFurry | **Node** service | Documented public API; OAuth2 + PKCE connect flow with automated refresh-token renewal; image submissions (title and rating required), optionally filed into folders |
+| Artconomy | **Node** service | The site's own JSON API with a browser session paired by PostyFox Connect; one-image submissions (rating and at least 5 tags required) and text journals |
 | Instagram | **Node** service | Instagram Content Publishing API (Business Login for Instagram), same adapter; OAuth2 connect flow with automated long-lived-token refresh; media must be publicly fetchable, so bytes are staged via a presigned object-store URL rather than uploaded directly |
 | Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown, Pixelfed) | **Node** service | `megalodon`, same adapter; one generic connector, SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
 | ~~Twitch~~ | N/A | descoped |
@@ -176,7 +178,8 @@ Nested keys use `__`. Key settings: `ConnectionStrings__Postgres`, `ObjectStore_
 Trigger signing secrets live in the secret store under `trigger-{sourceType}-signing`. Administrators
 with the Keycloak `postyfox-admin` realm role can manage connector operational credentials at
 `/admin`. Telegram uses `TelegramApiID` / `TelegramApiHash`; Tumblr uses `TumblrConsumerKey` /
-`TumblrConsumerSecret`; Instagram uses `InstagramAppId` / `InstagramAppSecret`. Values are written
+`TumblrConsumerSecret`; Instagram uses `InstagramAppId` / `InstagramAppSecret`; SoFurry uses `SofurryClientId` /
+`SofurryClientSecret`. Values are written
 to the configured secret provider and are never returned.
 
 ## Known follow-ups

@@ -255,14 +255,15 @@ For Azure Key Vault set `Secrets__AzureKeyVault__VaultUri` (+ optional `TenantId
 for Infisical set `Secrets__Infisical__ClientId`/`ClientSecret`/`ProjectId`/`Environment` (+ `SiteUrl`/`SecretPath`).
 
 > Connector operational secrets can be managed in the admin UI by a user with the Keycloak
-> `postyfox-admin` realm role. The current catalog is `TelegramApiID`/`TelegramApiHash` and
-> `TumblrConsumerKey`/`TumblrConsumerSecret`. Trigger keys (`trigger-{sourceType}-signing`) still
+> `postyfox-admin` realm role. The current catalog is `TelegramApiID`/`TelegramApiHash`,
+> `TumblrConsumerKey`/`TumblrConsumerSecret`, `InstagramAppId`/`InstagramAppSecret` and
+> `SofurryClientId`/`SofurryClientSecret`. Trigger keys (`trigger-{sourceType}-signing`) still
 > require direct seeding.
 
 For an external Keycloak realm, ensure the oauth2-proxy client includes realm roles in its ID token.
 The built-in `roles` client scope must be assigned with **Full scope allowed**, or add a
 **User Realm Role** mapper with token claim name `realm_access.roles`, multivalued enabled, and
-**Add to ID token** enabled. Core authorizes the validated ID token forwarded by oauth2-proxy; merely
+**Add to ID token** enabled. Core authorises the validated ID token forwarded by oauth2-proxy; merely
 assigning the role to a user is insufficient if the client does not emit it. Sign out and back in
 after changing role assignments or mappers so oauth2-proxy receives a new ID token.
 

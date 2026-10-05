@@ -84,6 +84,32 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.Equal("{}", kofi.ConfigSchema);
         Assert.Contains("\"Audience\"", kofi.PostOptionsSchema);
 
+        var artconomy = Assert.Single(defs!, d => d.Id == "Artconomy");
+        Assert.True(artconomy.SupportsCookiePairing);
+        Assert.True(artconomy.SupportsTitle);
+        Assert.True(artconomy.SupportsMedia);
+        Assert.True(artconomy.RequiresRating);
+        Assert.True(artconomy.RequiresTags);
+        Assert.Equal(5, artconomy.MinTags);
+        Assert.True(artconomy.SupportsTextOnly); // journals
+        Assert.Equal(2000, artconomy.MaxContentLength);
+        Assert.Contains("\"CreditAsArtist\"", artconomy.PostOptionsSchema);
+
+        var sofurry = Assert.Single(defs!, d => d.Id == "SoFurry");
+        Assert.True(sofurry.SupportsOAuth);
+        Assert.False(sofurry.SupportsCookiePairing);
+        Assert.True(sofurry.SupportsTitle);
+        Assert.True(sofurry.RequiresMedia);
+        Assert.True(sofurry.RequiresRating);
+        Assert.False(sofurry.RequiresTags);
+        Assert.Equal(0, sofurry.MinTags);
+        Assert.Equal(2000, sofurry.MaxContentLength);
+        Assert.Contains("\"FolderIds\"", sofurry.PostOptionsSchema);
+
+        // A platform that requires tags without declaring a minimum needs one.
+        Assert.Equal(1, Assert.Single(defs!, d => d.Id == "FurAffinity").MinTags);
+        Assert.Equal(0, kofi.MinTags);
+
         // Every Fediverse platform supports a click-to-reveal content warning, authored per submission
         // (never the post title), see megalodon.ts.
         var mastodon = Assert.Single(defs!, d => d.Id == "Mastodon");

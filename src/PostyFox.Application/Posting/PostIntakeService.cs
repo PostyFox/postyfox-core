@@ -261,7 +261,9 @@ public sealed class PostIntakeService(
         bool hasMedia,
         DateTimeOffset now)
     {
-        var hasTags = (tags ?? []).Count > 0;
+        // Distinct, non-blank: a platform counting toward a minimum (Artconomy) dedupes the same way.
+        var tagCount = (tags ?? []).Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         var targets = new List<PostTarget>(resolved.Count);
         foreach (var destination in resolved)
         {
@@ -270,8 +272,11 @@ public sealed class PostIntakeService(
             // A text-only post to a platform that supports one (FurAffinity journals) needs no tags.
             var requiresTags = (descriptor?.RequiresTags ?? false)
                 && (hasMedia || !(descriptor?.SupportsTextOnly ?? false));
-            if (requiresTags && !hasTags)
-                throw new ConnectorValidationException($"{destination.DisplayName}: at least one tag is required for this platform.");
+            var requiredTagCount = requiresTags ? descriptor!.RequiredTagCount : 0;
+            if (tagCount < requiredTagCount)
+                throw new ConnectorValidationException(requiredTagCount == 1
+                    ? $"{destination.DisplayName}: at least one tag is required for this platform."
+                    : $"{destination.DisplayName}: at least {requiredTagCount} tags are required for this platform.");
 
             if ((descriptor?.RequiresMedia ?? false) && !hasMedia)
                 throw new ConnectorValidationException($"{destination.DisplayName}: at least one media attachment is required for this platform.");

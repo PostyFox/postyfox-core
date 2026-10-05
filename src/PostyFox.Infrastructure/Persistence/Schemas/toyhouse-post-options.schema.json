@@ -19,9 +19,9 @@
     "help": "Optional. Credits an artist outside Toyhou.se (their profile, gallery post, etc.) instead of the artist name above."
   },
   "AuthorizedViewers": {
-    "label": "Visible to authorized viewers as",
+    "label": "Visible to authorised viewers as",
     "placeholder": "Full-Size (Toyhouse default)",
-    "help": "How the image appears to users you've explicitly authorized. Leave unset for Full-Size.",
+    "help": "How the image appears to users you've explicitly authorised. Leave unset for Full-Size.",
     "options": [
       {"value":"0","label":"Full-Size"},
       {"value":"1","label":"Watermarked"},

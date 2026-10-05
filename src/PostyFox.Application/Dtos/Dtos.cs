@@ -77,7 +77,12 @@ public sealed record ServiceDefinitionDto(
     /// <summary>True when a post with no media is delivered as text-only, exempt from required tags and rating (see <see cref="Connectors.ConnectorDescriptor.SupportsTextOnly"/>).</summary>
     bool SupportsTextOnly = false,
     /// <summary>Risk to show the user before they connect (see <see cref="Connectors.ConnectorDescriptor.Warning"/>); null for none.</summary>
-    Connectors.ConnectorWarning? Warning = null);
+    Connectors.ConnectorWarning? Warning = null,
+    /// <summary>
+    /// The fewest tags a delivery needs when <see cref="RequiresTags"/> applies (see
+    /// <see cref="Connectors.ConnectorDescriptor.MinTags"/>); 0 when tags aren't required.
+    /// </summary>
+    int MinTags = 0);
 
 public sealed record UserConnectorDto(
     Guid Id, string ServiceDefinitionId, string Platform, string DisplayName, string ConfigJson, bool Enabled,

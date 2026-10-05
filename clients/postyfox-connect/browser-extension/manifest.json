@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PostyFox Connect",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Hands your logged-in website sessions to PostyFox in one click.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -23,7 +23,8 @@
     "https://x.com/*",
     "https://www.x.com/*",
     "https://ko-fi.com/*",
-    "https://www.ko-fi.com/*"
+    "https://www.ko-fi.com/*",
+    "https://artconomy.com/*"
   ],
   "action": {
     "default_title": "PostyFox Connect",
