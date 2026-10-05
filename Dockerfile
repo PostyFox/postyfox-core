@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Multi-stage build shared by all PostyFox .NET services.
 # Build with: --build-arg PROJECT=<csproj path> --build-arg ASSEMBLY=<dll name>
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
@@ -5,7 +6,13 @@ ARG PROJECT
 WORKDIR /src
 COPY . .
 RUN dotnet restore "$PROJECT"
-RUN dotnet publish "$PROJECT" -c Release -o /app --no-restore /p:UseAppHost=false
+# ImageSharp licence. CI passes it as a build secret so it never lands in a layer or build arg:
+#   docker build --secret id=sixlabors_license,src=sixlabors.lic ...
+# Without the secret, a sixlabors.lic in the repo root (local dev) arrives via COPY above and is
+# picked up by Directory.Build.props. Either way it stays in this build stage, never the final image.
+RUN --mount=type=secret,id=sixlabors_license,target=/run/secrets/sixlabors.lic \
+    LIC=""; [ -s /run/secrets/sixlabors.lic ] && LIC="/p:SixLaborsLicenseFile=/run/secrets/sixlabors.lic"; \
+    dotnet publish "$PROJECT" -c Release -o /app --no-restore /p:UseAppHost=false $LIC
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app

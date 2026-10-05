@@ -57,6 +57,8 @@ The **interactive API contract** is served by each API at `/swagger` (UI) and `/
 
 ### connectors-node (internal, `X-Internal-Token`)
 
+Rate limited per client IP (default 600 req/min, `RATE_LIMIT_MAX` overrides; `/health` exempt). Over the limit returns `429`.
+
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/health` | Liveness |

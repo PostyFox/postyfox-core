@@ -112,6 +112,9 @@ Transient delivery failures retry with exponential backoff (delayed re-publish) 
 
 ## Run locally
 
+The .NET images need the ImageSharp licence: copy `sixlabors.lic` to the repo root before building
+(see [ImageSharp licence](#imagesharp-licence)).
+
 ```bash
 cd deploy
 docker compose up --build            # full stack incl. the OIDC edge (Keycloak + oauth2-proxy + gateway)
@@ -142,14 +145,42 @@ consistent; oauth2-proxy uses split front/back-channel URLs: see
 ```bash
 # from the repo root
 dotnet build                 # whole solution (PostyFox.Platform.slnx)
-dotnet test                  # all 99 unit/integration tests
-# Node connectors:  cd src/connectors-node && npm ci && npm test   # 18 tests
+dotnet test                  # all unit/integration tests
+# Node connectors:  cd src/connectors-node && npm ci && npm test
 
 # EF migrations
 dotnet dotnet-ef migrations add <Name> --project src/PostyFox.Infrastructure
 ```
 
 Tests use in-memory SQLite / EF-InMemory and fakes for I/O. No Docker required to run them.
+
+### ImageSharp licence
+
+`PostyFox.Infrastructure` uses SixLabors.ImageSharp 4, which validates a Six Labors licence at
+compile time. Without one, Debug builds warn and **Release builds fail** ("No Six Labors license
+found"). The root [`Directory.Build.props`](./Directory.Build.props) resolves it in this order:
+
+1. `SIXLABORS_LICENSE_KEY` env var holding the full `.lic` file contents (how CI supplies it).
+2. `sixlabors.lic` in the repo root (local dev). It is gitignored: never commit it.
+
+For image builds, `deploy/docker-compose.yml` needs nothing extra: the root `sixlabors.lic` reaches
+the Dockerfile's build stage via `COPY . .` and never reaches the final image. This works with
+Docker and with Podman (classic builder). CI has no file and passes the licence as a build secret
+instead, which works the same way locally:
+
+```bash
+docker build --secret id=sixlabors_license,src=sixlabors.lic \
+  --build-arg PROJECT=src/PostyFox.Api.Core/PostyFox.Api.Core.csproj \
+  --build-arg ASSEMBLY=PostyFox.Api.Core.dll --target final .
+```
+
+In GitHub, the licence is the `SIXLABORS_LICENSE_KEY` repository secret, set for both **Actions**
+and **Dependabot** (Dependabot PRs can't read Actions secrets). To rotate it:
+
+```bash
+gh secret set SIXLABORS_LICENSE_KEY -R PostyFox/postyfox-core < sixlabors.lic
+gh secret set SIXLABORS_LICENSE_KEY -R PostyFox/postyfox-core --app dependabot < sixlabors.lic
+```
 
 ## Deploy
 
@@ -172,7 +203,8 @@ Nested keys use `__`. Key settings: `ConnectionStrings__Postgres`, `ObjectStore_
 `Secrets__<Provider>__*`, e.g. `Secrets__BitWarden__ServerUrl`), `Auth__Oidc__Enabled` / `Auth__Oidc__Issuer` /
 `Auth__Oidc__JwksUrl` / `Auth__Oidc__Audience`, `Auth__UserHeader`,
 `NodeConnectors__BaseUrl` + `NodeConnectors__InternalToken` (→ connectors-node; also set as
-`INTERNAL_TOKEN` on that service), `ApplyMigrations`, `SeedServiceDefinitions`,
+`INTERNAL_TOKEN` on that service; `RATE_LIMIT_MAX` on connectors-node caps requests per client IP per
+minute, default 600), `ApplyMigrations`, `SeedServiceDefinitions`,
 `OTEL_EXPORTER_OTLP_ENDPOINT`.
 
 Trigger signing secrets live in the secret store under `trigger-{sourceType}-signing`. Administrators

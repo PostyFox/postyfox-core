@@ -121,6 +121,8 @@ jobs:
             PROJECT=${{ matrix.project }}
             ASSEMBLY=${{ matrix.assembly }}
             VERSION=${{ steps.ver.outputs.version }}
+          secrets: |
+            sixlabors_license=${{ secrets.SIXLABORS_LICENSE_KEY }}
 
   deploy-development:
     needs: [validate-confirmation, build-images]
