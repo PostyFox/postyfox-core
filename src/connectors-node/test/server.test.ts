@@ -248,3 +248,20 @@ test("unknown platform returns 404", async () => {
   assert.deepEqual(res.json(), { error: "unknown platform" });
   await app.close();
 });
+
+test("429 once the per-client rate limit is exceeded", async () => {
+  const app = buildServer({ internalToken: "secret", registry: registryWith("bluesky"), rateLimitMax: 2 });
+  const send = () =>
+    app.inject({
+      method: "POST",
+      url: "/connectors/bluesky/is-authenticated",
+      headers: { "x-internal-token": "secret" },
+      payload: { configJson: "{}", secretJson: "{}" },
+    });
+  assert.equal((await send()).statusCode, 200);
+  assert.equal((await send()).statusCode, 200);
+  assert.equal((await send()).statusCode, 429);
+  const health = await app.inject({ method: "GET", url: "/health" });
+  assert.equal(health.statusCode, 200);
+  await app.close();
+});

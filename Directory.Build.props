@@ -1,0 +1,8 @@
+<Project>
+  <!-- ImageSharp 4+ needs a Six Labors licence at build time. CI supplies the full .lic contents via the
+       SIXLABORS_LICENSE_KEY env var (a repo secret); locally, drop sixlabors.lic (gitignored) in the repo root. -->
+  <PropertyGroup>
+    <SixLaborsLicenseKey Condition="'$(SixLaborsLicenseKey)' == '' and '$(SIXLABORS_LICENSE_KEY)' != ''">$(SIXLABORS_LICENSE_KEY)</SixLaborsLicenseKey>
+    <SixLaborsLicenseFile Condition="'$(SixLaborsLicenseKey)' == '' and '$(SixLaborsLicenseFile)' == '' and Exists('$(MSBuildThisFileDirectory)sixlabors.lic')">$(MSBuildThisFileDirectory)sixlabors.lic</SixLaborsLicenseFile>
+  </PropertyGroup>
+</Project>

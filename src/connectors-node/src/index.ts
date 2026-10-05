@@ -12,6 +12,7 @@ if (!internalToken) {
 const app = buildServer({
   internalToken,
   logger: true,
+  rateLimitMax: process.env.RATE_LIMIT_MAX ? Number(process.env.RATE_LIMIT_MAX) : undefined,
 });
 
 app

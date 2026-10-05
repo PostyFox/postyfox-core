@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance } from "fastify";
 import {
   createDefaultRegistry,
@@ -26,6 +27,8 @@ export interface BuildServerOptions {
   internalToken?: string;
   /** Fastify logger toggle. */
   logger?: boolean;
+  /** Max requests per client IP per minute. Callers are internal services, so this is a generous ceiling. */
+  rateLimitMax?: number;
 }
 
 interface DeliverBody {
@@ -39,6 +42,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   const app = Fastify({ logger: options.logger ?? false });
 
+  app.register(rateLimit, {
+    max: options.rateLimitMax ?? 600,
+    timeWindow: "1 minute",
+    allowList: (request) => request.url === "/health",
+  });
+
   app.addHook("onRequest", async (request, reply) => {
     if (request.url === "/health") return;
     if (internalToken === undefined || internalToken === "") return;
@@ -49,6 +58,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     }
   });
 
+  // Routes go in a child plugin so they're added after rate-limit loads and pick up its hook.
+  app.register(async (instance) => registerRoutes(instance, registry));
+
+  return app;
+}
+
+function registerRoutes(app: FastifyInstance, registry: ConnectorRegistry): void {
   // logLevel: silent. The container healthcheck hits this constantly; don't emit access logs for it.
   app.get("/health", { logLevel: "silent" }, async () => ({ status: "ok" }));
 
@@ -213,6 +229,4 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return reply.code(502).send({ error: err instanceof Error ? err.message : String(err) });
     }
   });
-
-  return app;
 }

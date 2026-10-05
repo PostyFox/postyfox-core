@@ -485,7 +485,9 @@ posts get the same rendering, delivery, retry and status behaviour.
 
   One templated `Dockerfile` builds each .NET service (build args select project + assembly);
   connectors-node has its own multi-stage Dockerfile. CI (`.github/workflows/platform-ci.yml`)
-  builds + tests both stacks, lints the IaC, and builds/pushes images.
+  builds + tests both stacks, lints the IaC, and builds/pushes images. The .NET build needs the
+  ImageSharp licence, supplied from the `SIXLABORS_LICENSE_KEY` secret (env var for `dotnet build`,
+  build secret for images); see [`../README.md`](../README.md#imagesharp-licence).
 - **Config**: 12-factor env vars, nested with `__` (see [`../README.md`](../README.md#configuration-env-vars)).
 - **Testing**: unit + integration tests per layer using in-memory SQLite / EF-InMemory and fakes for
   I/O. No Docker required. The pipeline is covered end-to-end via an in-process bus that drives the

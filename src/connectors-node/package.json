@@ -13,9 +13,10 @@
     "test": "node --import tsx --test \"test/**/*.test.ts\""
   },
   "dependencies": {
-    "@atproto/api": "^0.21.0",
-    "@aws-sdk/client-s3": "^3.1083.0",
-    "@aws-sdk/s3-request-presigner": "^3.1083.0",
+    "@atproto/api": "^0.23.0",
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@aws-sdk/s3-request-presigner": "^3.1146.0",
+    "@fastify/rate-limit": "^11.2.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.80.0",
     "@opentelemetry/sdk-node": "^0.222.0",
@@ -25,7 +26,7 @@
     "node-html-parser": "^9.0.4",
     "oauth-1.0a": "^2.2.6",
     "rettiwt-api": "7.1.4",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "tough-cookie": "^6.0.2",
     "tumblr.js": "^5.0.1"
   },
