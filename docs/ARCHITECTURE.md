@@ -247,7 +247,7 @@ Notes:
 - **Secrets are never in domain tables.** Per-user connector secrets live in the secret store under
   `conn-{connectorId:N}-{userId}`; trigger signing secrets under `trigger-{sourceType}-signing`;
   platform secrets (e.g. `TelegramApiID`/`TelegramApiHash` and
-  `TumblrConsumerKey`/`TumblrConsumerSecret`) under their own names. The store is a
+  `TumblrConsumerKey`/`TumblrConsumerSecret`, `SofurryClientId`/`SofurryClientSecret`) under their own names. The store is a
   pluggable `ISecretsProvider` (`adapters-secrets` library): in-memory for local/dev, and
   BitWarden/VaultWarden, Azure Key Vault, or Infisical for deployments, selected via
   `Secrets:Provider`. There is no database table backing it. The fixed platform-secret catalog is
@@ -319,6 +319,8 @@ the connector-ops endpoints never hard-code a platform.
 | Toyhouse | connectors-node | Cookie-authenticated HTML form workflow |
 | X | connectors-node | `rettiwt-api` over paired browser cookies (against X's terms of service) |
 | Ko-fi | connectors-node | Cookie-authenticated site form workflow |
+| SoFurry | connectors-node | Documented public API, OAuth2 + PKCE connect flow |
+| Artconomy | connectors-node | Cookie-authenticated calls to the site's own JSON API |
 
 The C# **`HttpConnector`** adapter fulfils `IConnector` for Node-hosted platforms by forwarding to
 connectors-node over HTTP (`POST /connectors/{platform}/{is-authenticated|list-targets|deliver}`),

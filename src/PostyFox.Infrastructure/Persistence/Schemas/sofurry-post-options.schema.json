@@ -1,0 +1,60 @@
+{
+  "$comment": "SoFurry's per-submission choices. Type ids are the API's own (developer.sofurry.com/dev-docs, Get Uploader Settings): the category is the type id rounded down to the nearest ten. Only image categories are listed because the connector posts images. Values are strings, as for every post option.",
+  "Type": {
+    "label": "Type",
+    "placeholder": "Artwork: Drawing (default)",
+    "options": [
+      {"value":"11","label":"Drawing","group":"Artwork"},
+      {"value":"12","label":"Comic","group":"Artwork"},
+      {"value":"13","label":"Animation","group":"Artwork"},
+      {"value":"19","label":"Other","group":"Artwork"},
+      {"value":"31","label":"Photograph","group":"Photography"},
+      {"value":"32","label":"Album","group":"Photography"},
+      {"value":"39","label":"Other","group":"Photography"}
+    ]
+  },
+  "Privacy": {
+    "label": "Visibility",
+    "placeholder": "Public (default)",
+    "options": [
+      {"value":"2","label":"Unlisted: only people with the link"},
+      {"value":"1","label":"Private: only you"}
+    ]
+  },
+  "FolderIds": {
+    "label": "Folder IDs",
+    "placeholder": "abc123, def456",
+    "help": "Optional. Folders to add the submission to: open a folder on SoFurry and copy its ID from the URL. Separate several with commas.",
+    "pattern": "^[A-Za-z0-9_-]+( *, *[A-Za-z0-9_-]+)*$",
+    "message": "Folder IDs must be comma-separated IDs."
+  },
+  "AllowComments": {
+    "label": "Comments",
+    "placeholder": "Allowed (default)",
+    "options": [
+      {"value":"false","label":"Disabled"}
+    ]
+  },
+  "AllowDownloads": {
+    "label": "Downloads",
+    "placeholder": "Allowed (default)",
+    "options": [
+      {"value":"false","label":"Disabled"}
+    ]
+  },
+  "WorkInProgress": {
+    "label": "Work in progress",
+    "placeholder": "No",
+    "options": [
+      {"value":"true","label":"Yes"}
+    ]
+  },
+  "PixelPerfect": {
+    "label": "Pixel-perfect display",
+    "placeholder": "No",
+    "help": "Turns off lossy compression, for pixel art.",
+    "options": [
+      {"value":"true","label":"Yes"}
+    ]
+  }
+}

@@ -277,6 +277,50 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
             sp.GetRequiredService<IServiceScopeFactory>()));
 
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "Artconomy",
+            new ConnectorDescriptor(
+                "Artconomy",
+                "Artconomy",
+                // Artconomy's own frontend is a client of its JSON API, which the connector calls with
+                // the user's browser session. A post with an image becomes a gallery submission (one
+                // file each), a post without one becomes a journal.
+                SupportsTitle: true,
+                SupportsMedia: true,
+                SupportsThreads: false,
+                // A submission caption is capped at 2000 characters; journals allow 5000.
+                MaxContentLength: 2000,
+                // Django's session cookie, plus its CSRF cookie: the API's session authentication
+                // rejects any write without a matching X-CSRFToken header. Both exist whenever the user
+                // is logged in. Sessions last a year.
+                CookiePairing: new CookiePairingSpec(
+                    SiteUrl: "https://artconomy.com/",
+                    LoginUrl: "https://artconomy.com/auth/login/",
+                    CookieNames: ["sessionid", "csrftoken"],
+                    OptionalCookieNames: ["cf_clearance"]),
+                // Artconomy's General/Mature/Adult/Extreme ratings map one-to-one onto ContentRating.
+                SupportsRating: true,
+                RequiresRating: true,
+                SupportsTags: true,
+                // The API rejects a submission with fewer than five tags.
+                RequiresTags: true,
+                MinTags: 5,
+                // Journals take no tags or rating.
+                SupportsTextOnly: true,
+                PostOptionsSchema: EmbeddedSchema.Load("artconomy-post-options.schema.json"),
+                Warning: new ConnectorWarning(
+                    "Artconomy has no public posting API, so PostyFox posts through your logged-in browser "
+                    + "session using the same requests the site itself makes. That is not an officially "
+                    + "supported method, and the account is yours to answer for.",
+                    "https://artconomy.com/legal-and-policies/terms-of-service/",
+                    "Artconomy Terms of Service")
+                // No SupportsRepost/SupportsDelete: not wired up in this pass.
+                ),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
+
         // Fediverse platforms: all delivered by the megalodon connector in the Node service, all via
         // an instance-scoped OAuth/MiAuth connect flow. They differ only in display name and the
         // default max content length (a UI hint; instances configure their own limit). MaxContentLength
@@ -310,6 +354,35 @@ public static class ServiceCollectionExtensions
             new ConnectorDescriptor(
                 "Instagram", "Instagram", SupportsTitle: false, SupportsMedia: true, SupportsThreads: false,
                 MaxContentLength: 2200, SupportsOAuth: true, SupportsTags: false, RequiresMedia: true),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
+
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "SoFurry",
+            new ConnectorDescriptor(
+                "SoFurry",
+                "SoFurry",
+                SupportsTitle: true,
+                SupportsMedia: true,
+                SupportsThreads: false,
+                // The submission description is capped at 2000 characters.
+                MaxContentLength: 2000,
+                // SoFurry's documented public API (developer.sofurry.com/dev-docs) with an OAuth2
+                // authorization-code + PKCE connect flow. The app's client id/secret are operational
+                // secrets (SofurryClientId/SofurryClientSecret); refresh tokens keep the connection alive.
+                SupportsOAuth: true,
+                // Clean/Mature/Adult: Adult and Extreme both map to Adult.
+                SupportsRating: true,
+                RequiresRating: true,
+                // Tags are optional: the site recommends five but enforces none.
+                SupportsTags: true,
+                // A submission can only be made visible once it has content, so there are no text-only posts.
+                RequiresMedia: true,
+                PostOptionsSchema: EmbeddedSchema.Load("sofurry-post-options.schema.json")
+                // No SupportsRepost/SupportsDelete: the API has no delete or repost endpoint.
+                ),
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),

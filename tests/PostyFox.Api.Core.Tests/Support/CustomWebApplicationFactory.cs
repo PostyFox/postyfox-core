@@ -145,6 +145,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             });
             db.ServiceDefinitions.Add(new ServiceDefinition
             {
+                Id = "Artconomy", Name = "Artconomy", Platform = "Artconomy", Enabled = true,
+                ConfigSchema = "{}"
+            });
+            db.ServiceDefinitions.Add(new ServiceDefinition
+            {
+                Id = "SoFurry", Name = "SoFurry", Platform = "SoFurry", Enabled = true,
+                ConfigSchema = "{}"
+            });
+            db.ServiceDefinitions.Add(new ServiceDefinition
+            {
                 Id = "Mastodon", Name = "Mastodon", Platform = "Mastodon", Enabled = true,
                 ConfigSchema = "{\"InstanceUrl\":\"\"}"
             });

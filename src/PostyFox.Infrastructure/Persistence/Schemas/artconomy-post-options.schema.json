@@ -1,0 +1,26 @@
+{
+  "$comment": "Artconomy's per-submission choices, mirroring the site's own upload form. Values are strings, as for every post option. Journals (posts with no image) take only DisableComments.",
+  "CreditAsArtist": {
+    "label": "Credit me as the artist",
+    "placeholder": "Yes (Artconomy default)",
+    "help": "Choose No for art you didn't make: it goes to your collection instead of your gallery.",
+    "options": [
+      {"value":"false","label":"No"}
+    ]
+  },
+  "Private": {
+    "label": "Private",
+    "placeholder": "No",
+    "help": "Image posts only. Hides the submission from everyone but you and people you share it with.",
+    "options": [
+      {"value":"true","label":"Yes"}
+    ]
+  },
+  "DisableComments": {
+    "label": "Disable comments",
+    "placeholder": "No",
+    "options": [
+      {"value":"true","label":"Yes"}
+    ]
+  }
+}

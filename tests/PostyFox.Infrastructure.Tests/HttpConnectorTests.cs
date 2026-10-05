@@ -176,4 +176,49 @@ public class HttpConnectorTests
         Assert.Contains("\"consumerKey\":\"vault-key\"", operational);
         Assert.Contains("\"consumerSecret\":\"vault-secret\"", operational);
     }
+
+    [Fact]
+    public async Task SoFurry_forwards_operational_credentials_from_the_secret_provider()
+    {
+        var services = new ServiceCollection();
+        services.AddInMemorySecretsProvider();
+        services.AddScoped<OperationalSecretService>();
+        await using var provider = services.BuildServiceProvider();
+        var secrets = provider.GetRequiredService<ISecretsProvider>();
+        await secrets.SetSecretAsync(OperationalSecretService.SofurryClientId, "vault-client");
+        await secrets.SetSecretAsync(OperationalSecretService.SofurryClientSecret, "vault-secret");
+
+        var handler = new StubHttpHandler(HttpStatusCode.OK,
+            "{\"authorizeUrl\":\"https://api.sofurry.com/oauth/authorize\",\"requestToken\":\"s\",\"requestTokenSecret\":\"{}\"}");
+        var connector = new HttpConnector(
+            "SoFurry",
+            new ConnectorDescriptor("SoFurry", "SoFurry", true, true, false, 2000, SupportsOAuth: true),
+            new StubHttpClientFactory(handler),
+            Options.Create(new NodeConnectorsOptions { BaseUrl = "http://node:8090", InternalToken = "tok" }),
+            NullLogger<HttpConnector>.Instance,
+            provider.GetRequiredService<IServiceScopeFactory>());
+
+        await connector.StartAuthorizationAsync("https://app/cb", null);
+
+        Assert.EndsWith("/connectors/SoFurry/oauth/request-token", handler.LastRequest!.RequestUri!.ToString());
+        using var payload = JsonDocument.Parse(handler.LastBody!);
+        var operational = payload.RootElement.GetProperty("operationalSecretJson").GetString();
+        Assert.Contains("\"clientId\":\"vault-client\"", operational);
+        Assert.Contains("\"clientSecret\":\"vault-secret\"", operational);
+    }
+
+    [Fact]
+    public async Task SoFurry_sends_no_operational_credentials_until_both_are_set()
+    {
+        var services = new ServiceCollection();
+        services.AddInMemorySecretsProvider();
+        services.AddScoped<OperationalSecretService>();
+        await using var provider = services.BuildServiceProvider();
+        await provider.GetRequiredService<ISecretsProvider>()
+            .SetSecretAsync(OperationalSecretService.SofurryClientId, "vault-client");
+
+        var json = await provider.GetRequiredService<OperationalSecretService>().ConnectorCredentialsJsonAsync("SoFurry");
+
+        Assert.Null(json);
+    }
 }

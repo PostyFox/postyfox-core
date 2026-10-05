@@ -133,7 +133,7 @@ public static class ServiceEndpoints
                 : Results.Ok(new { authorizeUrl = url });
         })
         .WithSummary("Begin the OAuth connect flow for a connector")
-        .WithDescription("Returns the provider authorize URL to open in the browser; the provider then calls back to /api/connectors/oauth/callback.")
+        .WithDescription("Returns the provider authorise URL to open in the browser; the provider then calls back to /api/connectors/oauth/callback.")
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 

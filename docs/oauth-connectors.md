@@ -2,7 +2,7 @@
 
 Some platforms let a user connect by clicking a button and authorizing in the provider's UI, rather
 than pasting API tokens. Today this covers **Tumblr** (OAuth 1.0a), **Instagram** (OAuth2, Business
-Login for Instagram) and the **Fediverse** platforms (Mastodon, Pleroma, Akkoma, Friendica,
+Login for Instagram), **SoFurry** (OAuth2 with PKCE) and the **Fediverse** platforms (Mastodon, Pleroma, Akkoma, Friendica,
 Iceshrimp, GoToSocial, Hometown and Pixelfed), all served by one generic megalodon connector that
 auto-detects the instance's software (nodeinfo → SNS) and runs whichever authorization the instance
 uses (OAuth2 for Mastodon-family, MiAuth for Iceshrimp/Misskey-family).
@@ -25,15 +25,15 @@ gets exchanged).
 
 ```
 Browser ──"Connect"──▶ core POST /api/connectors/{id}/oauth/start
-                         → connectors-node builds the provider authorize URL (request token)
-                         → core stashes the request-token secret, returns the authorize URL
-Browser ──redirect──▶ provider authorize page ──user approves──▶
+                         → connectors-node builds the provider authorise URL (request token)
+                         → core stashes the request-token secret, returns the authorise URL
+Browser ──redirect──▶ provider authorise page ──user approves──▶
 Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_token&oauth_verifier
                          → connectors-node exchanges for the access token
                          → core stores it as the connector's secret; popup closes
 ```
 
-- The frontend opens the authorize URL in a popup and refreshes on completion (falls back to a
+- The frontend opens the authorise URL in a popup and refreshes on completion (falls back to a
   full-page redirect if popups are blocked).
 - OAuth1 tokens are long-lived, so there is **no refresh** to manage.
 - The connector's per-user secret holds only `{OAuthToken, OAuthTokenSecret}`; the app (consumer)
@@ -78,7 +78,7 @@ Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_to
 
 Instagram uses **Business Login for Instagram** (Meta's newer, direct-to-Instagram OAuth2 flow —
 not the older Facebook-Login-based Instagram Graph API). Only Business and Creator accounts are
-eligible; personal accounts cannot authorize at all.
+eligible; personal accounts cannot authorise at all.
 
 1. Create a Meta app at <https://developers.facebook.com/apps/> and add the **Instagram** product,
    configured for **Instagram API with Business Login**. Note the app's **Instagram app ID** and
@@ -114,6 +114,45 @@ actually reachable from the public internet — true for real S3 in a deployed s
 for a local MinIO dev stack reachable only inside the Docker network. Instagram delivery cannot be
 exercised end-to-end against a local-only dev stack; it needs at least a tunnel (e.g. ngrok) or a
 real S3 bucket.
+
+## Operator setup (SoFurry)
+
+SoFurry's public API is documented at <https://developer.sofurry.com/dev-docs/>; its OAuth2 server
+details come from `https://api.sofurry.com/.well-known/openid-configuration` (authorization code
+with PKCE, refresh tokens).
+
+1. Sign in to SoFurry and register an OAuth application at <https://developer.sofurry.com/apps>.
+   Note its **client ID** and **client secret**.
+2. Set the application's redirect URI to:
+
+   ```
+   {OAUTH_CALLBACK_BASE_URL}/api/connectors/oauth/callback
+   ```
+
+   Same callback base as Tumblr and Instagram — it **must match exactly**.
+3. Sign in with a Keycloak account carrying the `postyfox-admin` realm role, open
+   **Administration**, and set the SoFurry client ID and client secret. They are stored as
+   `SofurryClientId` and `SofurryClientSecret`, and loaded from the secret store whenever the
+   connector starts a connect, completes one, or refreshes a token.
+
+   If either operational secret is missing, SoFurry OAuth and refresh fail closed with a
+   configuration error, same as Tumblr and Instagram.
+
+**PKCE.** The code verifier is generated at start and carried, together with the callback URL, in
+the pending authorization's `requestTokenSecret`, which core keeps server-side until the callback.
+Nothing about it reaches the browser.
+
+**Scopes.** SoFurry's configuration advertises no upload scope, so none is requested; a user token
+reaches the user's whole public API. If a real connection turns out to need one, it goes in
+`sofurry-oauth.ts`.
+
+**Token lifetime.** The connect flow stores `{AccessToken, RefreshToken, ExpiresAt}`. The same
+sweeper that refreshes Instagram tokens renews SoFurry's once `ExpiresAt` falls within
+`ConnectorRefresh:RefreshWithinDays`, using the refresh-token grant and keeping the old refresh token
+when the server issues no new one. A refused refresh (revoked or expired refresh token) is logged and
+the user must reconnect. The sweeper runs every `ConnectorRefresh:SweepIntervalHours` (default 12),
+so this assumes access tokens live comfortably longer than that. SoFurry doesn't document its token
+lifetime; if tokens turn out to be short-lived, delivery will need to refresh on use.
 
 ## Operator setup (Iceshrimp / Fediverse)
 

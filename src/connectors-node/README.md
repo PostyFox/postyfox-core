@@ -11,6 +11,8 @@ are Node-only:
 - **Toyhouse** via its authenticated HTML forms
 - **X** via [`rettiwt-api`](https://github.com/Rishikant181/Rettiwt-API) and a paired browser session
 - **Ko-fi** via its authenticated site forms
+- **SoFurry** via its documented public API and an OAuth2 + PKCE connect flow
+- **Artconomy** via the JSON API its own frontend uses, with a paired browser session
 - **Instagram** via the Instagram Content Publishing API (Business Login for Instagram)
 
 The service is intentionally small and holds no state: every request carries
@@ -52,7 +54,7 @@ If `INTERNAL_TOKEN` is not configured, all requests are allowed (dev only).
 
 ## HTTP contract
 
-`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Kofi`, `Instagram`, and the supported
+`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Kofi`, `Artconomy`, `SoFurry`, `Instagram`, and the supported
 Fediverse platforms (case-insensitive). Unknown platforms
 return `404 { "error": "unknown platform" }`.
 
@@ -191,6 +193,24 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   stack).
 - `refresh` exchanges the still-valid token for a new one, resetting the 60-day expiry.
 
+### SoFurry
+
+- Optional `configJson` fields (per-submission options): `Type` (an image type id, `11` Drawing by
+  default; the category is the type rounded down to ten), `Privacy` (`3` Public by default, `2`
+  Unlisted, `1` Private), `FolderIds` (comma-separated), `AllowComments` / `AllowDownloads`
+  (`"false"` to turn off), `WorkInProgress` / `PixelPerfect` (`"true"` to turn on).
+- `secretJson` → `{ "AccessToken": "", "RefreshToken": "", "ExpiresAt": "2026-11-01T00:00:00Z" }`, from
+  the OAuth2 + PKCE connect flow. `refresh-token` renews it with the refresh-token grant.
+- `operationalSecretJson` → Vault-sourced app credentials: `{ "clientId": "", "clientSecret": "" }`.
+- `deliver` follows the [documented](https://developer.sofurry.com/dev-docs/) workflow: create an
+  empty draft (`PUT /v1/submission`), attach each image (`POST /v1/submission/{id}/content`), then set
+  the metadata, which publishes it (`POST /v1/submission/{id}`), and add it to any chosen folders.
+  Needs a title (under 255 characters), a rating (Clean/Mature/Adult; Extreme maps to Adult) and
+  1 to 10 JPEG, PNG, GIF or WebP images; at most 100 tags. Folder ids are checked against the
+  account's folders before anything is posted, and a non-Clean rating is refused up front when the
+  account has adult content off. `externalUrl` is `https://sofurry.com/s/<id>`.
+- A failure after the draft is created leaves a private draft on the account; the API has no delete.
+
 ### FurAffinity
 
 - `secretJson` → `{ "CookieHeader": "a=…; b=…" }`. The cookie header must come from a currently
@@ -255,6 +275,25 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   [PostyBirb](https://github.com/mvdicarlo/postybirb)'s Ko-fi module and are not yet verified against
   the live site. Ko-fi's Terms restrict automated interaction, so use is at the account holder's risk.
 - No delete or repost support, and no Cloudflare challenge solving (refresh the imported cookies).
+
+### Artconomy
+
+- `secretJson` → `{ "CookieHeader": "sessionid=…; csrftoken=…", "UserAgent": "…" }`. Both cookies are
+  required: Django's session authentication rejects any write without the `csrftoken` value echoed in
+  an `X-CSRFToken` header. `cf_clearance` is paired when present.
+- Optional `configJson` fields (per-submission options): `CreditAsArtist` (`"false"` puts the piece in
+  the user's collection instead of crediting them), `Private` and `DisableComments` (`"true"`).
+- Artconomy's frontend is a client of its own Django REST API, so the connector calls the same JSON
+  endpoints rather than scraping HTML. A post with one JPEG, PNG, GIF or WebP image becomes a
+  submission: the image is uploaded to `/api/lib/asset/`, then
+  `/api/profiles/account/<username>/submissions/` creates it with the asset id. Only the session that
+  uploaded an asset may reference it. A submission needs a content rating (General/Mature/Adult/Extreme,
+  mapped one-to-one) and at least 5 distinct tags; tags are cleaned to the site's slug format first.
+  More than one image is rejected. A post with no image becomes a journal (title required).
+- `externalUrl` is `https://artconomy.com/submissions/<id>/` or
+  `https://artconomy.com/profile/<username>/journals/<id>/`.
+- Endpoints and fields follow [Artconomy's source](https://gitlab.com/artconomy/artconomy) and are not
+  yet verified against the live site. No delete or repost support.
 
 ## Running
 

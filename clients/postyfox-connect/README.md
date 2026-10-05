@@ -2,7 +2,7 @@
 
 One Manifest V3 extension codebase for Chrome, Edge, and Safari. It hands a website session that the
 user is already logged into over to PostyFox, so connectors for sites with no API (FurAffinity,
-Toyhouse, X, Ko-fi) can post on their behalf.
+Toyhouse, X, Ko-fi, Artconomy) can post on their behalf.
 
 ## How the one-click flow works
 
@@ -72,7 +72,7 @@ source so Chrome/Edge/Safari behavior stays aligned.
 - The extension always sends its `navigator.userAgent`. Whether a platform replays it or uses
   PostyFox's default is an admin setting (Administration page, "Connector User-Agent"), enforced
   server-side at pairing and at delivery. Users cannot change it.
-- `/cookie-pairing/pair` is authorized by the caller's own PostyFox session, so a browser that is not
+- `/cookie-pairing/pair` is authorised by the caller's own PostyFox session, so a browser that is not
   signed in cannot connect anything.
 - `/cookie-pairing/sites` is anonymous but carries platform metadata only: no user context.
 - Pairing tokens expire after five minutes, are single-use, and are persisted server-side only as a

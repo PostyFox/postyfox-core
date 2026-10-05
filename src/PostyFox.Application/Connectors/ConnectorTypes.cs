@@ -120,10 +120,20 @@ public sealed record ConnectorDescriptor(
     /// </summary>
     bool SupportsTextOnly = false,
     /// <summary>Risk shown to the user in the connect UI before they connect (see <see cref="ConnectorWarning"/>). Null for none.</summary>
-    ConnectorWarning? Warning = null)
+    ConnectorWarning? Warning = null,
+    /// <summary>
+    /// The fewest tags a delivery must carry when <see cref="RequiresTags"/> applies (Artconomy rejects a
+    /// submission with fewer than five). Null means one. Enforced alongside <see cref="RequiresTags"/>,
+    /// with the same text-only exemption: <c>PostIntakeService</c> rejects a short tag list at intake,
+    /// and the compose form surfaces it before the post is queued.
+    /// </summary>
+    int? MinTags = null)
 {
     /// <summary>True when authentication is handed off from PostyFox Connect browser clients.</summary>
     public bool SupportsCookiePairing => CookiePairing is not null;
+
+    /// <summary>The fewest tags a delivery needs when tags are required: <see cref="MinTags"/>, or one.</summary>
+    public int RequiredTagCount => RequiresTags ? Math.Max(MinTags ?? 1, 1) : 0;
 }
 
 /// <summary>

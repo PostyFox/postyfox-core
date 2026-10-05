@@ -63,4 +63,22 @@ public class ServiceDefinitionSeederTests
         Assert.Equal("{}", kofi.ConfigSchema);
         Assert.Null(kofi.SecureConfigSchema);
     }
+
+    [Fact]
+    public void Artconomy_connector_has_no_account_settings()
+    {
+        var artconomy = ServiceDefinitionSeeder.Definitions.Single(d => d.Id == "Artconomy");
+
+        Assert.Equal("{}", artconomy.ConfigSchema);
+        Assert.Null(artconomy.SecureConfigSchema);
+    }
+
+    [Fact]
+    public void SoFurry_connector_has_no_account_settings()
+    {
+        var sofurry = ServiceDefinitionSeeder.Definitions.Single(d => d.Id == "SoFurry");
+
+        Assert.Equal("{}", sofurry.ConfigSchema);
+        Assert.Null(sofurry.SecureConfigSchema);
+    }
 }

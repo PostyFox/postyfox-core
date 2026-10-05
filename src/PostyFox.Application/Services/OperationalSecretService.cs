@@ -18,6 +18,8 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
     public const string TumblrConsumerSecret = "TumblrConsumerSecret";
     public const string InstagramAppId = "InstagramAppId";
     public const string InstagramAppSecret = "InstagramAppSecret";
+    public const string SofurryClientId = "SofurryClientId";
+    public const string SofurryClientSecret = "SofurryClientSecret";
 
     private static readonly IReadOnlyList<Definition> Definitions =
     [
@@ -26,7 +28,9 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
         new(TumblrConsumerKey, "Tumblr", "Consumer key", "Tumblr OAuth application consumer key."),
         new(TumblrConsumerSecret, "Tumblr", "Consumer secret", "Tumblr OAuth application consumer secret."),
         new(InstagramAppId, "Instagram", "App ID", "Meta app ID configured for Instagram API with Business Login."),
-        new(InstagramAppSecret, "Instagram", "App secret", "Meta app secret configured for Instagram API with Business Login.")
+        new(InstagramAppSecret, "Instagram", "App secret", "Meta app secret configured for Instagram API with Business Login."),
+        new(SofurryClientId, "SoFurry", "Client ID", "SoFurry OAuth application client ID, from developer.sofurry.com/apps."),
+        new(SofurryClientSecret, "SoFurry", "Client secret", "SoFurry OAuth application client secret, from developer.sofurry.com/apps.")
     ];
 
     public async Task<IReadOnlyList<OperationalSecretStatus>> ListAsync(CancellationToken ct = default)
@@ -79,6 +83,15 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
             values.TryGetValue(InstagramAppSecret, out var appSecret);
             if (string.IsNullOrWhiteSpace(appId) || string.IsNullOrWhiteSpace(appSecret)) return null;
             return JsonSerializer.Serialize(new { appId, appSecret });
+        }
+
+        if (platform.Equals("SoFurry", StringComparison.OrdinalIgnoreCase))
+        {
+            var values = await secrets.GetSecretsAsync([SofurryClientId, SofurryClientSecret], ct);
+            values.TryGetValue(SofurryClientId, out var clientId);
+            values.TryGetValue(SofurryClientSecret, out var clientSecret);
+            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret)) return null;
+            return JsonSerializer.Serialize(new { clientId, clientSecret });
         }
 
         return null;

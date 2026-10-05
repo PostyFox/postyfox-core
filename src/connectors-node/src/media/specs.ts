@@ -55,6 +55,22 @@ export const KOFI_SPEC: MediaSpec = {
   maxAttachments: 10,
 };
 
+// An Artconomy submission is a single file. The site generates thumbnails itself only for these
+// image types; no byte cap is set by the app (any limit is the web server's), so none is asserted.
+export const ARTCONOMY_SPEC: MediaSpec = {
+  image: { allowedMimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"] },
+  video: { allowedMimeTypes: [] },
+  maxAttachments: 1,
+};
+
+// SoFurry's documented upload settings give regular accounts a 50MB content limit. A submission holds
+// several content items; there is no documented cap, so PostyBirb's batch of 10 is used.
+export const SOFURRY_SPEC: MediaSpec = {
+  image: { maxBytes: 52_428_800, allowedMimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"] },
+  video: { allowedMimeTypes: [] },
+  maxAttachments: 10,
+};
+
 /** Fallback used before an instance's live limits are known (or when it reports none). */
 export const FEDIVERSE_SPEC: MediaSpec = {
   image: { maxWidth: 2048, maxHeight: 2048, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] },
