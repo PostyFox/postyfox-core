@@ -1,0 +1,3 @@
+files:
+  - source: /src/PostyFox.Application/Resources/Messages.resx
+    translation: /src/PostyFox.Application/Resources/Messages.%locale%.resx
