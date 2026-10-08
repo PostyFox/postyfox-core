@@ -31,7 +31,7 @@ than one test session and want to keep them visually separate on the viewer page
 
 1. In PostyFox, add a new **Discord Web Hook** connector with Webhook URL
    `http://localhost:8090/api/webhooks/1/postyfox-test` — or, if PostyFox itself is running in the
-   dockerized dev stack, `http://host.containers.internal:8090/api/webhooks/1/postyfox-test`
+   dockerised dev stack, `http://host.containers.internal:8090/api/webhooks/1/postyfox-test`
    (Podman) / `http://host.docker.internal:8090/api/webhooks/1/postyfox-test` (Docker), see
    [../README.md](../README.md#connecting-from-a-dockerized-postyfox-dev-stack). (This connector
    has no browser-side OAuth redirect, so the `/etc/hosts` entry that section mentions isn't

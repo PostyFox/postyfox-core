@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Neillans.Adapters.Secrets.Core;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Application.Services;
 
@@ -50,7 +51,7 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
         var definition = Find(key);
         if (definition is null) return null;
         if (string.IsNullOrWhiteSpace(value))
-            throw new ArgumentException("Secret value cannot be empty.", nameof(value));
+            throw new ArgumentException(Messages.SecretValueEmpty, nameof(value));
 
         await secrets.SetSecretAsync(definition.Key, value, ct);
         return new OperationalSecretStatus(

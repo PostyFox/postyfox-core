@@ -25,7 +25,7 @@ checklist: point a PostyFox connector at the instance, connect, compose a post, 
 it landed on the platform. This is deliberate — the point of these stacks is a human sanity-check
 against a real target before/after connector changes, not a CI suite.
 
-## Connecting from a dockerized PostyFox dev stack
+## Connecting from a dockerised PostyFox dev stack
 
 If you're pointing a PostyFox connector at one of these stacks (rather than just eyeballing the
 platform's own UI), and PostyFox itself is running via `postyfox-core/deploy`'s Compose stack, use
@@ -47,7 +47,7 @@ with:
   hostname everywhere — but `host.containers.internal` is the one that needs zero setup on Podman.
 
 For platforms with an OAuth connect flow, the provider's redirect also sends your **browser**
-straight to that same Instance URL (to show its authorize page) — and your browser, running on the
+straight to that same Instance URL (to show its authorise page) — and your browser, running on the
 host, has no idea what `host.containers.internal`/`host.docker.internal` mean either, by default.
 Fix that once, for every stack, by adding the line(s) for whichever hostname(s) you use to your
 machine's `/etc/hosts` (not something to script/automate — it's a one-time manual edit):

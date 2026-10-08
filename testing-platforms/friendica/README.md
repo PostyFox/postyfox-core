@@ -51,7 +51,7 @@ so the registration flow (and its confirmation e-mail) is never exercised.
 ## Manual test checklist
 
 1. In PostyFox, add a new **Friendica** connector with Instance URL `http://localhost:8084` — or,
-   if PostyFox itself is running in the dockerized dev stack, `http://host.containers.internal:8084`
+   if PostyFox itself is running in the dockerised dev stack, `http://host.containers.internal:8084`
    (Podman) / `http://host.docker.internal:8084` (Docker), see
    [../README.md](../README.md#connecting-from-a-dockerized-postyfox-dev-stack).
 2. Click **Connect**, log in with the test account above, and approve the app when prompted.

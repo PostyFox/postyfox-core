@@ -6,7 +6,7 @@ const MIN_EDGE = 320;
 const START_QUALITY = 90;
 
 /**
- * Normalizes a still raster image (JPEG/PNG/WebP) to an {@link ImageSpec}: EXIF auto-orient,
+ * Normalises a still raster image (JPEG/PNG/WebP) to an {@link ImageSpec}: EXIF auto-orient,
  * metadata strip, downscale-only resize, format conversion to an accepted type, and iterative
  * quality/dimension reduction to fit the byte budget. Undecodable input and animated images
  * (multi-frame) are returned unchanged (animated media belongs to the video path). Throws when the

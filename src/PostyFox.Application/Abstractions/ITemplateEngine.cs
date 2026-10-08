@@ -27,7 +27,7 @@ public sealed record RenderRequest(
     /// (case-insensitive), already picked per this target's connector (its override, or the
     /// template's default) by the caller. Substituted into <c>{{tt:name}}</c> tokens in the title and
     /// body before anything else runs, so unlike <see cref="Variables"/> (one value shared by every
-    /// target on the post) this can (and typically does) differ per target. An unrecognized name
+    /// target on the post) this can (and typically does) differ per target. An unrecognised name
     /// resolves to an empty string, same as an unknown <c>{variable}</c>.
     /// </summary>
     IReadOnlyDictionary<string, string>? TextTemplateValues = null,

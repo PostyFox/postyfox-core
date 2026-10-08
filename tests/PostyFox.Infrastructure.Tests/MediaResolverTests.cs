@@ -39,7 +39,7 @@ public class MediaResolverTests
         ], spec);
 
         Assert.Equal(2, result.Count);                 // capped
-        Assert.Equal(2, processor.Calls.Count);        // each surviving item normalized
+        Assert.Equal(2, processor.Calls.Count);        // each surviving item normalised
         Assert.All(processor.Calls, c => Assert.Same(spec, c.Spec));
         Assert.All(result, r => Assert.Equal("normalized", r.ContentType));
         Assert.Equal(["one.png", "two.png"], processor.Calls.Select(c => c.File));

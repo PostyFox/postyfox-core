@@ -1,20 +1,20 @@
 # OAuth "connect" flow for connectors
 
-Some platforms let a user connect by clicking a button and authorizing in the provider's UI, rather
+Some platforms let a user connect by clicking a button and authorising in the provider's UI, rather
 than pasting API tokens. Today this covers **Tumblr** (OAuth 1.0a), **Instagram** (OAuth2, Business
 Login for Instagram), **SoFurry** (OAuth2 with PKCE) and the **Fediverse** platforms (Mastodon, Pleroma, Akkoma, Friendica,
 Iceshrimp, GoToSocial, Hometown and Pixelfed), all served by one generic megalodon connector that
-auto-detects the instance's software (nodeinfo → SNS) and runs whichever authorization the instance
+auto-detects the instance's software (nodeinfo → SNS) and runs whichever authorisation the instance
 uses (OAuth2 for Mastodon-family, MiAuth for Iceshrimp/Misskey-family).
 
-The same generic start/callback plumbing serves three authorization families. The connector fills in
+The same generic start/callback plumbing serves three authorisation families. The connector fills in
 the `requestToken` / `requestTokenSecret` / `verifier` fields differently, but core treats them
 opaquely:
 
 | Family | `requestToken` (correlation) | `verifier` (from callback) | Exchange credential |
 |--------|------------------------------|----------------------------|---------------------|
 | OAuth 1.0a (Tumblr) | request token | `oauth_verifier` | request token + verifier |
-| OAuth2 (Mastodon-style, Instagram) | random `state` echoed back | `code` | authorization `code` |
+| OAuth2 (Mastodon-style, Instagram) | random `state` echoed back | `code` | authorisation `code` |
 | MiAuth (Iceshrimp/Misskey-family) | session token | *(none)* | stored session token |
 
 The callback route accepts `oauth_token`/`oauth_verifier`, `state`/`code`, or `token`/`session`, and
@@ -108,7 +108,7 @@ period, or Instagram revoked it), `isAuthenticated` starts failing and the user 
 
 **Media delivery.** Unlike every other connector, Instagram's Content Publishing API fetches media
 by public URL (`image_url`/`video_url`) rather than accepting a direct upload. The connector stages
-normalized bytes in the object store under a short-lived presigned URL for Instagram to fetch, then
+normalised bytes in the object store under a short-lived presigned URL for Instagram to fetch, then
 deletes the staged object once the container is created. This only works when the object store is
 actually reachable from the public internet — true for real S3 in a deployed stack, but **not** true
 for a local MinIO dev stack reachable only inside the Docker network. Instagram delivery cannot be
@@ -118,7 +118,7 @@ real S3 bucket.
 ## Operator setup (SoFurry)
 
 SoFurry's public API is documented at <https://developer.sofurry.com/dev-docs/>; its OAuth2 server
-details come from `https://api.sofurry.com/.well-known/openid-configuration` (authorization code
+details come from `https://api.sofurry.com/.well-known/openid-configuration` (authorisation code
 with PKCE, refresh tokens).
 
 1. Sign in to SoFurry and register an OAuth application at <https://developer.sofurry.com/apps>.
@@ -139,7 +139,7 @@ with PKCE, refresh tokens).
    configuration error, same as Tumblr and Instagram.
 
 **PKCE.** The code verifier is generated at start and carried, together with the callback URL, in
-the pending authorization's `requestTokenSecret`, which core keeps server-side until the callback.
+the pending authorisation's `requestTokenSecret`, which core keeps server-side until the callback.
 Nothing about it reaches the browser.
 
 **Scopes.** SoFurry's configuration advertises no upload scope, so none is requested; a user token

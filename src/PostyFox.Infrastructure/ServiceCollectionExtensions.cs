@@ -64,9 +64,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<RabbitMqConnection>();
         services.AddSingleton<IMessageBus, RabbitMqMessageBus>();
 
-        // --- Media normalization (core, shared by every in-process connector) ---
+        // --- Media normalisation (core, shared by every in-process connector) ---
         // Images/video are resized/transcoded to each platform's limits before upload, so nothing is
-        // ever sent at the wrong size/format. Node-delivered platforms normalize in connectors-node.
+        // ever sent at the wrong size/format. Node-delivered platforms normalise in connectors-node.
         services.AddSingleton<ImageSharpImageProcessor>();
         services.AddSingleton<FfmpegVideoProcessor>();
         services.AddSingleton<IMediaProcessor, MediaProcessor>();

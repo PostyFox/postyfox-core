@@ -185,7 +185,7 @@ export class FurAffinityConnector implements Connector {
           },
           body: finalize,
         });
-        this.requireSuccess(completed, "finalize submission");
+        this.requireSuccess(completed, "finalise submission");
         this.throwPageError(completed.body);
         const location = completed.headers.get("location");
         const successUrl = location ? new URL(location, BASE_URL).toString() : completed.url;

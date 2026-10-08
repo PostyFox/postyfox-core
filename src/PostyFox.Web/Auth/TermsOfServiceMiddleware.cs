@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using PostyFox.Application.Services;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Web.Auth;
 
@@ -42,12 +43,12 @@ public sealed class TermsOfServiceMiddleware(RequestDelegate next)
         var ownerUserId = context.User.UserId()!;
         if (!await terms.HasAcceptedAsync(callerUserId, version, ct))
         {
-            await Refuse(context, NotAcceptedCode, "You must accept the current terms of service.", version);
+            await Refuse(context, NotAcceptedCode, Messages.TermsNotAccepted, version);
             return;
         }
         if (ownerUserId != callerUserId && !await terms.HasAcceptedAsync(ownerUserId, version, ct))
         {
-            await Refuse(context, OwnerNotAcceptedCode, "The owner of this account must accept the current terms of service.", version);
+            await Refuse(context, OwnerNotAcceptedCode, Messages.OwnerTermsNotAccepted, version);
             return;
         }
 
@@ -57,7 +58,7 @@ public sealed class TermsOfServiceMiddleware(RequestDelegate next)
     private static Task Refuse(HttpContext context, string code, string detail, int version) =>
         Results.Problem(
             statusCode: StatusCodes.Status403Forbidden,
-            title: "Terms of service not accepted",
+            title: Messages.TermsNotAcceptedTitle,
             detail: detail,
             extensions: new Dictionary<string, object?> { ["code"] = code, ["termsVersion"] = version })
         .ExecuteAsync(context);

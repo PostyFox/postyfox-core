@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Triggers;
 using PostyFox.Web.Auth;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Api.Core.Endpoints;
 
@@ -17,7 +18,7 @@ public static class TriggerEndpoints
             .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         group.MapPost("", async (TriggerRegistrationRequest body, ClaimsPrincipal user, ExternalTriggerService svc, CancellationToken ct) =>
-            await svc.RegisterAsync(user.UserId()!, body, ct) is { } dto ? Results.Ok(dto) : Results.BadRequest(new { error = "Unknown or disabled target connector" }))
+            await svc.RegisterAsync(user.UserId()!, body, ct) is { } dto ? Results.Ok(dto) : Results.BadRequest(new { error = Messages.UnknownTargetConnector }))
         .WithSummary("Register an external trigger")
         .WithDescription("Registers interest in an external event source so a matching inbound webhook fires a templated post to the target connector.")
         .Produces<TriggerDto>()

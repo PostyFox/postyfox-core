@@ -34,7 +34,7 @@ public static class AdminEndpoints
         secrets.MapGet("", async (OperationalSecretService service, CancellationToken ct) =>
             Results.Ok(await service.ListAsync(ct)))
         .WithSummary("List operational secret configuration status")
-        .WithDescription("Returns the fixed operational-secret catalog and configured state; secret values are never returned.")
+        .WithDescription("Returns the fixed operational-secret catalogue and configured state; secret values are never returned.")
         .Produces<IReadOnlyList<OperationalSecretStatus>>();
 
         secrets.MapPut("{key}", async (

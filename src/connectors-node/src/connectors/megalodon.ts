@@ -104,7 +104,7 @@ const APP_WEBSITE = "https://postyfox.com";
 const MASTODON_SCOPES = ["read", "write"];
 
 /**
- * Misskey-family instances (e.g. Iceshrimp) authorize *granular* permissions via MiAuth. The coarse
+ * Misskey-family instances (e.g. Iceshrimp) authorise *granular* permissions via MiAuth. The coarse
  * Mastodon "read"/"write" strings are not recognised as Misskey permissions, so an app registered
  * with them cannot create notes: /api/notes/create returns PERMISSION_DENIED. This mirrors
  * megalodon's firefish DEFAULT_SCOPE (the permission set its endpoints expect); "write:notes" and
@@ -204,11 +204,11 @@ const defaultPixelfedInstanceFetcher: PixelfedInstanceFetcher = async (instanceU
 /**
  * Generic Fediverse connector backed by megalodon. One instance serves a single Fediverse platform
  * (e.g. Iceshrimp → the `firefish` driver); the SNS is auto-detected at connect time and cached in
- * the secret. Authorization spans two provider families that megalodon abstracts behind the same
+ * the secret. Authorisation spans two provider families that megalodon abstracts behind the same
  * calls but drive differently:
  *   - Mastodon-style OAuth2: the callback returns a `code` which is exchanged for a token.
  *   - Misskey-family MiAuth: `registerApp` yields a session token up front; after the user
- *     authorizes, that same session token (not a callback code) is exchanged for a token.
+ *     authorises, that same session token (not a callback code) is exchanged for a token.
  * The `oauth` flow captures both by carrying the session token (when present) through
  * `requestTokenSecret` and using it in place of a callback code.
  */
@@ -256,11 +256,11 @@ export class MegalodonConnector implements Connector {
       redirect_uris: callbackUrl,
       website: APP_WEBSITE,
     });
-    if (!app.url) throw new Error("provider did not return an authorization URL");
+    if (!app.url) throw new Error("provider did not return an authorisation URL");
 
     const sessionToken = app.session_token ?? null;
     // Correlation key surfaced to core: for MiAuth we key on the session token; otherwise a random
-    // state we append to the authorize URL so the provider echoes it back on the callback.
+    // state we append to the authorise URL so the provider echoes it back on the callback.
     const requestToken = sessionToken ?? randomUUID();
     const authorizeUrl = sessionToken ? app.url : appendQueryParam(app.url, "state", requestToken);
 
@@ -287,7 +287,7 @@ export class MegalodonConnector implements Connector {
     const client = this.clientFactory(pending.sns, pending.instanceUrl);
     // MiAuth exchanges the stored session token; OAuth2 exchanges the callback `code` (verifier).
     const credential = pending.sessionToken ?? verifier;
-    if (!credential) throw new Error("no authorization code or session token to exchange");
+    if (!credential) throw new Error("no authorisation code or session token to exchange");
     const token = await client.fetchAccessToken(
       pending.clientId,
       pending.clientSecret,
@@ -463,7 +463,7 @@ export class MegalodonConnector implements Connector {
   /**
    * Fetches each item, resizes/transcodes it to the instance's limits, then validates the result as
    * a final safety net. Resizing (rather than rejecting) means an oversized image is delivered
-   * shrunk instead of failing the whole post; anything still outside the limits after normalization
+   * shrunk instead of failing the whole post; anything still outside the limits after normalisation
    * (e.g. an animated GIF over the instance's size cap) still fails clearly.
    */
   private async resolveMedia(
@@ -513,7 +513,7 @@ export class MegalodonConnector implements Connector {
   }
 }
 
-/** Fails clearly when a (normalized) media item still violates the instance's MIME-type or size limits. */
+/** Fails clearly when a (normalised) media item still violates the instance's MIME-type or size limits. */
 function assertMediaAllowed(item: PostMedia, bytes: Buffer, type: string, limits: ConnectorLimits): void {
   if (limits.supportedMimeTypes && limits.supportedMimeTypes.length > 0
     && !limits.supportedMimeTypes.includes(type)) {

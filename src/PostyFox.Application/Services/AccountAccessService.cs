@@ -6,6 +6,7 @@ using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Domain.Entities;
 using PostyFox.Domain.Enums;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Application.Services;
 
@@ -30,11 +31,11 @@ public sealed class AccountAccessService(IAppDbContext db, IApiKeyHasher hasher,
         inviteeEmail = Normalize(inviteeEmail);
 
         if (string.IsNullOrEmpty(ownerEmail))
-            throw new ConnectorValidationException("Your account has no verified email address, so invites can't be cross-checked. Sign in with an OIDC identity that provides one.");
+            throw new ConnectorValidationException(Messages.InviteNoVerifiedEmail);
         if (string.IsNullOrEmpty(inviteeEmail) || !inviteeEmail.Contains('@'))
-            throw new ConnectorValidationException("Enter a valid email address to invite.");
+            throw new ConnectorValidationException(Messages.InviteEmailInvalid);
         if (inviteeEmail == ownerEmail)
-            throw new ConnectorValidationException("You can't invite yourself.");
+            throw new ConnectorValidationException(Messages.InviteSelf);
 
         var now = clock.UtcNow;
         var token = GenerateToken();

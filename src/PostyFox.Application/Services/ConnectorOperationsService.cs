@@ -57,7 +57,7 @@ public sealed class ConnectorOperationsService(
         // In-process connectors (Discord, Telegram) don't implement ILimitsConnector but declare a
         // MediaSpec on their descriptor. Expose its byte AND dimension caps so the frontend can
         // surface resize warnings before the user submits a post — a small file can still be
-        // oversized on width/height alone (see MediaProcessing's image/video normalizers).
+        // oversized on width/height alone (see MediaProcessing's image/video normalisers).
         var descriptor = connector.Describe();
         return new ConnectorLimits(
             descriptor.MaxContentLength,
@@ -76,7 +76,7 @@ public sealed class ConnectorOperationsService(
     /// whether the file exceeds the platform's size OR dimension limit and will therefore be resized
     /// before delivery, plus the platform's attachment-count cap. A small, high-resolution image can
     /// be well under a platform's byte cap yet still exceed its max width/height (see
-    /// MediaProcessing's image normalizer), so both checks matter; a caller with no dimensions (e.g. a
+    /// MediaProcessing's image normaliser), so both checks matter; a caller with no dimensions (e.g. a
     /// non-image file, or one it couldn't decode) simply skips the dimension check. Takes only the
     /// file's size/type/dimensions, not its bytes, so the frontend can call this the moment a file is
     /// selected — before uploading it — to surface resize / "too many attachments" warnings ahead of

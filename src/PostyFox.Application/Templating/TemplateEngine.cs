@@ -98,7 +98,7 @@ public sealed partial class TemplateEngine : ITemplateEngine
     /// <summary>
     /// Replaces every <c>{{tt:name}}</c> token with its resolved per-target value (already picked by
     /// the caller, see <see cref="RenderRequest.TextTemplateValues"/>), case-insensitively. An
-    /// unrecognized name resolves to an empty string rather than leaving the raw token in the post.
+    /// unrecognised name resolves to an empty string rather than leaving the raw token in the post.
     /// </summary>
     private static string SubstituteTextTemplates(string? body, IReadOnlyDictionary<string, string>? values)
     {

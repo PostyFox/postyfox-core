@@ -7,6 +7,7 @@ using PostyFox.Application.Dtos;
 using PostyFox.Application.Posting;
 using PostyFox.Domain.Enums;
 using PostyFox.Web.Auth;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Api.Post.Endpoints;
 
@@ -23,7 +24,7 @@ public static class PostEndpoints
             try
             {
                 var result = await svc.CreateAsync(user.UserId()!, body, ct);
-                if (result is null) return Results.BadRequest(new { error = "No valid, enabled target connectors specified" });
+                if (result is null) return Results.BadRequest(new { error = Messages.NoValidTargets });
                 return result.RootStatus == PostRootStatus.Draft
                     ? Results.Created($"/api/posts/{result.PostId}", result)
                     : Results.Accepted($"/api/posts/{result.PostId}", result);
@@ -65,7 +66,7 @@ public static class PostEndpoints
                 return await svc.UpdateDraftAsync(user.UserId()!, id, body, ct) switch
                 {
                     DraftActionOutcome.Success => Results.NoContent(),
-                    DraftActionOutcome.NotADraft => Results.Conflict(new { error = "Post has already been published and can no longer be edited as a draft" }),
+                    DraftActionOutcome.NotADraft => Results.Conflict(new { error = Messages.DraftAlreadyPublished }),
                     _ => Results.NotFound()
                 };
             }
@@ -89,8 +90,8 @@ public static class PostEndpoints
                 return result.Outcome switch
                 {
                     DraftActionOutcome.Success => Results.Ok(result.Response),
-                    DraftActionOutcome.NotADraft => Results.Conflict(new { error = "Post has already been published" }),
-                    DraftActionOutcome.NoValidTargets => Results.BadRequest(new { error = "No valid, enabled target connectors specified" }),
+                    DraftActionOutcome.NotADraft => Results.Conflict(new { error = Messages.PostAlreadyPublished }),
+                    DraftActionOutcome.NoValidTargets => Results.BadRequest(new { error = Messages.NoValidTargets }),
                     _ => Results.NotFound()
                 };
             }
@@ -117,7 +118,7 @@ public static class PostEndpoints
             await svc.CancelAsync(user.UserId()!, id, ct) switch
             {
                 CancelOutcome.Cancelled => Results.NoContent(),
-                CancelOutcome.NothingToCancel => Results.Conflict(new { error = "Post has nothing left to cancel" }),
+                CancelOutcome.NothingToCancel => Results.Conflict(new { error = Messages.NothingToCancel }),
                 _ => Results.NotFound()
             })
         .WithSummary("Cancel a post")
@@ -144,7 +145,7 @@ public static class PostEndpoints
             await svc.CancelAsync(user.UserId()!, automationId, ct) switch
             {
                 CancelAutomationOutcome.Cancelled => Results.NoContent(),
-                CancelAutomationOutcome.AlreadyDone => Results.Conflict(new { error = "This automation rule has already run (or was already cancelled)" }),
+                CancelAutomationOutcome.AlreadyDone => Results.Conflict(new { error = Messages.AutomationAlreadyDone }),
                 _ => Results.NotFound()
             })
         .WithSummary("Cancel a post automation rule")

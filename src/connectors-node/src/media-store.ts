@@ -11,7 +11,7 @@ export interface MediaStore {
   fetch(container: string, key: string): Promise<Buffer>;
   /**
    * Writes bytes to the store (Instagram's Content Publishing API fetches media by URL rather than
-   * accepting a direct upload, so normalized bytes must be staged here first — see
+   * accepting a direct upload, so normalised bytes must be staged here first — see
    * {@link presignedGetUrl}).
    */
   put(container: string, key: string, bytes: Buffer, contentType: string): Promise<void>;

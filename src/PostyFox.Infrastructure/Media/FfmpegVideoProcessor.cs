@@ -5,7 +5,7 @@ using PostyFox.Application.Connectors;
 namespace PostyFox.Infrastructure.Media;
 
 /// <summary>
-/// Normalizes video (and animated GIF) to a platform's <see cref="VideoSpec"/> using ffmpeg (via
+/// Normalises video (and animated GIF) to a platform's <see cref="VideoSpec"/> using ffmpeg (via
 /// FFMpegCore): probes the source, and either passes it through when already within limits or
 /// downscales / bitrate-caps / transcodes it to an accepted container. Static GIFs and
 /// non-probeable input pass through. Throws when the media cannot be brought within the limits

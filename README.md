@@ -110,6 +110,14 @@ rolls the per-target status up into the root status (`Delivered` / `PartiallyFai
 Transient delivery failures retry with exponential backoff (delayed re-publish) up to
 `Pipeline:MaxDeliveryAttempts`, then fail. `GET /api/posts/{id}` returns aggregated status.
 
+### Localisation
+
+User-facing API messages live in `PostyFox.Application/Resources/Messages.resx` (en-GB, the
+default) and are used through the generated `Messages` class. Both APIs pick the culture from the
+request's `Accept-Language` (`UsePostyFoxLocalization`), falling back to en-GB. To add a language,
+add `Messages.<culture>.resx` and the culture to `WebExtensions.SupportedCultures`. Delivery errors
+from platforms and connector field labels are not localised.
+
 ## Run locally
 
 The .NET images need the ImageSharp licence: copy `sixlabors.lic` to the repo root before building

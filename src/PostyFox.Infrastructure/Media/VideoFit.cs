@@ -8,7 +8,7 @@ public enum VideoAction { Passthrough, Transcode, Fail }
 /// <summary>Probe facts about a source video, independent of the probing tool (testable).</summary>
 public readonly record struct VideoProbeResult(int Width, int Height, double DurationSeconds, long Bytes);
 
-/// <summary>The decision + target parameters for normalizing a video.</summary>
+/// <summary>The decision + target parameters for normalising a video.</summary>
 public readonly record struct VideoDecision(
     VideoAction Action, int TargetWidth, int TargetHeight, string TargetMime, string? Reason);
 

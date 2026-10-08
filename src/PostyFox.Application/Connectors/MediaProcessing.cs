@@ -44,7 +44,7 @@ public sealed record MediaSpec(
 }
 
 /// <summary>
-/// Normalizes a single media item so it satisfies a platform's <see cref="MediaSpec"/> before
+/// Normalises a single media item so it satisfies a platform's <see cref="MediaSpec"/> before
 /// upload: downscales and re-encodes still images, transcodes video / animated media, and converts
 /// to an accepted format. Items it cannot process (documents, unknown types) are returned unchanged.
 /// Throws when an item cannot be brought within the platform's limits.

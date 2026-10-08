@@ -53,7 +53,7 @@ Change the password or any of this in `.env` before first `up` if you want diffe
 ## Manual test checklist
 
 1. In PostyFox, add a new **Hometown** connector with Instance URL `http://localhost:3001` — or, if
-   PostyFox itself is running in the dockerized dev stack, `http://host.containers.internal:3001`
+   PostyFox itself is running in the dockerised dev stack, `http://host.containers.internal:3001`
    (Podman) / `http://host.docker.internal:3001` (Docker), see
    [../README.md](../README.md#connecting-from-a-dockerized-postyfox-dev-stack).
 2. Click **Connect**, log in with the test account above, and approve the app when prompted.

@@ -1,8 +1,10 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Domain.Entities;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Application.Services;
 
@@ -34,14 +36,14 @@ public sealed class TextTemplateService(IAppDbContext db, IClock clock)
     {
         var name = request.Name.Trim();
         if (name.Length == 0)
-            throw new ConnectorValidationException("Text template name is required.");
+            throw new ConnectorValidationException(Messages.TextTemplateNameRequired);
         if (!TextTemplateNamePattern.IsMatch(name))
             throw new ConnectorValidationException(
-                "Text template name may only contain letters, digits, underscores and hyphens (it is used as {{tt:name}}).");
+                Messages.TextTemplateNameInvalid);
 
         var existing = await db.TextTemplates.Where(t => t.UserId == userId).ToListAsync(ct);
         if (existing.Any(t => t.Id != request.Id && string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)))
-            throw new ConnectorValidationException($"A text template named '{name}' already exists.");
+            throw new ConnectorValidationException(string.Format(CultureInfo.CurrentCulture, Messages.TextTemplateNameExists, name));
 
         var entity = request.Id is { } id ? existing.FirstOrDefault(t => t.Id == id) : null;
         if (entity is null)
