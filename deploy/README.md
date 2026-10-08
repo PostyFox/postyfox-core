@@ -306,7 +306,7 @@ Volumes (named per stack):
 Tunables (in `.env`):
 
 ```
-VAULT_VERSION=2.0.4     # Vault image tag
+VAULT_VERSION=2.1.2     # Vault image tag
 VAULT_KEY_SHARES=5       # Shamir key shares generated on first init
 VAULT_KEY_THRESHOLD=3    # shares required to unseal
 VAULT_ROLE_ID=...        # AppRole RoleId, pinned by vault-init, used by the app
@@ -331,6 +331,27 @@ docker compose -f docker-compose.server.yml -f docker-compose.dev.yml exec vault
 > unsealing possible. It trades Shamir key-splitting for convenience. Back up and tightly restrict
 > the `vaultkeys` volume. For a stronger posture, switch Vault to a Transit / cloud-KMS auto-unseal
 > seal and remove the `vault-init` sidecar.
+
+## Third-party image versions
+
+Infra images are pinned to exact tags (no `:latest`) and must be identical across every deploy shape.
+When bumping one, update all of these in the same change:
+
+| Component | docker-compose.yml | docker-compose.server.yml | helm/postyfox/values.yaml | Other |
+|---|---|---|---|---|
+| Postgres (pgautoupgrade) | ✓ | ✓ | `postgres.image` | |
+| RabbitMQ | | | `rabbitmq.image` | `rabbitmq/Dockerfile` (compose builds from it) |
+| Valkey | ✓ | ✓ | `redis.image` | |
+| Vault | ✓ | `VAULT_VERSION` default | `vault.image` | `VAULT_VERSION` in `.env*.example`, the dev/prod server `.env`, and the Vault section below |
+| OTel collector | ✓ | ✓ | `otelCollector.image` | |
+| nginx (gateway) | ✓ | ✓ | `gateway.image` | postyfox-frontend `Dockerfile` (SPA runtime stage) |
+| Fluent Bit | | ✓ | `gateway.fluentBitImage` | |
+| oauth2-proxy | ✓ | ✓ | `oauth2Proxy.image` | |
+| Keycloak, RustFS | ✓ (local only) | | | external in dev/prod |
+
+Deploys never touch the server-side `.env`, so a version set there (e.g. `VAULT_VERSION`) overrides
+the compose default until edited by hand on the host. Dependabot does not track these images.
+Check them when bumping any one: `grep -rnE 'image:|FROM|VAULT_VERSION|fluentBitImage' deploy/`.
 
 ## Kubernetes / Helm (Production)
 

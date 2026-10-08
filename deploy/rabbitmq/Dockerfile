@@ -1,4 +1,4 @@
-FROM rabbitmq:4.3.5-management
+FROM rabbitmq:4.3.6-management
 # rabbitmq_prometheus (bundled) exposes metrics on :15692 for the otel-collector to scrape.
 # Delayed scheduling/retry no longer uses rabbitmq_delayed_message_exchange (unmaintained, Mnesia-
 # based, incompatible with RabbitMQ 4.3+): post scheduling is now driven by PostSchedulerService
