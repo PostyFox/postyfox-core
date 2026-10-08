@@ -18,7 +18,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8090
 
-# ffmpeg is required by media normalization (fluent-ffmpeg shells out to it for video/animated GIF).
+# ffmpeg is required by media normalisation (fluent-ffmpeg shells out to it for video/animated GIF).
 # sharp's prebuilt libvips binary ships in node_modules (copied below) and needs no system package.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg \

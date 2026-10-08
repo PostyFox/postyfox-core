@@ -595,7 +595,7 @@ test("megalodon oauth start registers an app and carries the MiAuth session toke
     callbackUrl: "https://app/cb",
     configJson: JSON.stringify({ InstanceUrl: "shrimp.example" }),
   });
-  // For MiAuth the correlation key is the session token, and the authorize URL is used verbatim.
+  // For MiAuth the correlation key is the session token, and the authorise URL is used verbatim.
   assert.equal(start.requestToken, "sess-tok");
   assert.equal(start.authorizeUrl, "https://shrimp.example/auth/sess");
   const pending = JSON.parse(start.requestTokenSecret);
@@ -640,7 +640,7 @@ test("megalodon oauth start requests coarse read/write scopes for Mastodon-style
 });
 
 test("megalodon oauth start (OAuth2, no session token) appends state to the authorize URL", async () => {
-  // Mastodon-style: registerApp returns an authorize URL and no session token.
+  // Mastodon-style: registerApp returns an authorise URL and no session token.
   const client = fakeClient({
     async registerApp() {
       return {
@@ -656,7 +656,7 @@ test("megalodon oauth start (OAuth2, no session token) appends state to the auth
     callbackUrl: "https://app/cb",
     configJson: JSON.stringify({ InstanceUrl: "https://mastodon.example" }),
   });
-  // Correlation is a generated state, echoed on the authorize URL for the provider to return.
+  // Correlation is a generated state, echoed on the authorise URL for the provider to return.
   assert.ok(start.authorizeUrl.includes(`state=${encodeURIComponent(start.requestToken)}`));
   const pending = JSON.parse(start.requestTokenSecret);
   assert.equal(pending.sessionToken, null);

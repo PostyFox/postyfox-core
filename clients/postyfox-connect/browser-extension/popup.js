@@ -213,7 +213,7 @@ async function connect(site) {
 
 /**
  * Fallback for a browser that cannot present a PostyFox session: a different profile, or a Safari
- * build where the session cookie does not reach the extension. The one-use token is the authorization
+ * build where the session cookie does not reach the extension. The one-use token is the authorisation
  * in place of the session, so this call is deliberately unauthenticated.
  */
 async function connectWithToken() {

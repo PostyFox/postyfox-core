@@ -3,7 +3,7 @@ using PostyFox.Application.Connectors;
 namespace PostyFox.Infrastructure.Media;
 
 /// <summary>
-/// Static per-platform media constraints for the connectors that normalize media in-process
+/// Static per-platform media constraints for the connectors that normalise media in-process
 /// (Discord, Telegram). Node-delivered platforms (Bluesky, Tumblr, Instagram, Fediverse) declare
 /// their own specs in the connectors-node service, where the bytes are fetched and normalized.
 /// Numbers are conservative defaults chosen to sit safely inside each platform's documented caps.

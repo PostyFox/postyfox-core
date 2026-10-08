@@ -9,7 +9,7 @@ using PostyFox.Application.Connectors;
 namespace PostyFox.Infrastructure.Media;
 
 /// <summary>
-/// Normalizes still raster images (JPEG/PNG/WebP) to a platform's <see cref="ImageSpec"/> using
+/// Normalises still raster images (JPEG/PNG/WebP) to a platform's <see cref="ImageSpec"/> using
 /// ImageSharp: EXIF auto-orient, metadata strip, downscale-only resize, format conversion to an
 /// accepted type, and iterative quality/dimension reduction to fit the byte budget. Animated images
 /// and undecodable input are returned unchanged. Throws when the image cannot be brought within the

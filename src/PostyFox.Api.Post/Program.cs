@@ -25,6 +25,7 @@ builder.Services.AddHealthChecks();
 var app = builder.Build();
 
 app.UsePostyFoxForwardedHeaders();
+app.UsePostyFoxLocalization();
 // Distinct paths from core-api's /openapi + /swagger: the gateway fans both APIs out from a single
 // public host, and core-api is the catch-all, so post-api's docs need their own non-colliding prefix
 // to be reachable at all.

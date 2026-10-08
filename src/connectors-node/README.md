@@ -119,7 +119,7 @@ Body:
 
 > **Media:** each `post.media` item is an object-store reference. The service
 > fetches the bytes from `OBJECT_STORE_BUCKET` at key `` `${container}/${key}` ``,
-> **normalizes them to the platform's limits** (see below), uploads them, and
+> **normalises them to the platform's limits** (see below), uploads them, and
 > applies `alt` as the image's alt text. Bluesky attaches up to 4 images as an
 > `app.bsky.embed.images` embed; Tumblr creates an NPF photo post. Text-only posts
 > are unaffected — except Instagram, which has no text-only post type and rejects
@@ -138,7 +138,7 @@ Instagram); returns `400 { "error": "refresh not supported" }` for any other pla
 and the user must reconnect); a thrown error still returns `502` like every other route. Driven by
 a background sweeper on the core side (`ConnectorTokenRefreshSweeper`), never a user action.
 
-### Media normalization (mandatory core step)
+### Media normalisation (mandatory core step)
 
 Every connector **must** route fetched bytes through `normalizeMedia()` from
 `src/media/` before uploading: this is a core building block, not per-connector
@@ -187,7 +187,7 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   child container per item plus a parent `CAROUSEL` container for several. Video containers are
   polled until Instagram finishes processing them before publish is attempted. Unlike every other
   connector here, Instagram fetches media **by URL** rather than accepting a direct upload, so
-  normalized bytes are staged in the object store under a short-lived presigned URL
+  normalised bytes are staged in the object store under a short-lived presigned URL
   (`MediaStore.put` + `presignedGetUrl`) and deleted again once the container is created — this only
   works when the object store is reachable from the public internet (not true for a local MinIO dev
   stack).
@@ -257,7 +257,7 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   `User-Agent` header, otherwise `rettiwt-api`'s own default applies. No `configJson` fields.
 - `list-targets` returns the logged-in account as `{ id: userName, name: "X: @userName" }`.
 - `deliver` posts `post.body` (at most 280 characters, the standard account limit) with up to four
-  images (JPEG, PNG or WebP, normalized to 5MB and 4096px). A post needs text or an image. Video and
+  images (JPEG, PNG or WebP, normalised to 5MB and 4096px). A post needs text or an image. Video and
   alt text are not supported: `rettiwt-api`'s upload is unchunked and has no alt-text field.
   `externalUrl` is `https://x.com/i/status/<id>`.
 - Not exercised against the live site: X changes its internal API and anti-automation checks often.

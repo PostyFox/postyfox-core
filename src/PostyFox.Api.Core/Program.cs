@@ -37,6 +37,7 @@ if (builder.Configuration.GetValue<bool>("SeedServiceDefinitions"))
 }
 
 app.UsePostyFoxForwardedHeaders();
+app.UsePostyFoxLocalization();
 app.MapOpenApi();
 app.UseSwaggerUI(o =>
 {

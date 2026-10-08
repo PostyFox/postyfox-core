@@ -108,7 +108,7 @@ public sealed partial class ConnectorCookiePairingService(
     /// <summary>
     /// Stores a website session against the user's connector for the platform. Called by a browser
     /// client that already holds the user's PostyFox session, so the caller's identity is the
-    /// authorization: there is no token to mint or redeem.
+    /// authorisation: there is no token to mint or redeem.
     /// </summary>
     /// <param name="connectorId">
     /// The connector to update. When null the platform's sole connector is used, or one is created if

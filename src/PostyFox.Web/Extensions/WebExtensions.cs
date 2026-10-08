@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -58,7 +59,23 @@ public static class WebExtensions
         return services;
     }
 
-    /// <summary>Issue #417 terms gate. Runs after authorization (unauthenticated calls still get 401) and rate limiting.</summary>
+    /// <summary>Cultures with API message translations (issue #33). The first is the default.</summary>
+    public static readonly string[] SupportedCultures = ["en-GB"];
+
+    /// <summary>
+    /// Issue #33: API messages follow the client's Accept-Language when it names a supported
+    /// culture, otherwise the default. Only the header is honoured (no query string or cookie).
+    /// </summary>
+    public static IApplicationBuilder UsePostyFoxLocalization(this IApplicationBuilder app) =>
+        app.UseRequestLocalization(o =>
+        {
+            o.SetDefaultCulture(SupportedCultures[0])
+                .AddSupportedCultures(SupportedCultures)
+                .AddSupportedUICultures(SupportedCultures);
+            o.RequestCultureProviders = [new AcceptLanguageHeaderRequestCultureProvider()];
+        });
+
+    /// <summary>Issue #417 terms gate. Runs after authorisation (unauthenticated calls still get 401) and rate limiting.</summary>
     public static IApplicationBuilder UsePostyFoxTermsOfService(this IApplicationBuilder app) =>
         app.UseMiddleware<TermsOfServiceMiddleware>();
 }

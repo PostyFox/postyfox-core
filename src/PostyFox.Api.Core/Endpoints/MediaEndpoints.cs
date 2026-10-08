@@ -8,6 +8,7 @@ using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Options;
 using PostyFox.Web.Auth;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Api.Core.Endpoints;
 
@@ -25,7 +26,7 @@ public static class MediaEndpoints
         group.MapPost("", async (IFormFile? file, ClaimsPrincipal user, IObjectStore store, CancellationToken ct) =>
         {
             if (file is null || file.Length == 0)
-                return Results.BadRequest(new { error = "No file uploaded" });
+                return Results.BadRequest(new { error = Messages.NoFileUploaded });
 
             var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
             var key = $"{user.UserId()}/{Guid.NewGuid():N}/{Path.GetFileName(file.FileName)}";

@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Application.Connectors;
 
@@ -71,22 +73,22 @@ public static class ConfigSchemaValidator
 
         if (descriptor.TryGetProperty("required", out var req) && req.ValueKind == JsonValueKind.True
             && trimmed.Length == 0)
-            return $"{label} is required.";
+            return string.Format(CultureInfo.CurrentCulture, Messages.FieldRequired, label);
 
         if (trimmed.Length == 0) return null; // length/pattern rules only apply to supplied values.
 
         if (descriptor.TryGetProperty("minLength", out var min) && min.TryGetInt32(out var minLen)
             && trimmed.Length < minLen)
-            return $"{label} must be at least {minLen} characters.";
+            return string.Format(CultureInfo.CurrentCulture, Messages.FieldMinLength, label, minLen);
 
         if (descriptor.TryGetProperty("maxLength", out var max) && max.TryGetInt32(out var maxLen)
             && trimmed.Length > maxLen)
-            return $"{label} must be at most {maxLen} characters.";
+            return string.Format(CultureInfo.CurrentCulture, Messages.FieldMaxLength, label, maxLen);
 
         if (descriptor.TryGetProperty("options", out var options)
             && options.ValueKind == JsonValueKind.Array && options.GetArrayLength() > 0
             && !options.EnumerateArray().Any(o => OptionValue(o) == trimmed))
-            return Message(descriptor, $"{label} is not one of the available choices.");
+            return Message(descriptor, string.Format(CultureInfo.CurrentCulture, Messages.FieldNotAnOption, label));
 
         if (descriptor.TryGetProperty("pattern", out var pat) && pat.ValueKind == JsonValueKind.String
             && pat.GetString() is { Length: > 0 } pattern)
@@ -94,7 +96,7 @@ public static class ConfigSchemaValidator
             try
             {
                 if (!Regex.IsMatch(trimmed, pattern, RegexOptions.None, RegexTimeout))
-                    return Message(descriptor, $"{label} is invalid.");
+                    return Message(descriptor, string.Format(CultureInfo.CurrentCulture, Messages.FieldInvalid, label));
             }
             catch (ArgumentException) { /* invalid pattern in schema: don't block the user. */ }
             catch (RegexMatchTimeoutException) { /* pathological input: treat as a pass, not a block. */ }

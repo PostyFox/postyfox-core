@@ -6,7 +6,7 @@ namespace PostyFox.Infrastructure.Media;
 
 /// <summary>
 /// Default <see cref="IMediaResolver"/>: enforces the attachment cap, fetches bytes from the object
-/// store (via <see cref="MediaFetcher"/>), and normalizes each item to the platform's
+/// store (via <see cref="MediaFetcher"/>), and normalises each item to the platform's
 /// <see cref="MediaSpec"/>. This is the one place fetch-and-normalize is wired, so every in-process
 /// connector delivers correctly-sized media without duplicating the pipeline.
 /// </summary>

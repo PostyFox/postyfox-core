@@ -250,7 +250,7 @@ Notes:
   `TumblrConsumerKey`/`TumblrConsumerSecret`, `SofurryClientId`/`SofurryClientSecret`) under their own names. The store is a
   pluggable `ISecretsProvider` (`adapters-secrets` library): in-memory for local/dev, and
   BitWarden/VaultWarden, Azure Key Vault, or Infisical for deployments, selected via
-  `Secrets:Provider`. There is no database table backing it. The fixed platform-secret catalog is
+  `Secrets:Provider`. There is no database table backing it. The fixed platform-secret catalogue is
   managed through `/api/admin/operational-secrets`, protected by the `postyfox-admin` Keycloak role;
   API responses expose configured status only, never values.
 - **Enums stored as strings** (`RootStatus`, `Status`) for readability.
@@ -259,7 +259,7 @@ Notes:
 
 ---
 
-## 5. Authentication & authorization
+## 5. Authentication & authorisation
 
 ```mermaid
 flowchart LR
@@ -293,7 +293,7 @@ flowchart LR
   SMTP) and cross-checked against the invitee's own OIDC email at accept time.
 - **Terms of service** (issue #417): admins publish terms (Markdown) via `PUT /api/admin/terms`.
   Each publish is a new `terms_of_service` version; blank content turns the terms off. While terms
-  are in force, `TermsOfServiceMiddleware` (both APIs, after authorization) returns 403 with a
+  are in force, `TermsOfServiceMiddleware` (both APIs, after authorisation) returns 403 with a
   `code` of `terms_not_accepted` for any authenticated request, OIDC or API key, until the signed-in
   person has a `terms_acceptances` row for the current version. When acting as another account, the
   owner must also have accepted (`owner_terms_not_accepted`). Anonymous endpoints (webhooks,
@@ -329,13 +329,13 @@ passing the resolved config + secret in the request body. All internal calls car
 Node service fetches the bytes from the shared object store itself (its own S3 client), so no media
 bytes cross the internal hop. The Node service holds no session state.
 
-**Media normalization is a core, shared step every connector runs before upload.** Because one
+**Media normalisation is a core, shared step every connector runs before upload.** Because one
 uploaded asset fans out to many targets with different caps, and the object store keeps the canonical
-original, normalization happens **per-target at delivery time** against each platform's `MediaSpec`
+original, normalisation happens **per-target at delivery time** against each platform's `MediaSpec`
 (max dimensions / bytes / duration, accepted formats, attachment count). Still images are downscaled
 and re-encoded; video and animated GIFs are transcoded; formats the target doesn't accept are
 converted; media that can't be brought within limits fails only its own target. There is exactly one
-building block per stack, reused by every connector: in C#, `IMediaResolver` (fetch + cap + normalize)
+building block per stack, reused by every connector: in C#, `IMediaResolver` (fetch + cap + normalise)
 over `IMediaProcessor` (ImageSharp for stills, FFMpegCore for video); in connectors-node, `src/media/`
 (`sharp` for stills, `fluent-ffmpeg` for video). Connectors that report live limits (Fediverse) merge
 the instance's reported caps over the static spec. The `ffmpeg` binary is installed in the
@@ -500,7 +500,7 @@ posts get the same rendering, delivery, retry and status behaviour.
 
 See [FOLLOWUPS.md](./FOLLOWUPS.md) for the full list. Headlines:
 
-- Media delivery is fully implemented, including per-platform resize/transcode normalization for images
+- Media delivery is fully implemented, including per-platform resize/transcode normalisation for images
   and video. Remaining omissions are around documents (pass-through), a normalized-variant cache, and
   pre-signed uploads. See [FOLLOWUPS.md](./FOLLOWUPS.md).
 - Telegram MTProto is stateful (single-writer routing) and not integration-tested (needs live creds).

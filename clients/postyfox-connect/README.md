@@ -59,7 +59,7 @@ read FurAffinity's cookies at all, and whether the PostyFox session cookie reach
 the first works but the second does not, the pairing-token fallback is the route.
 
 The generated Xcode project is intentionally not committed. Regenerate it from the shared extension
-source so Chrome/Edge/Safari behavior stays aligned.
+source so Chrome/Edge/Safari behaviour stays aligned.
 
 ## Security boundaries
 

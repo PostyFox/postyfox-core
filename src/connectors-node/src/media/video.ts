@@ -74,7 +74,7 @@ function normMime(mime: string | undefined): string {
 }
 
 /**
- * Normalizes video (and animated GIF) to a {@link VideoSpec} using ffmpeg: probes, then passes
+ * Normalises video (and animated GIF) to a {@link VideoSpec} using ffmpeg: probes, then passes
  * through when already within limits or downscales / bitrate-caps / transcodes to an accepted
  * container. Static GIFs pass through. Throws when the media can't be brought within the limits.
  */

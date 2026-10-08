@@ -8,6 +8,7 @@ using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Services;
 using PostyFox.Web.Auth;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Api.Core.Endpoints;
 
@@ -51,7 +52,7 @@ public static class ServiceEndpoints
             {
                 return await svc.UpsertAsync(user.UserId()!, body, ct) is { } dto
                     ? Results.Ok(dto)
-                    : Results.BadRequest(new { error = "Unknown service definition" });
+                    : Results.BadRequest(new { error = Messages.UnknownServiceDefinition });
             }
             catch (ConnectorValidationException ex)
             {
@@ -92,7 +93,7 @@ public static class ServiceEndpoints
         connectors.MapPut("{id:guid}/destinations", async (Guid id, SetConnectorDestinationsRequest body, ClaimsPrincipal user, ConnectorDestinationService svc, CancellationToken ct) =>
             await svc.SetAsync(user.UserId()!, id, body.Destinations ?? [], ct) is { } destinations
                 ? Results.Ok(destinations)
-                : Results.BadRequest(new { error = "Unknown connector, or it does not support multiple targets" }))
+                : Results.BadRequest(new { error = Messages.UnknownMultiTargetConnector }))
         .WithSummary("Replace the destinations exposed for posting under a connector")
         .WithDescription("Pass the full desired set (matched by ExternalId): entries not included are removed, new ones are added, and names are refreshed.")
         .Produces<IReadOnlyList<ConnectorDestinationDto>>()
@@ -129,7 +130,7 @@ public static class ServiceEndpoints
         {
             var url = await svc.StartOAuthAsync(user.UserId()!, id, OAuthCallbackUrl(cfg, req), ct);
             return url is null
-                ? Results.BadRequest(new { error = "OAuth is not available for this connector" })
+                ? Results.BadRequest(new { error = Messages.OAuthNotAvailable })
                 : Results.Ok(new { authorizeUrl = url });
         })
         .WithSummary("Begin the OAuth connect flow for a connector")
@@ -162,10 +163,10 @@ public static class ServiceEndpoints
                 ConnectorCookiePairOutcome.Connected =>
                     Results.Ok(new { connectorId = result.ConnectorId, displayName = result.DisplayName }),
                 ConnectorCookiePairOutcome.AmbiguousConnector =>
-                    Results.BadRequest(new { error = "Several connectors match this site — specify connectorId" }),
+                    Results.BadRequest(new { error = Messages.SeveralConnectorsMatchSite }),
                 ConnectorCookiePairOutcome.InvalidCookies =>
-                    Results.BadRequest(new { error = "Required website session cookies were not supplied" }),
-                _ => Results.BadRequest(new { error = "This platform does not connect with website cookies" })
+                    Results.BadRequest(new { error = Messages.SessionCookiesNotSupplied }),
+                _ => Results.BadRequest(new { error = Messages.CookiesNotSupported })
             };
         })
         .WithSummary("Connect a site session collected by a browser client")
@@ -180,7 +181,7 @@ public static class ServiceEndpoints
             CancellationToken ct) =>
             await svc.StartAsync(user.UserId()!, id, ct) is { } pairing
                 ? Results.Ok(pairing)
-                : Results.BadRequest(new { error = "Cookie pairing is not available for this connector" }))
+                : Results.BadRequest(new { error = Messages.CookiePairingNotAvailable }))
         .WithSummary("Create a one-use browser-extension pairing token")
         .WithDescription("The token expires after five minutes and can connect only the selected scraper-backed connector.")
         .Produces<ConnectorCookiePairingStart>()
@@ -237,8 +238,8 @@ public static class ServiceEndpoints
             {
                 ConnectorCookiePairingOutcome.Completed => Results.NoContent(),
                 ConnectorCookiePairingOutcome.InvalidCookies =>
-                    Results.BadRequest(new { error = "Required website session cookies were not supplied" }),
-                _ => Results.BadRequest(new { error = "Pairing token is invalid or expired" })
+                    Results.BadRequest(new { error = Messages.SessionCookiesNotSupplied }),
+                _ => Results.BadRequest(new { error = Messages.PairingTokenInvalid })
             };
         })
         .AllowAnonymous()

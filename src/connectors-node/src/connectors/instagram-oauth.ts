@@ -68,7 +68,7 @@ export class InstagramOAuth2Provider implements OAuthProvider {
     verifier: string;
   }): Promise<OAuthCompleteResult> {
     // requestTokenSecret carries the callback URL through from startAuthorization: the token
-    // exchange must present the exact same redirect_uri it authorized against.
+    // exchange must present the exact same redirect_uri it authorised against.
     const callbackUrl = requestTokenSecret;
     const short = await this.exchangeCode(callbackUrl, verifier);
     const long = await this.exchangeForLongLivedToken(short.access_token);

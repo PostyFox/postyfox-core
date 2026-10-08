@@ -29,7 +29,7 @@ ENV POSTYFOX_VERSION=$VERSION
 # Shell form so $ASSEMBLY expands at runtime.
 ENTRYPOINT ["sh", "-c", "exec dotnet \"$ASSEMBLY\""]
 
-# ffmpeg (FFMpegCore shells out to it for media normalization) is only ever invoked by the posting
+# ffmpeg (FFMpegCore shells out to it for media normalisation) is only ever invoked by the posting
 # worker's delivery pipeline: core-api and post-api link the same Infrastructure assembly but
 # never reach that code path. Build with --target with-ffmpeg for the worker only; core-api/post-api
 # use the (default) `final` target above and save the ~150MB the package + its codec deps pull in.

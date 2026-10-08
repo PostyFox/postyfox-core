@@ -1,5 +1,6 @@
 using PostyFox.Application.Abstractions;
 using PostyFox.Application.Connectors;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Application.Posting;
 
@@ -13,7 +14,7 @@ public sealed class MediaCopier(IObjectStore store)
     public async Task<MediaRef> CopyAsync(string userId, MediaRef source, CancellationToken ct = default)
     {
         if (!source.IsOwnedBy(userId))
-            throw new ConnectorValidationException("Invalid media reference.");
+            throw new ConnectorValidationException(Messages.InvalidMediaReference);
 
         // Mirror the upload key scheme ({userId}/{guid}/{filename}) so the copy is owned exactly like a
         // fresh upload and is cleaned up with the post that references it.

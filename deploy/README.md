@@ -255,7 +255,7 @@ For Azure Key Vault set `Secrets__AzureKeyVault__VaultUri` (+ optional `TenantId
 for Infisical set `Secrets__Infisical__ClientId`/`ClientSecret`/`ProjectId`/`Environment` (+ `SiteUrl`/`SecretPath`).
 
 > Connector operational secrets can be managed in the admin UI by a user with the Keycloak
-> `postyfox-admin` realm role. The current catalog is `TelegramApiID`/`TelegramApiHash`,
+> `postyfox-admin` realm role. The current catalogue is `TelegramApiID`/`TelegramApiHash`,
 > `TumblrConsumerKey`/`TumblrConsumerSecret`, `InstagramAppId`/`InstagramAppSecret` and
 > `SofurryClientId`/`SofurryClientSecret`. Trigger keys (`trigger-{sourceType}-signing`) still
 > require direct seeding.

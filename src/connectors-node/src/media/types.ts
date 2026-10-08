@@ -25,7 +25,7 @@ export interface MediaSpec {
   maxAttachments?: number;
 }
 
-/** Result of normalizing one media item: the upload-ready bytes and their (possibly new) MIME type. */
+/** Result of normalising one media item: the upload-ready bytes and their (possibly new) MIME type. */
 export interface NormalizedMedia {
   bytes: Buffer;
   contentType: string;

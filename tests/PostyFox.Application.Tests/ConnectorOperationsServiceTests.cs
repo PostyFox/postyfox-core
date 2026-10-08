@@ -160,7 +160,7 @@ public class ConnectorOperationsServiceTests
 
     /// <summary>
     /// A file well under the byte cap can still exceed the connector's max width/height and get
-    /// resized at delivery regardless (see MediaProcessing's image normalizer) — the pre-flight check
+    /// resized at delivery regardless (see MediaProcessing's image normaliser) — the pre-flight check
     /// must catch that case too, not just an oversized byte count.
     /// </summary>
     [Fact]

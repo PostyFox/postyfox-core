@@ -22,14 +22,14 @@ const GRAPH_URL = "https://graph.instagram.com";
 const PRESIGN_EXPIRY_SECONDS = 15 * 60;
 const VIDEO_POLL_INTERVAL_MS = 3000;
 const VIDEO_POLL_TIMEOUT_MS = 5 * 60 * 1000;
-/** Container the connector stages normalized bytes in so Instagram can fetch them by URL (see MediaStore.put/presignedGetUrl). */
+/** Container the connector stages normalised bytes in so Instagram can fetch them by URL (see MediaStore.put/presignedGetUrl). */
 const STAGING_CONTAINER = "instagram-staging";
 
 // Business Login for Instagram carries no per-account config: the connect flow itself determines
 // which IG business/creator account is linked (see InstagramSecret.IgUserId), so there is no
 // InstagramConfig type to parse here (unlike Tumblr's Username or the Fediverse's InstanceUrl).
 
-/** Rewrites a normalized MIME type to the file extension the staged object key carries. */
+/** Rewrites a normalised MIME type to the file extension the staged object key carries. */
 function extensionFor(mime: string): string {
   const ext: Record<string, string> = {
     "image/jpeg": ".jpg",
@@ -173,7 +173,7 @@ export class InstagramConnector implements Connector {
   }
 
   /**
-   * Normalizes one media item, stages it in the object store under a public presigned URL (see
+   * Normalises one media item, stages it in the object store under a public presigned URL (see
    * {@link STAGING_CONTAINER}), and creates its container. `isCarouselItem` omits the caption (only
    * the parent carousel container carries it).
    */

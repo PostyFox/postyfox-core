@@ -7,6 +7,7 @@ using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Services;
 using PostyFox.Web.Auth;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Api.Core.Endpoints;
 
@@ -129,10 +130,10 @@ public static class ProfileEndpoints
             return result switch
             {
                 AccountAcceptResult.Accepted => Results.NoContent(),
-                AccountAcceptResult.Expired => Results.BadRequest(new { error = "This invite has expired." }),
+                AccountAcceptResult.Expired => Results.BadRequest(new { error = Messages.InviteExpired }),
                 AccountAcceptResult.EmailMismatch => Results.BadRequest(new
                 {
-                    error = "This invite was sent to a different email address than the one on your signed-in account."
+                    error = Messages.InviteEmailMismatch
                 }),
                 _ => Results.NotFound()
             };
@@ -148,10 +149,10 @@ public static class ProfileEndpoints
             return result switch
             {
                 AccountAcceptResult.Accepted => Results.NoContent(),
-                AccountAcceptResult.Expired => Results.BadRequest(new { error = "This invite has expired." }),
+                AccountAcceptResult.Expired => Results.BadRequest(new { error = Messages.InviteExpired }),
                 AccountAcceptResult.EmailMismatch => Results.BadRequest(new
                 {
-                    error = "This invite was sent to a different email address than the one on your signed-in account."
+                    error = Messages.InviteEmailMismatch
                 }),
                 _ => Results.NotFound()
             };

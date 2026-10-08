@@ -42,9 +42,9 @@ public sealed record ConnectorDescriptor(
     /// <summary>True when the connector exposes an interactive OAuth "connect" flow (see <see cref="IOAuthConnector"/>).</summary>
     bool SupportsOAuth = false,
     /// <summary>
-    /// The platform's media constraints. Connectors that normalize media in-process (Discord,
+    /// The platform's media constraints. Connectors that normalise media in-process (Discord,
     /// Telegram) declare one so images/video are resized to fit before upload; connectors delegated
-    /// to the Node service normalize there and leave this null.
+    /// to the Node service normalise there and leave this null.
     /// </summary>
     MediaSpec? MediaSpec = null,
     /// <summary>
@@ -169,7 +169,7 @@ public interface IRefreshableConnector
     Task<string?> RefreshTokenAsync(ConnectorContext context, CancellationToken ct = default);
 }
 
-/// <summary>Result of beginning an OAuth authorization for a connector.</summary>
+/// <summary>Result of beginning an OAuth authorisation for a connector.</summary>
 public sealed record OAuthStart(string AuthorizeUrl, string RequestToken, string RequestTokenSecret);
 
 /// <summary>
@@ -180,13 +180,13 @@ public sealed record OAuthStart(string AuthorizeUrl, string RequestToken, string
 public interface IOAuthConnector
 {
     /// <summary>
-    /// Begins authorization; returns the provider URL to send the user to + the request token pair.
+    /// Begins authorisation; returns the provider URL to send the user to + the request token pair.
     /// <paramref name="configJson"/> carries the connector's non-secret config for providers whose
-    /// authorization is instance-scoped (e.g. Fediverse instance URL); OAuth1 providers ignore it.
+    /// authorisation is instance-scoped (e.g. Fediverse instance URL); OAuth1 providers ignore it.
     /// </summary>
     Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, string? configJson, CancellationToken ct = default);
 
-    /// <summary>Completes authorization after the user returns; returns the secret JSON to persist.</summary>
+    /// <summary>Completes authorisation after the user returns; returns the secret JSON to persist.</summary>
     Task<string?> CompleteAuthorizationAsync(string requestToken, string requestTokenSecret, string verifier, CancellationToken ct = default);
 }
 

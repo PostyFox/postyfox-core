@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using PostyFox.Application.Dtos;
 using PostyFox.Application.Services;
 using PostyFox.Web.Auth;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Api.Core.Endpoints;
 
@@ -38,7 +39,7 @@ public static class TermsEndpoints
         group.MapPost("accept", async (AcceptTermsRequest body, ClaimsPrincipal user, TermsOfServiceService svc, CancellationToken ct) =>
             await svc.AcceptAsync(user.CallerUserId()!, body.Version, ct)
                 ? Results.NoContent()
-                : Results.Conflict(new { error = "These terms are no longer current. Reload and review the latest version." }))
+                : Results.Conflict(new { error = Messages.TermsNotCurrent }))
         .WithSummary("Accept the current terms of service")
         .WithDescription("Records acceptance for the signed-in person, never the account being acted as.")
         .Produces(StatusCodes.Status204NoContent)

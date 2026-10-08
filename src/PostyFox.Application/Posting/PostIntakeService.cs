@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -9,6 +10,7 @@ using PostyFox.Application.Options;
 using PostyFox.Application.Telemetry;
 using PostyFox.Domain.Entities;
 using PostyFox.Domain.Enums;
+using PostyFox.Application.Resources;
 
 namespace PostyFox.Application.Posting;
 
@@ -185,7 +187,7 @@ public sealed class PostIntakeService(
         post.TagsJson = Json.Serialize(request.Tags ?? []);
         var media = request.Media ?? [];
         if (media.Any(m => !m.IsOwnedBy(post.UserId)))
-            throw new ConnectorValidationException("Invalid media reference.");
+            throw new ConnectorValidationException(Messages.InvalidMediaReference);
         post.MediaManifestJson = Json.Serialize(media);
         post.VariablesJson = Json.Serialize(request.Variables ?? new Dictionary<string, string>());
         post.TemplateId = request.TemplateId;
@@ -275,11 +277,11 @@ public sealed class PostIntakeService(
             var requiredTagCount = requiresTags ? descriptor!.RequiredTagCount : 0;
             if (tagCount < requiredTagCount)
                 throw new ConnectorValidationException(requiredTagCount == 1
-                    ? $"{destination.DisplayName}: at least one tag is required for this platform."
-                    : $"{destination.DisplayName}: at least {requiredTagCount} tags are required for this platform.");
+                    ? string.Format(CultureInfo.CurrentCulture, Messages.TagRequired, destination.DisplayName)
+                    : string.Format(CultureInfo.CurrentCulture, Messages.TagsRequired, destination.DisplayName, requiredTagCount));
 
             if ((descriptor?.RequiresMedia ?? false) && !hasMedia)
-                throw new ConnectorValidationException($"{destination.DisplayName}: at least one media attachment is required for this platform.");
+                throw new ConnectorValidationException(string.Format(CultureInfo.CurrentCulture, Messages.MediaRequired, destination.DisplayName));
 
             // RequiresTags forces the toggle on regardless of what the client sent; otherwise the
             // author's per-target choice applies, falling back to the connector's own configured
@@ -340,10 +342,11 @@ public sealed class PostIntakeService(
             _ => false
         };
         if (!supported)
-            throw new ConnectorValidationException(
-                $"{displayName}: does not support {request.Action.ToString().ToLowerInvariant()} automation.");
+            throw new ConnectorValidationException(string.Format(CultureInfo.CurrentCulture, request.Action == AutomationAction.Repost
+                ? Messages.RepostAutomationNotSupported
+                : Messages.DeleteAutomationNotSupported, displayName));
         if (request.DelayHours <= 0)
-            throw new ConnectorValidationException($"{displayName}: automation delay must be greater than zero hours.");
+            throw new ConnectorValidationException(string.Format(CultureInfo.CurrentCulture, Messages.AutomationDelayInvalid, displayName));
 
         return new PostTargetAutomation
         {
