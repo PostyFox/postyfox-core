@@ -3,6 +3,9 @@
 # provider details, and every third-party image/tag are values with sensible (but generic)
 # defaults. Override this file (or use --set / an extra -f values-<env>.yaml) per environment.
 #
+# Third-party image tags here MUST match ../../docker-compose*.yml and ../../rabbitmq/Dockerfile: bump
+# them together. See "Third-party image versions" in ../../README.md.
+#
 # Two deployment shapes are supported from the same chart:
 #   1. Self-contained: set `postgres.enabled`, `rabbitmq.enabled`, `vault.enabled`, `redis.enabled`
 #      to true (default) and the chart deploys all backing services alongside the app.
@@ -126,7 +129,9 @@ resources:
 # ---------------------------------------------------------------------------------------------
 postgres:
   enabled: true
-  image: "postgres:16-alpine"
+  # pgautoupgrade = official postgres + automatic in-place major-version upgrade of the data dir,
+  # so bumping the major here (and in docker-compose*.yml) needs no manual pg_upgrade.
+  image: "pgautoupgrade/pgautoupgrade:18-alpine"
   database: "postyfox"
   username: "postyfox"
   password: "change-me"
@@ -147,7 +152,7 @@ postgres:
 # ---------------------------------------------------------------------------------------------
 rabbitmq:
   enabled: true
-  image: "rabbitmq:4.3.5-management"
+  image: "rabbitmq:4.3.6-management"
   username: "postyfox"
   password: "change-me"
   storage:
@@ -180,7 +185,7 @@ redis:
 # ---------------------------------------------------------------------------------------------
 vault:
   enabled: true
-  image: "hashicorp/vault:2.1.1"
+  image: "hashicorp/vault:2.1.2"
   keyShares: 5
   keyThreshold: 3
   appRoleName: "postyfox"
@@ -204,7 +209,7 @@ vault:
 # ---------------------------------------------------------------------------------------------
 otelCollector:
   enabled: true
-  image: "otel/opentelemetry-collector-contrib:0.112.0"
+  image: "otel/opentelemetry-collector-contrib:0.162.0"
   centralHost: ""                  # empty = pipelines still run but exporters will fail to connect;
                                     # set to your central OTLP/gRPC endpoint (host:port form)
   deployEnv: "production"
@@ -220,8 +225,8 @@ otelCollector:
 # Service doesn't exist/isn't ready yet. Ships a fluent-bit sidecar shipping its logs via OTLP.
 # ---------------------------------------------------------------------------------------------
 gateway:
-  image: "nginx:1.30.1-alpine"
-  fluentBitImage: "fluent/fluent-bit:5.1.2"
+  image: "nginx:1.31.6-alpine"
+  fluentBitImage: "fluent/fluent-bit:5.1.3"
   maintenanceMode: false           # set true (or --set during an upgrade) to force a 503 + maintenance page
   # In-cluster Service name (in THIS namespace) of an optionally, separately-deployed frontend/SPA.
   # "/" proxies here when frontend.enabled is true; otherwise "/" falls through to core-api.
@@ -239,7 +244,7 @@ gateway:
 # Keycloak specifically beyond the default URL shapes in the examples below).
 # ---------------------------------------------------------------------------------------------
 oauth2Proxy:
-  image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.4"
+  image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.5"
   # OIDC provider endpoints. Fill these in for your own provider; skipOidcDiscovery lets front/back
   # -channel URLs differ (e.g. a public login URL vs an in-cluster token/JWKS endpoint) while the
   # token issuer stays constant - see comments in templates/oauth2-proxy-configmap.yaml.

@@ -1,6 +1,9 @@
 # PostyFox single-host deployment stack.
 # Intended for CI/CD deployment with published app images.
 #
+# Third-party image tags are pinned and MUST match helm/postyfox/values.yaml (and rabbitmq/Dockerfile):
+# bump them together. See "Third-party image versions" in README.md.
+#
 # - App services use prebuilt images from GHCR.
 # - Postgres and RabbitMQ run per stack on the server.
 # - RustFS and Keycloak are provided externally.
@@ -63,7 +66,7 @@ x-dotnet-env: &dotnet-env
 
 services:
   postgres:
-    image: pgautoupgrade/pgautoupgrade:latest
+    image: pgautoupgrade/pgautoupgrade:18-alpine
     environment:
       POSTGRES_USER: postyfox
       POSTGRES_PASSWORD: "${DB_PASSWORD}"
@@ -121,7 +124,7 @@ services:
   # Edge collector: shapes + forwards OTLP to the CENTRAL Data Prepper (config.central.yaml).
   # Holds no OpenSearch secrets. Set OTEL_CENTRAL_HOST to the central Data Prepper host.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.162.0
     command: ["--config=/etc/otel/config.yaml"]
     environment:
       OTEL_CENTRAL_HOST: "${OTEL_CENTRAL_HOST:-central-data-prepper}"
@@ -137,7 +140,7 @@ services:
   # HashiCorp Vault: file storage backend + Shamir seal. Stays on the internal network (never
   # publishes a host port, same rule as the APIs). Initialised + auto-unsealed by `vault-init`.
   vault:
-    image: "hashicorp/vault:${VAULT_VERSION:-2.1.1}"
+    image: "hashicorp/vault:${VAULT_VERSION:-2.1.2}"
     command: ["vault", "server", "-config=/vault/config/vault.hcl"]
     environment:
       VAULT_ADDR: "http://127.0.0.1:8200"
@@ -159,8 +162,11 @@ services:
   # unseal keys + root token to the `vaultkeys` volume; thereafter it watches Vault and re-applies
   # the saved keys whenever it is sealed, so the stack comes up unsealed unattended.
   vault-init:
-    image: "hashicorp/vault:${VAULT_VERSION:-2.1.1}"
+    image: "hashicorp/vault:${VAULT_VERSION:-2.1.2}"
     entrypoint: ["/bin/sh", "/usr/local/bin/vault-bootstrap.sh"]
+    # Vault 1.x images ran this as root, leaving /vault/init/init.json root-owned (0600). 2.x images
+    # default to the `vault` user, which can't read it and never unseals. Root keeps both readable.
+    user: "0:0"
     environment:
       VAULT_ADDR: "http://vault:8200"
       VAULT_KEY_SHARES: "${VAULT_KEY_SHARES:-5}"
@@ -281,7 +287,7 @@ services:
   # Internal path router behind the edge. Fans /api/posts + /api/webhooks to post-api and everything
   # else to core-api, preserving the full request path. Never publishes a host port.
   gateway:
-    image: nginx:alpine
+    image: nginx:1.31.6-alpine
     # Before starting nginx, derive its DNS `resolver` from the container's /etc/resolv.conf and
     # write it to the http-context include (nginx.conf pulls in /etc/nginx/resolver.d/*.conf). nginx
     # can't read resolv.conf itself and needs a literal IP, which is runtime-specific: Docker's
@@ -325,7 +331,7 @@ services:
   # (:4319), which routes them to Data Prepper → ss4o_logs-nginx for the nginx integration. Holds
   # NO OpenSearch creds: this host only talks to the collector.
   fluent-bit:
-    image: cr.fluentbit.io/fluent/fluent-bit:latest
+    image: fluent/fluent-bit:5.1.3
     volumes:
       - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - gateway-logs:/var/log/gateway:ro
@@ -343,7 +349,7 @@ services:
   #   - browser redirects use KEYCLOAK_PUBLIC_URL (the token `iss`)
   #   - server-side token/JWKS use the in-cluster KEYCLOAK_HOST back channel
   oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.5
     environment:
       OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
       # Prometheus metrics endpoint scraped by the otel-collector (job: oauth2-proxy).

@@ -1,5 +1,8 @@
 # PostyFox local stack. Quick start:  docker compose up --build
 #
+# Third-party image tags are pinned and MUST match helm/postyfox/values.yaml (and rabbitmq/Dockerfile):
+# bump them together. See "Third-party image versions" in README.md.
+#
 # Auth is the production-representative OIDC path: the stack always runs Keycloak + oauth2-proxy +
 # an nginx gateway, and the APIs validate the OIDC bearer token in-app (no DevMode bypass). Reach the
 # APIs through the edge at  http://localhost:4180  (which logs you in via Keycloak on http://localhost:8082
@@ -46,7 +49,7 @@ x-dotnet-env: &dotnet-env
 
 services:
   postgres:
-    image: pgautoupgrade/pgautoupgrade:latest
+    image: pgautoupgrade/pgautoupgrade:18-alpine
     environment:
       POSTGRES_USER: postyfox
       POSTGRES_PASSWORD: postyfox
@@ -60,7 +63,7 @@ services:
       retries: 20
 
   rustfs:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:1.0.1
     environment:
       RUSTFS_ACCESS_KEY: rustfsadmin
       RUSTFS_SECRET_KEY: rustfsadmin
@@ -105,7 +108,7 @@ services:
   # at `secret/` — so unlike docker-compose.server.yml's vault there's no vault-init bootstrap
   # sidecar or AppRole provisioning step needed. Not for anything you'd mind losing on `down -v`.
   vault:
-    image: "hashicorp/vault:2.1.1"
+    image: "hashicorp/vault:2.1.2"
     command: ["server", "-dev", "-dev-root-token-id=postyfox-dev-root-token"]
     environment:
       # The `vault` CLI defaults to https://127.0.0.1:8200 without this — needed for the
@@ -120,7 +123,7 @@ services:
     restart: unless-stopped
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.162.0
     command: ["--config=/etc/otel/config.yaml"]
     volumes: ["./otel/config.yaml:/etc/otel/config.yaml:ro"]
     ports: ["4317:4317", "4318:4318"]
@@ -238,7 +241,7 @@ services:
       retries: 20      
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.8
+    image: quay.io/keycloak/keycloak:26.8.0
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -261,7 +264,7 @@ services:
   # Internal path router behind oauth2-proxy. Fans /api/posts + /api/webhooks to post-api and
   # everything else to core-api, preserving the full request path. Not published publicly.
   gateway:
-    image: nginx:alpine
+    image: nginx:1.31.6-alpine
     # Before starting nginx, derive its DNS `resolver` from the container's /etc/resolv.conf and
     # write it to the http-context include (nginx.conf pulls in /etc/nginx/resolver.d/*.conf). nginx
     # can't read resolv.conf itself and needs a literal IP, which is runtime-specific: Docker's
@@ -292,7 +295,7 @@ services:
       post-api: { condition: service_healthy }
 
   oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.5
     command: ["--config=/etc/oauth2-proxy.cfg"]
     volumes:
       - "./oauth2-proxy/oauth2-proxy.cfg:/etc/oauth2-proxy.cfg:ro"

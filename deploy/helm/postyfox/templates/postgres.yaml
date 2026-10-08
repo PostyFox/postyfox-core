@@ -24,6 +24,9 @@ spec:
             - { name: POSTGRES_DB, value: {{ .Values.postgres.database | quote }} }
             - { name: POSTGRES_USER, value: {{ .Values.postgres.username | quote }} }
             - { name: POSTGRES_PASSWORD, value: {{ .Values.postgres.password | quote }} }
+            # Pinned to the mount below: PG18+ images default PGDATA to /var/lib/postgresql/<major>/docker,
+            # which would ignore an existing volume. pgautoupgrade upgrades the cluster in place on major bumps.
+            - { name: PGDATA, value: /var/lib/postgresql/data }
           ports: [{ containerPort: 5432, name: postgres }]
           readinessProbe:
             exec: { command: ["pg_isready", "-U", {{ .Values.postgres.username | quote }}] }
