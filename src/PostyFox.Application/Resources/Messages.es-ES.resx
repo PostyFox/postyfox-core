@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- User-facing API messages (issue #33). The neutral file is en-GB; add Messages.<culture>.resx to translate. -->
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="NoFileUploaded" xml:space="preserve">
+    <value>No file uploaded</value>
+  </data>
+  <data name="InviteExpired" xml:space="preserve">
+    <value>This invite has expired.</value>
+  </data>
+  <data name="InviteEmailMismatch" xml:space="preserve">
+    <value>This invite was sent to a different email address than the one on your signed-in account.</value>
+  </data>
+  <data name="UnknownServiceDefinition" xml:space="preserve">
+    <value>Unknown service definition</value>
+  </data>
+  <data name="UnknownMultiTargetConnector" xml:space="preserve">
+    <value>Unknown connector, or it does not support multiple targets</value>
+  </data>
+  <data name="OAuthNotAvailable" xml:space="preserve">
+    <value>OAuth is not available for this connector</value>
+  </data>
+  <data name="SeveralConnectorsMatchSite" xml:space="preserve">
+    <value>Several connectors match this site — specify connectorId</value>
+    <comment>connectorId is an API field name; keep it as is.</comment>
+  </data>
+  <data name="SessionCookiesNotSupplied" xml:space="preserve">
+    <value>Required website session cookies were not supplied</value>
+  </data>
+  <data name="CookiesNotSupported" xml:space="preserve">
+    <value>This platform does not connect with website cookies</value>
+  </data>
+  <data name="CookiePairingNotAvailable" xml:space="preserve">
+    <value>Cookie pairing is not available for this connector</value>
+  </data>
+  <data name="PairingTokenInvalid" xml:space="preserve">
+    <value>Pairing token is invalid or expired</value>
+  </data>
+  <data name="UnknownTargetConnector" xml:space="preserve">
+    <value>Unknown or disabled target connector</value>
+  </data>
+  <data name="NoValidTargets" xml:space="preserve">
+    <value>No valid, enabled target connectors specified</value>
+  </data>
+  <data name="DraftAlreadyPublished" xml:space="preserve">
+    <value>Post has already been published and can no longer be edited as a draft</value>
+  </data>
+  <data name="PostAlreadyPublished" xml:space="preserve">
+    <value>Post has already been published</value>
+  </data>
+  <data name="NothingToCancel" xml:space="preserve">
+    <value>Post has nothing left to cancel</value>
+  </data>
+  <data name="AutomationAlreadyDone" xml:space="preserve">
+    <value>This automation rule has already run (or was already cancelled)</value>
+  </data>
+  <data name="TermsNotCurrent" xml:space="preserve">
+    <value>These terms are no longer current. Reload and review the latest version.</value>
+  </data>
+  <data name="TermsNotAcceptedTitle" xml:space="preserve">
+    <value>Terms of service not accepted</value>
+  </data>
+  <data name="TermsNotAccepted" xml:space="preserve">
+    <value>You must accept the current terms of service.</value>
+  </data>
+  <data name="OwnerTermsNotAccepted" xml:space="preserve">
+    <value>The owner of this account must accept the current terms of service.</value>
+  </data>
+  <data name="SecretValueEmpty" xml:space="preserve">
+    <value>Secret value cannot be empty.</value>
+  </data>
+  <data name="InvalidMediaReference" xml:space="preserve">
+    <value>Invalid media reference.</value>
+  </data>
+  <data name="TagRequired" xml:space="preserve">
+    <value>{0}: at least one tag is required for this platform.</value>
+    <comment>{0} = connector display name</comment>
+  </data>
+  <data name="TagsRequired" xml:space="preserve">
+    <value>{0}: at least {1} tags are required for this platform.</value>
+    <comment>{0} = connector display name, {1} = number of tags</comment>
+  </data>
+  <data name="MediaRequired" xml:space="preserve">
+    <value>{0}: at least one media attachment is required for this platform.</value>
+    <comment>{0} = connector display name</comment>
+  </data>
+  <data name="RepostAutomationNotSupported" xml:space="preserve">
+    <value>{0}: does not support repost automation.</value>
+    <comment>{0} = connector display name</comment>
+  </data>
+  <data name="DeleteAutomationNotSupported" xml:space="preserve">
+    <value>{0}: does not support delete automation.</value>
+    <comment>{0} = connector display name</comment>
+  </data>
+  <data name="AutomationDelayInvalid" xml:space="preserve">
+    <value>{0}: automation delay must be greater than zero hours.</value>
+    <comment>{0} = connector display name</comment>
+  </data>
+  <data name="InviteNoVerifiedEmail" xml:space="preserve">
+    <value>Your account has no verified email address, so invites can't be cross-checked. Sign in with an OIDC identity that provides one.</value>
+  </data>
+  <data name="InviteEmailInvalid" xml:space="preserve">
+    <value>Enter a valid email address to invite.</value>
+  </data>
+  <data name="InviteSelf" xml:space="preserve">
+    <value>You can't invite yourself.</value>
+  </data>
+  <data name="TextTemplateNameRequired" xml:space="preserve">
+    <value>Text template name is required.</value>
+  </data>
+  <data name="TextTemplateNameInvalid" xml:space="preserve">
+    <value>Text template name may only contain letters, digits, underscores and hyphens (it is used as {{tt:name}}).</value>
+    <comment>{{tt:name}} is template syntax; keep it as is.</comment>
+  </data>
+  <data name="TextTemplateNameExists" xml:space="preserve">
+    <value>A text template named '{0}' already exists.</value>
+    <comment>{0} = template name</comment>
+  </data>
+  <data name="FieldRequired" xml:space="preserve">
+    <value>{0} is required.</value>
+    <comment>{0} = field label</comment>
+  </data>
+  <data name="FieldMinLength" xml:space="preserve">
+    <value>{0} must be at least {1} characters.</value>
+    <comment>{0} = field label, {1} = minimum length</comment>
+  </data>
+  <data name="FieldMaxLength" xml:space="preserve">
+    <value>{0} must be at most {1} characters.</value>
+    <comment>{0} = field label, {1} = maximum length</comment>
+  </data>
+  <data name="FieldNotAnOption" xml:space="preserve">
+    <value>{0} is not one of the available choices.</value>
+    <comment>{0} = field label</comment>
+  </data>
+  <data name="FieldInvalid" xml:space="preserve">
+    <value>{0} is invalid.</value>
+    <comment>{0} = field label</comment>
+  </data>
+</root>
