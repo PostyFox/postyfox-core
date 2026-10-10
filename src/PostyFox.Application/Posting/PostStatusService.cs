@@ -168,7 +168,10 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
                 {
                     t.Platform,
                     t.Status,
-                    PendingAutomations = t.Automations.Count(a => a.Status == AutomationStatus.Pending)
+                    PendingAutomations = t.Automations
+                        .Where(a => a.Status == AutomationStatus.Pending)
+                        .Select(a => new { a.Action, a.DelayHours, a.DueAt })
+                        .ToList()
                 }).ToList()
             })
             .ToListAsync(ct))
@@ -187,6 +190,15 @@ public sealed class PostStatusService(IAppDbContext db, IClock clock, IOptions<R
             p.CreatedAt,
             p.UpdatedAt,
             p.PostAt,
-            p.Targets.Sum(t => t.PendingAutomations))).ToList();
+            p.Targets.Sum(t => t.PendingAutomations.Count),
+            p.Targets
+                .SelectMany(t => t.PendingAutomations.Select(a => new PendingAutomationDto(
+                    a.Action,
+                    t.Platform,
+                    // Not delivered yet: estimate from when it's due to go out.
+                    a.DueAt ?? (p.PostAt ?? p.CreatedAt).AddHours(a.DelayHours),
+                    a.DueAt is null)))
+                .OrderBy(a => a.DueAt.UtcTicks)
+                .ToList())).ToList();
     }
 }
