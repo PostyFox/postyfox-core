@@ -1,4 +1,5 @@
-import { AtpAgent, RichText } from "@atproto/api";
+import { AtpAgent } from "@atproto/api";
+import { buildRichText } from "./bluesky-richtext.js";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { normalizeMedia } from "../media/normalize.js";
@@ -114,20 +115,9 @@ export class BlueskyConnector implements Connector {
 
       // Bluesky has no separate tags field; core weaves any tags into `post.body` as `#hashtag`s
       // before it reaches here (see TemplateEngine, this connector declares `SupportsTags: false`),
-      // so `post.tags` normally arrives empty. RichText below detects those hashtags as "tag" facets.
-      // Detect facets (links/mentions) where possible; fall back to plain text.
-      let text = post.body;
-      let facets: unknown | undefined;
-      try {
-        const rt = new RichText({ text: post.body });
-        await rt.detectFacets(agent as unknown as AtpAgent);
-        text = rt.text;
-        facets = rt.facets;
-      } catch {
-        // RichText detection is best-effort; plain text is acceptable.
-        text = post.body;
-        facets = undefined;
-      }
+      // so `post.tags` normally arrives empty. buildRichText detects those hashtags as "tag" facets,
+      // and turns the body's markdown links into link facets over their display text.
+      const { text, facets } = await buildRichText(post.body, agent);
 
       // Upload any image media and attach it as an app.bsky.embed.images embed.
       // Bluesky permits at most 4 images; extras are ignored. Each item is resized/transcoded to

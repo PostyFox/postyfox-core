@@ -51,7 +51,9 @@ public sealed partial class TemplateEngine : ITemplateEngine
         var tags = request.IncludeTags ? request.Tags : [];
 
         var advertisingLine = request.IncludeAdvertisingLine ? AdvertisingLineFor(request.Platform) : null;
-        var advertisingCost = advertisingLine is null ? 0 : advertisingLine.Length + AdvertisingSeparator.Length;
+        var advertisingCost = advertisingLine is null
+            ? 0
+            : ContentLength(request.Platform, advertisingLine) + AdvertisingSeparator.Length;
 
         int tagsOmitted;
         IReadOnlyList<string> deliveredTags;
@@ -71,7 +73,7 @@ public sealed partial class TemplateEngine : ITemplateEngine
             // author-placed {tags} token or, failing that, appended to the end.
             deliveredTags = [];
             (bodyWithTags, tagsOmitted) = InterpolateTags(
-                rawBody, request.Variables, tags, request.MaxContentLength - advertisingCost);
+                request.Platform, rawBody, request.Variables, tags, request.MaxContentLength - advertisingCost);
         }
 
         if (advertisingLine is not null)
@@ -85,13 +87,13 @@ public sealed partial class TemplateEngine : ITemplateEngine
     private const string AdvertisingUrl = "https://postyfox.com";
 
     /// <summary>
-    /// Telegram and Discord render markdown links (Telegram via <see cref="FormatForPlatform"/>); every
-    /// other platform receives the text as-is, so a bare URL (which they auto-link) beats literal
-    /// markdown syntax.
+    /// Telegram and Discord render markdown links (Telegram via <see cref="FormatForPlatform"/>), and
+    /// the Bluesky connector turns them into link facets; every other platform receives the text
+    /// as-is, so a bare URL (which they auto-link) beats literal markdown syntax.
     /// </summary>
     private static string AdvertisingLineFor(string platform) => platform.ToLowerInvariant() switch
     {
-        "telegram" or "discordwh" => $"Sent using [PostyFox]({AdvertisingUrl})",
+        "telegram" or "discordwh" or "bluesky" => $"Sent using [PostyFox]({AdvertisingUrl})",
         _ => $"Sent using PostyFox {AdvertisingUrl}"
     };
 
@@ -118,6 +120,7 @@ public sealed partial class TemplateEngine : ITemplateEngine
     /// trimming when null: most platforms only report a cap live, at delivery time).
     /// </summary>
     private (string Body, int TagsOmitted) InterpolateTags(
+        string platform,
         string markdownBody,
         IReadOnlyDictionary<string, string> variables,
         IReadOnlyList<string> tags,
@@ -137,7 +140,7 @@ public sealed partial class TemplateEngine : ITemplateEngine
         // takes (the {tags} token contributes nothing to baseBody, having been substituted away; the
         // fallback append costs an extra blank-line separator).
         var separatorLength = hasPlaceholder ? 0 : "\n\n".Length;
-        int? available = maxContentLength is { } max ? Math.Max(0, max - baseBody.Length - separatorLength) : null;
+        int? available = maxContentLength is { } max ? Math.Max(0, max - ContentLength(platform, baseBody) - separatorLength) : null;
 
         var included = new List<string>();
         var length = 0;
@@ -172,6 +175,20 @@ public sealed partial class TemplateEngine : ITemplateEngine
         return vars;
     }
 
+    /// <summary>
+    /// Length of <paramref name="markdown"/> as the platform counts it against its cap. The Bluesky
+    /// connector turns markdown links and bold into facets over the visible text (see
+    /// bluesky-richtext.ts), so only that text counts there; everywhere else the text is delivered
+    /// (and counted) as written.
+    /// </summary>
+    private static int ContentLength(string platform, string markdown) => platform.ToLowerInvariant() switch
+    {
+        "bluesky" => BlueskyMarkdownRegex().Replace(markdown, m => m.Groups["text"].Success
+            ? m.Groups["text"].Value
+            : m.Groups["bold"].Value).Length,
+        _ => markdown.Length
+    };
+
     private static string FormatForPlatform(string platform, string markdown) => platform.ToLowerInvariant() switch
     {
         "telegram" => MarkdownToTelegramHtml(markdown),
@@ -204,6 +221,10 @@ public sealed partial class TemplateEngine : ITemplateEngine
 
     [GeneratedRegex(@"\[(?<text>[^\]]+)\]\((?<url>[^)]+)\)")]
     private static partial Regex LinkRegex();
+
+    // Keep in step with MARKDOWN_REGEX in connectors-node/src/connectors/bluesky-richtext.ts.
+    [GeneratedRegex(@"\[(?<text>[^\]\n]+)\]\((?<url>https?://[^\s()]+(?:\([^\s()]*\)[^\s()]*)*)\)|\*\*(?<bold>[^*\n]+)\*\*")]
+    private static partial Regex BlueskyMarkdownRegex();
 
     [GeneratedRegex(@"\*\*(?<t>[^*]+)\*\*")]
     private static partial Regex BoldRegex();

@@ -158,8 +158,10 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
 - `configJson` → `{ "Handle": "alice.bsky.social" }`
 - `secretJson` → `{ "AppPassword": "xxxx-xxxx-xxxx-xxxx" }`
 - `list-targets` returns a single target `{ id: handle, name: "Bluesky: <handle>" }`.
-- `deliver` posts `post.body` (with best-effort RichText link/mention facet
-  detection) and returns `externalId` = post `uri`,
+- `deliver` posts `post.body` with markdown links (`[text](https://url)`) and
+  `**bold**` stripped to their visible text, link facets over that text and over
+  any bare http(s) URL, plus atproto's mention/hashtag detection (unresolved
+  mentions dropped). Returns `externalId` = post `uri`,
   `externalUrl` = `https://bsky.app/profile/<handle>/post/<rkey>`.
 
 ### Tumblr

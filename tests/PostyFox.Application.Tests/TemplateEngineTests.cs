@@ -222,9 +222,18 @@ public class TemplateEngineTests
     [Fact]
     public void Render_advertising_line_appends_bare_url_for_plain_platforms()
     {
-        var req = new RenderRequest("Bluesky", null, "Body", new Dictionary<string, string>(), [], [],
+        var req = new RenderRequest("Tumblr", null, "Body", new Dictionary<string, string>(), [], [],
             IncludeAdvertisingLine: true);
         Assert.Equal("Body\n\nSent using PostyFox https://postyfox.com", _engine.Render(req).Body);
+    }
+
+    [Fact]
+    public void Render_advertising_line_is_a_markdown_link_on_bluesky()
+    {
+        // The Bluesky connector turns the markdown link into a link facet over "PostyFox".
+        var req = new RenderRequest("BlueSky", null, "Body", new Dictionary<string, string>(), [], [],
+            IncludeAdvertisingLine: true);
+        Assert.Equal("Body\n\nSent using [PostyFox](https://postyfox.com)", _engine.Render(req).Body);
     }
 
     [Fact]
@@ -243,7 +252,7 @@ public class TemplateEngineTests
     public void Render_advertising_line_follows_woven_tags_and_reserves_room_for_them()
     {
         const string line = "\n\nSent using PostyFox https://postyfox.com";
-        var req = new RenderRequest("Bluesky", null, "0123456789", new Dictionary<string, string>(),
+        var req = new RenderRequest("Tumblr", null, "0123456789", new Dictionary<string, string>(),
             ["aaaaaaaaaa"], [], SupportsTags: false, MaxContentLength: 10 + 2 + 11 + line.Length,
             IncludeAdvertisingLine: true);
         var rendered = _engine.Render(req);
@@ -252,6 +261,26 @@ public class TemplateEngineTests
 
         var tight = _engine.Render(req with { MaxContentLength = 10 + 2 + 10 + line.Length });
         Assert.Equal("0123456789" + line, tight.Body);
+        Assert.Equal(1, tight.TagsOmitted);
+    }
+
+    [Fact]
+    public void Render_bluesky_budget_counts_only_visible_link_and_advertising_text()
+    {
+        // Bluesky shows "[site](url)" as "site" and the strapline as "Sent using PostyFox" (19 chars),
+        // so neither URL counts against the cap.
+        const string body = "Go [site](https://example.com/a/long/path)";
+        const string visibleBody = "Go site";
+        const string visibleLine = "\n\nSent using PostyFox";
+        var req = new RenderRequest("BlueSky", null, body, new Dictionary<string, string>(),
+            ["aaaaaaaaaa"], [], SupportsTags: false,
+            MaxContentLength: visibleBody.Length + 2 + 11 + visibleLine.Length,
+            IncludeAdvertisingLine: true);
+        var rendered = _engine.Render(req);
+        Assert.Equal(body + "\n\n#aaaaaaaaaa\n\nSent using [PostyFox](https://postyfox.com)", rendered.Body);
+        Assert.Equal(0, rendered.TagsOmitted);
+
+        var tight = _engine.Render(req with { MaxContentLength = visibleBody.Length + 2 + 10 + visibleLine.Length });
         Assert.Equal(1, tight.TagsOmitted);
     }
 }
