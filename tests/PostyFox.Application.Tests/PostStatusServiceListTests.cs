@@ -95,4 +95,49 @@ public class PostStatusServiceListTests
 
         Assert.Equal(2, list.Count);
     }
+
+    [Fact]
+    public async Task List_includes_pending_automations_with_due_or_estimated_times()
+    {
+        using var db = TestDbContext.Create();
+        var postAt = Now.AddDays(2);
+        var dueAt = Now.AddHours(5);
+        var post = new Post
+        {
+            Id = Guid.NewGuid(), UserId = "u1", Title = "t", RootStatus = PostRootStatus.PartiallyFailed,
+            CreatedAt = Now.AddHours(-1), UpdatedAt = Now, PostAt = postAt
+        };
+        var delivered = new PostTarget { Id = Guid.NewGuid(), Platform = "BlueSky", Status = TargetStatus.Delivered, CreatedAt = Now };
+        delivered.Automations.Add(new PostTargetAutomation
+            { Id = Guid.NewGuid(), Action = AutomationAction.Delete, DelayHours = 24, DueAt = dueAt, CreatedAt = Now });
+        delivered.Automations.Add(new PostTargetAutomation
+            { Id = Guid.NewGuid(), Action = AutomationAction.Repost, DelayHours = 1, Status = AutomationStatus.Done, CreatedAt = Now });
+        var queued = new PostTarget { Id = Guid.NewGuid(), Platform = "DiscordWH", Status = TargetStatus.Queued, CreatedAt = Now };
+        queued.Automations.Add(new PostTargetAutomation
+            { Id = Guid.NewGuid(), Action = AutomationAction.Repost, DelayHours = 3, CreatedAt = Now });
+        post.Targets.Add(delivered);
+        post.Targets.Add(queued);
+        db.Posts.Add(post);
+        await db.SaveChangesAsync();
+
+        var row = Assert.Single(await New(db).ListAsync("u1", activeOnly: false, limit: 50));
+
+        Assert.Equal(2, row.PendingAutomationCount);
+        Assert.NotNull(row.PendingAutomations);
+        Assert.Collection(row.PendingAutomations,
+            a =>
+            {
+                Assert.Equal(AutomationAction.Delete, a.Action);
+                Assert.Equal("BlueSky", a.Platform);
+                Assert.Equal(dueAt, a.DueAt);
+                Assert.False(a.Estimated);
+            },
+            a =>
+            {
+                Assert.Equal(AutomationAction.Repost, a.Action);
+                Assert.Equal("DiscordWH", a.Platform);
+                Assert.Equal(postAt.AddHours(3), a.DueAt);
+                Assert.True(a.Estimated);
+            });
+    }
 }

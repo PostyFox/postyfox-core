@@ -339,7 +339,20 @@ public sealed record PostSummaryDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? PostAt,
     /// <summary>How many of this post's automation rules (issue #323) are still pending, for a small "reposts/deletes in Xh" indicator.</summary>
-    int PendingAutomationCount = 0);
+    int PendingAutomationCount = 0,
+    /// <summary>This post's pending automation rules with when each should run, for the calendar view.</summary>
+    IReadOnlyList<PendingAutomationDto>? PendingAutomations = null);
+
+/// <summary>A pending automation rule placed on the calendar.</summary>
+public sealed record PendingAutomationDto(
+    AutomationAction Action,
+    string Platform,
+    DateTimeOffset DueAt,
+    /// <summary>
+    /// True when the target hasn't delivered yet, so <see cref="DueAt"/> is the post's scheduled
+    /// (or creation) time plus the rule's delay rather than a fixed due time.
+    /// </summary>
+    bool Estimated);
 
 /// <summary>Result of <c>DELETE /api/posts/history</c>: how many posts were removed.</summary>
 public sealed record DeleteHistoryResponse(int DeletedCount);
