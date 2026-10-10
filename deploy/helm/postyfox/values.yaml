@@ -123,6 +123,11 @@ resources:
   requests: { cpu: "100m", memory: "128Mi" }
   limits: { cpu: "1", memory: "512Mi" }
 
+# Pod dnsConfig for the app deployments (core-api, post-api, worker, connectors-node).
+# Lowering ndots stops multi-dot names (e.g. an in-cluster FQDN for an external Postgres)
+# walking every search domain before the real lookup.
+dnsConfig: {}
+
 # ---------------------------------------------------------------------------------------------
 # PostgreSQL - toggleable. Disable and point `secrets.externalPostgresConnection` at your own
 # instance (managed service, shared HA cluster already in your k8s cluster, etc.) instead.

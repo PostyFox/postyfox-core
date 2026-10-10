@@ -15,6 +15,9 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.dnsConfig }}
+      dnsConfig: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: post-api
           image: {{ include "postyfox.image" (list . "post-api") }}
@@ -23,8 +26,8 @@ spec:
           envFrom:
             - configMapRef: { name: {{ include "postyfox.fullname" . }}-config }
             - secretRef: { name: {{ include "postyfox.secretName" . }} }
-          livenessProbe:  { httpGet: { path: /healthz, port: 8080 }, initialDelaySeconds: 10, periodSeconds: 15 }
-          readinessProbe: { httpGet: { path: /readyz, port: 8080 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe:  { httpGet: { path: /healthz, port: 8080 }, initialDelaySeconds: 10, periodSeconds: 15, timeoutSeconds: 3 }
+          readinessProbe: { httpGet: { path: /readyz, port: 8080 }, initialDelaySeconds: 5, periodSeconds: 10, timeoutSeconds: 3 }
           resources: {{- toYaml .Values.resources | nindent 12 }}
 ---
 apiVersion: v1
