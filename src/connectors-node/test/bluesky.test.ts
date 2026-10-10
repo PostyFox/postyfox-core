@@ -352,3 +352,29 @@ test("bluesky deleteRemote failure when the agent throws", async () => {
   assert.equal(result.success, false);
   assert.equal(result.error, "gone");
 });
+
+test("bluesky deliver posts markdown links as link facets over their text", async () => {
+  let postedRecord: { text: string; facets?: unknown } | undefined;
+  const connector = new BlueskyConnector(() =>
+    fakeAgent({
+      async post(record) {
+        postedRecord = record;
+        return { uri: "at://did:plc:abc/app.bsky.feed.post/xyz123", cid: "cid1" };
+      },
+    }),
+  );
+
+  const result = await connector.deliver(ctx, {
+    ...post,
+    body: "Sent using [PostyFox](https://postyfox.com)",
+  });
+  assert.equal(result.success, true);
+  assert.equal(postedRecord?.text, "Sent using PostyFox");
+  assert.deepEqual(postedRecord?.facets, [
+    {
+      $type: "app.bsky.richtext.facet",
+      index: { byteStart: 11, byteEnd: 19 },
+      features: [{ $type: "app.bsky.richtext.facet#link", uri: "https://postyfox.com" }],
+    },
+  ]);
+});
