@@ -15,6 +15,9 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.dnsConfig }}
+      dnsConfig: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: connectors-node
           image: {{ include "postyfox.image" (list . "connectors-node") }}
@@ -33,7 +36,7 @@ spec:
               valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: ObjectStore__AccessKey } }
             - name: OBJECT_STORE_SECRET_KEY
               valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: ObjectStore__SecretKey } }
-          livenessProbe: { httpGet: { path: /health, port: 8090 }, initialDelaySeconds: 5, periodSeconds: 15 }
+          livenessProbe: { httpGet: { path: /health, port: 8090 }, initialDelaySeconds: 5, periodSeconds: 15, timeoutSeconds: 3 }
           resources: {{- toYaml .Values.resources | nindent 12 }}
 ---
 apiVersion: v1
