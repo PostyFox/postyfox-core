@@ -256,6 +256,12 @@ public sealed record MediaContent(string FileName, string ContentType, byte[] Da
 public static class MediaContainers
 {
     public const string Media = "media";
+
+    /// <summary>
+    /// Normalised copies connectors-node stages for platforms that fetch media by URL (Instagram).
+    /// Served anonymously by GET /api/media/staged/{key}; connectors-node deletes them after delivery.
+    /// </summary>
+    public const string Staging = "instagram-staging";
 }
 
 public static class MediaRefValidation

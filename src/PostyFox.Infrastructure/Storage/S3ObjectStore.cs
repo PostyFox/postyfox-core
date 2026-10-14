@@ -84,8 +84,48 @@ public sealed class S3ObjectStore : IObjectStore, IDisposable
         }
     }
 
+    public async Task<Stream?> OpenReadAsync(string container, string key, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _client.GetObjectAsync(BucketFor(container), ObjectKey(container, key), ct);
+            return new ResponseOwningStream(response);
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
     public Task DeleteAsync(string container, string key, CancellationToken ct = default) =>
         _client.DeleteObjectAsync(BucketFor(container), ObjectKey(container, key), ct);
 
     public void Dispose() => _client.Dispose();
+
+    /// <summary>Exposes a GetObject response body and disposes the response along with it.</summary>
+    private sealed class ResponseOwningStream(GetObjectResponse response) : Stream
+    {
+        private readonly Stream _inner = response.ResponseStream;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => response.ContentLength;
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            _inner.ReadAsync(buffer, offset, count, cancellationToken);
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            _inner.ReadAsync(buffer, cancellationToken);
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) response.Dispose();
+            base.Dispose(disposing);
+        }
+    }
 }

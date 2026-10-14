@@ -17,12 +17,13 @@ import type {
 } from "../types.js";
 
 const GRAPH_URL = "https://graph.instagram.com";
-// The presigned URL only needs to live long enough for Meta's servers to fetch it once, plus
-// however long a video container takes to process; generous but still short-lived.
-const PRESIGN_EXPIRY_SECONDS = 15 * 60;
 const VIDEO_POLL_INTERVAL_MS = 3000;
 const VIDEO_POLL_TIMEOUT_MS = 5 * 60 * 1000;
-/** Container the connector stages normalised bytes in so Instagram can fetch them by URL (see MediaStore.put/presignedGetUrl). */
+/**
+ * Container the connector stages normalised bytes in so Instagram can fetch them by URL. core-api
+ * serves it anonymously at /api/media/staged/{key} (MediaContainers.Staging), so the object store
+ * never has to be internet-reachable. Keys must stay "{uuid}.{ext}" to pass that route's check.
+ */
 const STAGING_CONTAINER = "instagram-staging";
 
 // Business Login for Instagram carries no per-account config: the connect flow itself determines
@@ -75,6 +76,8 @@ export class InstagramConnector implements Connector {
     private readonly mediaStore: MediaStore = mediaStoreFromEnv(),
     /** Injectable so tests don't wait out real video-processing polls. */
     private readonly videoPollIntervalMs: number = VIDEO_POLL_INTERVAL_MS,
+    /** Public origin Meta fetches staged media from (the same one OAuth callbacks use). */
+    private readonly publicBaseUrl: string | undefined = process.env.PUBLIC_BASE_URL,
   ) {
     this.oauth = {
       startAuthorization: (input) =>
@@ -173,8 +176,8 @@ export class InstagramConnector implements Connector {
   }
 
   /**
-   * Normalises one media item, stages it in the object store under a public presigned URL (see
-   * {@link STAGING_CONTAINER}), and creates its container. `isCarouselItem` omits the caption (only
+   * Normalises one media item, stages it in the object store behind core-api's public staged-media
+   * route (see {@link STAGING_CONTAINER}), and creates its container. `isCarouselItem` omits the caption (only
    * the parent carousel container carries it).
    */
   private async createItemContainer(
@@ -184,13 +187,14 @@ export class InstagramConnector implements Connector {
     caption?: string,
     isCarouselItem = false,
   ): Promise<string> {
+    if (!this.publicBaseUrl) throw new Error("PUBLIC_BASE_URL is not configured, so Instagram cannot fetch staged media");
     const raw = await this.mediaStore.fetch(item.container, item.key);
     const normalized = await normalizeMedia(raw, item.contentType, INSTAGRAM_SPEC);
     const isVideo = normalized.contentType.startsWith("video/");
     const key = `${randomUUID()}${extensionFor(normalized.contentType)}`;
     await this.mediaStore.put(STAGING_CONTAINER, key, normalized.bytes, normalized.contentType);
     staged.push({ container: STAGING_CONTAINER, key });
-    const url = await this.mediaStore.presignedGetUrl(STAGING_CONTAINER, key, PRESIGN_EXPIRY_SECONDS);
+    const url = `${this.publicBaseUrl.replace(/\/+$/, "")}/api/media/staged/${key}`;
 
     const params: Record<string, string> = { access_token: secret.AccessToken };
     if (isVideo) {

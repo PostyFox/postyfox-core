@@ -139,6 +139,9 @@ services:
       OBJECT_STORE_SECRET_KEY: "rustfsadmin"
       OBJECT_STORE_BUCKET: "postyfox"
       OBJECT_STORE_FORCE_PATH_STYLE: "true"
+      # Origin Instagram fetches staged media from (core-api's /api/media/staged route). Meta can't
+      # reach localhost, so local Instagram posting needs a public tunnel set here.
+      PUBLIC_BASE_URL: "${OAUTH_CALLBACK_BASE_URL:-http://localhost:4180}"
       # OpenTelemetry (auto-instrumentation via --import). OTLP/HTTP → local collector :4318.
       OTEL_SERVICE_NAME: "postyfox-connectors-node"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"

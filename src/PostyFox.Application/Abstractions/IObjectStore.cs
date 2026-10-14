@@ -11,4 +11,11 @@ public interface IObjectStore
     Task<string> GetTextAsync(string container, string key, CancellationToken ct = default);
     Task<bool> ExistsAsync(string container, string key, CancellationToken ct = default);
     Task DeleteAsync(string container, string key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Opens an object for streaming without buffering it in memory, or null when it doesn't exist.
+    /// The default buffers via <see cref="GetAsync"/>; stores that can stream should override it.
+    /// </summary>
+    async Task<Stream?> OpenReadAsync(string container, string key, CancellationToken ct = default) =>
+        await ExistsAsync(container, key, ct) ? await GetAsync(container, key, ct) : null;
 }

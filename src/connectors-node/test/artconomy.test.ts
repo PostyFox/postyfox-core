@@ -47,9 +47,6 @@ const journalPost: Post = { title: "News", body: "Commissions are open", tags: [
 const mediaStore: MediaStore = {
   fetch: async () => Buffer.from("png-bytes"),
   async put() {},
-  async presignedGetUrl() {
-    return "https://example.test/staged";
-  },
   async delete() {},
 };
 
