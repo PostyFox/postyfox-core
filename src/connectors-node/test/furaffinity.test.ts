@@ -77,9 +77,6 @@ async function imageBytes(): Promise<Buffer> {
 /** The non-`fetch` MediaStore members, unused by FurAffinity but required by the interface. */
 const noopStoreExtras = {
   async put() {},
-  async presignedGetUrl() {
-    return "https://example.test/staged";
-  },
   async delete() {},
 };
 

@@ -26,9 +26,6 @@ function fakeMediaStore(bytes: Buffer): MediaStore & {
     async put(container, key, _bytes, contentType) {
       puts.push({ container, key, contentType });
     },
-    async presignedGetUrl(container, key) {
-      return `https://staged.example/${container}/${key}`;
-    },
     async delete(container, key) {
       deletes.push({ container, key });
     },
@@ -45,7 +42,7 @@ const ctx: ConnectorContext = {
 
 function buildConnector(store?: MediaStore): InstagramConnector {
   // videoPollIntervalMs: 0 — tests don't wait out real video-processing polls.
-  return new InstagramConnector(app, store ?? fakeMediaStore(Buffer.from("fake-image-bytes")), 0);
+  return new InstagramConnector(app, store ?? fakeMediaStore(Buffer.from("fake-image-bytes")), 0, "https://app.example/");
 }
 
 /** Installs a fake global fetch for the duration of `fn`, then always restores the original. */
@@ -127,6 +124,9 @@ test("instagram deliver publishes a single image and stages + cleans up the obje
       calls.push(`${init?.method ?? "GET"} ${url.pathname}`);
       if (url.pathname === "/ig1/media") {
         assert.ok(url.search === "" && typeof init?.body === "object"); // params travel in the POST body
+        // Meta fetches via core-api's public proxy route, never the internal object store host.
+        const imageUrl = new URLSearchParams(init?.body as string).get("image_url") ?? "";
+        assert.match(imageUrl, /^https:\/\/app\.example\/api\/media\/staged\/[0-9a-f-]{36}\.jpg$/);
         return json({ id: "container-1" });
       }
       if (url.pathname === "/ig1/media_publish") return json({ id: "published-1" });
@@ -193,7 +193,7 @@ test("instagram deliver polls a video container until FINISHED before publishing
       if (url.pathname === "/ig1/media" && init?.method === "POST") {
         const body = new URLSearchParams(init.body as string);
         assert.equal(body.get("media_type"), "REELS");
-        assert.ok(body.get("video_url")?.startsWith("https://staged.example/"));
+        assert.match(body.get("video_url") ?? "", /^https:\/\/app\.example\/api\/media\/staged\/[0-9a-f-]{36}\.mp4$/);
         return json({ id: "container-1" });
       }
       if (url.pathname === "/container-1") {
@@ -209,6 +209,14 @@ test("instagram deliver polls a video container until FINISHED before publishing
 
   assert.equal(result.success, true);
   assert.ok(polls >= 2);
+});
+
+test("instagram deliver fails without staging anything when PUBLIC_BASE_URL is unset", async () => {
+  const store = fakeMediaStore(Buffer.from("fake-image-bytes"));
+  const result = await new InstagramConnector(app, store, 0, "").deliver(ctx, mediaPost);
+  assert.equal(result.success, false);
+  assert.match(result.error ?? "", /PUBLIC_BASE_URL/);
+  assert.equal(store.puts.length, 0);
 });
 
 test("instagram deliver surfaces a platform error and still cleans up staged media", async () => {

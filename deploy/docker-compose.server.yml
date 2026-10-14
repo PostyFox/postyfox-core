@@ -202,6 +202,9 @@ services:
       OBJECT_STORE_SECRET_KEY: "${RUSTFS_SECRET_KEY}"
       OBJECT_STORE_BUCKET: "${RUSTFS_BUCKET:-postyfox}"
       OBJECT_STORE_FORCE_PATH_STYLE: "true"
+      # Public origin platforms that fetch media by URL (Instagram) pull staged files from, via
+      # core-api's /api/media/staged route. Same host as OAuth__CallbackBaseUrl.
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
       # OpenTelemetry (auto-instrumentation via --import in the image). Node uses OTLP/HTTP → the
       # collector's :4318. deployment.environment/cluster are stamped by the collector.
       OTEL_SERVICE_NAME: "postyfox-connectors-node"
@@ -378,7 +381,7 @@ services:
       # for the matching entries used in local dev). Without the last one, an unauthenticated
       # visitor to any public route (e.g. /privacy) gets a 401 from this call, which the SPA's
       # global authInterceptor treats as "session expired" and bounces to sign-in.
-      OAUTH2_PROXY_SKIP_AUTH_ROUTES: 'POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$,GET=^/api/connectors/cookie-pairing/sites$,GET=^/privacy$,GET=^/tos$,GET=^/api/terms/current$,GET=^/[^/]+\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$,GET=^/deployment-config\.json$'
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: 'POST=^/api/webhooks/,POST=^/api/connectors/cookie-pairing/complete$,OPTIONS=^/api/connectors/cookie-pairing/complete$,GET=^/api/connectors/cookie-pairing/sites$,GET=^/privacy$,GET=^/tos$,GET=^/api/terms/current$,GET=^/[^/]+\.(?:js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|map)$,GET=^/deployment-config\.json$,GET=^/api/media/staged/[0-9a-f-]{36}\.(?:jpg|png|mp4)$,HEAD=^/api/media/staged/[0-9a-f-]{36}\.(?:jpg|png|mp4)$'
       # Forward the validated ID token to upstreams as `Authorization: Bearer` (APIs re-validate it).
       OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"

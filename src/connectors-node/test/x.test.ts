@@ -23,9 +23,6 @@ const imagePost: Post = {
 
 const noopStoreExtras = {
   async put() {},
-  async presignedGetUrl() {
-    return "https://example.test/staged";
-  },
   async delete() {},
 };
 

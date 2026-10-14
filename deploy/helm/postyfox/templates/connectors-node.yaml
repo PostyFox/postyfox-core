@@ -36,6 +36,9 @@ spec:
               valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: ObjectStore__AccessKey } }
             - name: OBJECT_STORE_SECRET_KEY
               valueFrom: { secretKeyRef: { name: {{ include "postyfox.secretName" . }}, key: ObjectStore__SecretKey } }
+            # Origin Instagram fetches staged media from (core-api's /api/media/staged route).
+            - name: PUBLIC_BASE_URL
+              valueFrom: { configMapKeyRef: { name: {{ include "postyfox.fullname" . }}-config, key: OAuth__CallbackBaseUrl } }
           livenessProbe: { httpGet: { path: /health, port: 8090 }, initialDelaySeconds: 5, periodSeconds: 15, timeoutSeconds: 3 }
           resources: {{- toYaml .Values.resources | nindent 12 }}
 ---

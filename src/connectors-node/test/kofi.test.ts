@@ -45,9 +45,6 @@ const imagePost: Post = {
 const mediaStore: MediaStore = {
   fetch: async () => Buffer.from("png-bytes"),
   async put() {},
-  async presignedGetUrl() {
-    return "https://example.test/staged";
-  },
   async delete() {},
 };
 
