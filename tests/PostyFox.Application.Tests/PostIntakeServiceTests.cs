@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PostyFox.Application.Connectors;
 using PostyFox.Application.Dtos;
@@ -437,6 +438,37 @@ public class PostIntakeServiceTests
             svc.CreateAsync("u1", new CreatePostRequest(
                 [connectorId], "Title", "Body", null, null,
                 [new MediaRef("telegram", "u1/x", "image/png")], null, null, null)));
+    }
+
+    [Fact]
+    public async Task Create_rejects_malformed_media_framing()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var svc = New(db, new FakeBus(), new FixedClock(DateTimeOffset.UnixEpoch));
+        var framing = new MediaFraming(MediaFramingMode.Crop, Crop: new CropRegion(0.5, 0, 0.75, 1));
+
+        await Assert.ThrowsAsync<PostyFox.Application.Connectors.ConnectorValidationException>(() =>
+            svc.CreateAsync("u1", new CreatePostRequest(
+                [connectorId], "Title", "Body", null, null,
+                [new MediaRef("media", "u1/abc/pic.png", "image/png", Framing: framing)], null, null, null)));
+    }
+
+    [Fact]
+    public async Task Create_stores_media_framing_in_the_manifest()
+    {
+        using var db = TestDbContext.Create();
+        var connectorId = await SeedConnectorAsync(db, "u1");
+        var svc = New(db, new FakeBus(), new FixedClock(DateTimeOffset.UnixEpoch));
+        var framing = new MediaFraming(MediaFramingMode.Pad, "#112233");
+
+        var result = await svc.CreateAsync("u1", new CreatePostRequest(
+            [connectorId], "Title", "Body", null, null,
+            [new MediaRef("media", "u1/abc/pic.png", "image/png", Framing: framing)], null, null, null));
+
+        var post = await db.Posts.SingleAsync(p => p.Id == result!.PostId);
+        var media = Json.Deserialize<List<MediaRef>>(post.MediaManifestJson)!;
+        Assert.Equal(framing, media[0].Framing);
     }
 
     [Fact]

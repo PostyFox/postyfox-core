@@ -189,7 +189,7 @@ export class InstagramConnector implements Connector {
   ): Promise<string> {
     if (!this.publicBaseUrl) throw new Error("PUBLIC_BASE_URL is not configured, so Instagram cannot fetch staged media");
     const raw = await this.mediaStore.fetch(item.container, item.key);
-    const normalized = await normalizeMedia(raw, item.contentType, INSTAGRAM_SPEC);
+    const normalized = await normalizeMedia(raw, item.contentType, INSTAGRAM_SPEC, item.framing);
     const isVideo = normalized.contentType.startsWith("video/");
     const key = `${randomUUID()}${extensionFor(normalized.contentType)}`;
     await this.mediaStore.put(STAGING_CONTAINER, key, normalized.bytes, normalized.contentType);

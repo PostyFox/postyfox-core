@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using PostyFox.Domain.Enums;
 
 namespace PostyFox.Application.Connectors;
@@ -200,6 +201,8 @@ public sealed record ConnectorTarget(string Id, string Name);
 /// <see cref="ImageMaxWidth"/>/<see cref="ImageMaxHeight"/>/<see cref="VideoMaxWidth"/>/
 /// <see cref="VideoMaxHeight"/> are in pixels. A file within the byte cap can still exceed the
 /// dimension cap (a small, high-resolution image) and get resized regardless — both must be checked.
+/// <see cref="ImageMinAspectRatio"/>/<see cref="ImageMaxAspectRatio"/> are width ÷ height bounds the
+/// platform rejects images outside of (issue #39); null means no bound.
 /// </summary>
 public sealed record ConnectorLimits(
     int? MaxContentLength,
@@ -210,7 +213,9 @@ public sealed record ConnectorLimits(
     int? ImageMaxWidth = null,
     int? ImageMaxHeight = null,
     int? VideoMaxWidth = null,
-    int? VideoMaxHeight = null);
+    int? VideoMaxHeight = null,
+    double? ImageMinAspectRatio = null,
+    double? ImageMaxAspectRatio = null);
 
 /// <summary>
 /// Optional capability for connectors that can report live per-instance limits (e.g. Fediverse
@@ -247,8 +252,32 @@ public sealed record RenderedPost(
 /// <see cref="IsDefault"/> marks the author's chosen "primary" image when a post carries several:
 /// platforms limited to a single attachment (FurAffinity) submit this one instead of rejecting a
 /// multi-image post; platforms that accept multiple images ignore the flag and send everything.
+/// <see cref="Framing"/> is the author's choice for fitting a still image into a platform's accepted
+/// aspect-ratio range (issue #39); null means no choice was made.
 /// </summary>
-public sealed record MediaRef(string Container, string Key, string ContentType, string? Alt = null, bool IsDefault = false);
+public sealed record MediaRef(string Container, string Key, string ContentType, string? Alt = null, bool IsDefault = false, MediaFraming? Framing = null);
+
+/// <summary>How an image outside a platform's accepted aspect-ratio range is brought within it.</summary>
+public enum MediaFramingMode
+{
+    /// <summary>Extend the canvas on the short sides with <see cref="MediaFraming.Background"/>.</summary>
+    Pad = 0,
+    /// <summary>Cut the image down to <see cref="MediaFraming.Crop"/>.</summary>
+    Crop = 1,
+}
+
+/// <summary>A crop rectangle as fractions (0..1) of the auto-oriented image, origin top-left.</summary>
+public sealed record CropRegion(double X, double Y, double Width, double Height);
+
+/// <summary>
+/// The author's framing choice for one image (issue #39). It is applied only on platforms whose
+/// spec declares an aspect-ratio range the image falls outside; elsewhere the image is sent as-is.
+/// <see cref="Background"/> is a "#rrggbb" padding colour, or null for transparent (which becomes
+/// white where the output format has no alpha). <see cref="Crop"/> is required for
+/// <see cref="MediaFramingMode.Crop"/>, and its centre is also sent as the focal point to platforms
+/// that crop previews themselves (Fediverse).
+/// </summary>
+public sealed record MediaFraming(MediaFramingMode Mode, string? Background = null, CropRegion? Crop = null);
 
 /// <summary>Media bytes resolved from the object store by a connector at delivery time.</summary>
 public sealed record MediaContent(string FileName, string ContentType, byte[] Data, string? Alt = null);
@@ -264,11 +293,24 @@ public static class MediaContainers
     public const string Staging = "instagram-staging";
 }
 
-public static class MediaRefValidation
+public static partial class MediaRefValidation
 {
     /// <summary>True when a <see cref="MediaRef"/> points at an object this user actually owns.</summary>
     public static bool IsOwnedBy(this MediaRef media, string userId) =>
         media.Container == MediaContainers.Media && media.Key.StartsWith($"{userId}/", StringComparison.Ordinal);
+
+    /// <summary>True when <see cref="MediaRef.Framing"/> is absent or well-formed.</summary>
+    public static bool HasValidFraming(this MediaRef media) => media.Framing switch
+    {
+        null => true,
+        { Mode: MediaFramingMode.Pad, Background: var bg } => bg is null || HexColour().IsMatch(bg),
+        { Mode: MediaFramingMode.Crop, Crop: { } c } =>
+            c.X >= 0 && c.Y >= 0 && c.Width > 0 && c.Height > 0 && c.X + c.Width <= 1.0001 && c.Y + c.Height <= 1.0001,
+        _ => false,
+    };
+
+    [GeneratedRegex("^#[0-9a-fA-F]{6}$")]
+    private static partial Regex HexColour();
 }
 
 /// <summary>Outcome of a delivery attempt.</summary>

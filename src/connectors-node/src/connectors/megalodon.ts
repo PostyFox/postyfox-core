@@ -52,7 +52,7 @@ export interface MegalodonClientLike {
   verifyAccountCredentials(): Promise<{ data: { acct?: string; username?: string; url?: string } }>;
   uploadMedia(
     file: unknown,
-    options?: { description?: string },
+    options?: { description?: string; focus?: string },
   ): Promise<{ data: { id: string } }>;
   /**
    * Sets a drive file's alt text (`comment`). Present only on the firefish (Iceshrimp) client:
@@ -389,6 +389,8 @@ export class MegalodonConnector implements Connector {
       imageMaxHeight: FEDIVERSE_SPEC.image.maxHeight ?? null,
       videoMaxWidth: FEDIVERSE_SPEC.video.maxWidth ?? null,
       videoMaxHeight: FEDIVERSE_SPEC.video.maxHeight ?? null,
+      imageMinAspectRatio: null,
+      imageMaxAspectRatio: null,
     };
   }
 
@@ -474,7 +476,7 @@ export class MegalodonConnector implements Connector {
     const resolved: { item: PostMedia; bytes: Buffer }[] = [];
     for (const item of media) {
       const raw = await this.mediaStore.fetch(item.container, item.key);
-      const normalized = await normalizeMedia(raw, item.contentType, spec);
+      const normalized = await normalizeMedia(raw, item.contentType, spec, item.framing);
       assertMediaAllowed(item, normalized.bytes, normalized.contentType, limits);
       resolved.push({ item, bytes: normalized.bytes });
     }
@@ -499,6 +501,7 @@ export class MegalodonConnector implements Connector {
         await writeFile(filePath, bytes);
         const uploaded = await client.uploadMedia(createReadStream(filePath), {
           description: item.alt ?? undefined,
+          focus: focusFor(item),
         });
         // Where the driver drops the upload description (firefish), apply alt text explicitly.
         if (item.alt && client.setMediaComment) {
@@ -562,4 +565,17 @@ function hostOf(instanceUrl: string): string {
 function appendQueryParam(url: string, key: string, value: string): string {
   const sep = url.includes("?") ? "&" : "?";
   return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+}
+
+/**
+ * Mastodon's focal point ("x,y", each -1..1, y pointing up) taken from the centre of the author's
+ * crop (issue #39). Instances have no aspect-ratio limit, so the full image is uploaded and the
+ * focus only steers how timeline previews crop it. Undefined when no crop was chosen.
+ */
+export function focusFor(item: PostMedia): string | undefined {
+  const crop = item.framing?.mode === "crop" ? item.framing.crop : null;
+  if (!crop) return undefined;
+  const x = 2 * (crop.x + crop.width / 2) - 1;
+  const y = 1 - 2 * (crop.y + crop.height / 2);
+  return `${x.toFixed(2)},${y.toFixed(2)}`;
 }

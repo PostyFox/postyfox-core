@@ -126,14 +126,20 @@ export class BlueskyConnector implements Connector {
       const cap = BLUESKY_SPEC.maxAttachments ?? MAX_IMAGES;
       const media = (post.media ?? []).slice(0, cap);
       if (media.length > 0) {
-        const images: { image: BlueskyBlobRef; alt: string }[] = [];
+        const images: { image: BlueskyBlobRef; alt: string; aspectRatio?: { width: number; height: number } }[] = [];
         for (const item of media) {
           const raw = await this.mediaStore.fetch(item.container, item.key);
-          const normalized = await normalizeMedia(raw, item.contentType, BLUESKY_SPEC);
+          const normalized = await normalizeMedia(raw, item.contentType, BLUESKY_SPEC, item.framing);
           const uploaded = await agent.uploadBlob(normalized.bytes, {
             encoding: normalized.contentType,
           });
-          images.push({ image: uploaded.data.blob, alt: item.alt ?? "" });
+          // Without aspectRatio the Bluesky app lays the image out as a square (issue #39).
+          const { width, height } = normalized;
+          images.push({
+            image: uploaded.data.blob,
+            alt: item.alt ?? "",
+            ...(width && height ? { aspectRatio: { width, height } } : {}),
+          });
         }
         embed = { $type: "app.bsky.embed.images", images };
       }

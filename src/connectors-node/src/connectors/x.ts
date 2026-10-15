@@ -94,7 +94,7 @@ export class XConnector implements Connector {
         if (!item.contentType.toLowerCase().startsWith("image/"))
           throw new Error("X integration currently supports image attachments only");
         const raw = await this.mediaStore.fetch(item.container, item.key);
-        const normalized = await normalizeMedia(raw, item.contentType, X_SPEC);
+        const normalized = await normalizeMedia(raw, item.contentType, X_SPEC, item.framing);
         const bytes = normalized.bytes;
         // rettiwt-api takes an ArrayBuffer, not a Buffer view, which may sit inside a larger pool.
         const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;

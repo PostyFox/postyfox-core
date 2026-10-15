@@ -216,6 +216,37 @@ public class ConnectorOperationsServiceTests
         Assert.False(results[0].WillResize);
     }
 
+    [Theory]
+    [InlineData(400, 1000, true)]   // 0.4, taller than 4:5
+    [InlineData(2000, 500, true)]   // 4.0, wider than 1.91:1
+    [InlineData(1000, 1000, false)]
+    [InlineData(null, null, false)] // undecoded: nothing to judge
+    public async Task CheckMedia_flags_an_image_outside_the_aspect_range_as_needing_framing(int? width, int? height, bool expected)
+    {
+        using var db = TestDbContext.Create();
+        var limits = new ConnectorLimits(null, 10, ImageMinAspectRatio: 0.8, ImageMaxAspectRatio: 1.91);
+        var id = await SeedAsync(db, "Instagram", "{}");
+        var svc = New(db, new FakeConnectorWithLimits("Instagram", limits));
+
+        var results = await svc.CheckMediaAsync("u1", [id], fileSize: 100_000, mimeType: "image/jpeg", width, height);
+
+        Assert.Equal(expected, results[0].NeedsFraming);
+        Assert.Equal(0.8, results[0].ImageMinAspectRatio);
+        Assert.Equal(1.91, results[0].ImageMaxAspectRatio);
+    }
+
+    [Fact]
+    public async Task CheckMedia_never_needs_framing_without_an_aspect_range()
+    {
+        using var db = TestDbContext.Create();
+        var id = await SeedAsync(db, "Platform8", "{}");
+        var svc = New(db, new FakeConnectorWithLimits("Platform8", new ConnectorLimits(null, 4)));
+
+        var results = await svc.CheckMediaAsync("u1", [id], fileSize: 100_000, mimeType: "image/jpeg", 100, 5000);
+
+        Assert.False(results[0].NeedsFraming);
+    }
+
     [Fact]
     public async Task CheckMedia_skips_unknown_connector_ids()
     {

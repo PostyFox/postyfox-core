@@ -188,6 +188,8 @@ public sealed class PostIntakeService(
         var media = request.Media ?? [];
         if (media.Any(m => !m.IsOwnedBy(post.UserId)))
             throw new ConnectorValidationException(Messages.InvalidMediaReference);
+        if (media.Any(m => !m.HasValidFraming()))
+            throw new ConnectorValidationException(Messages.InvalidMediaFraming);
         post.MediaManifestJson = Json.Serialize(media);
         post.VariablesJson = Json.Serialize(request.Variables ?? new Dictionary<string, string>());
         post.TemplateId = request.TemplateId;

@@ -341,6 +341,16 @@ over `IMediaProcessor` (ImageSharp for stills, FFMpegCore for video); in connect
 the instance's reported caps over the static spec. The `ffmpeg` binary is installed in the
 posting-worker and connectors-node runtime images.
 
+**Aspect-ratio framing (issue #39).** A spec can declare a width ÷ height range the platform rejects
+images outside of (Instagram: 4:5 to 1.91:1), reported to the frontend through the connector's
+limits and the media-check endpoint (`NeedsFraming`). The author chooses, per image, to pad (a colour,
+or transparent where the output format keeps alpha, else white) or crop to a region; the choice
+travels on the `MediaRef` as `Framing` and is applied only on platforms whose range the image falls
+outside, so every other target still gets the full image. With no choice, delivery to such a platform
+fails with a clear error rather than being cropped silently. Platforms that crop previews themselves
+get display hints instead: Bluesky receives each image's `aspectRatio`, and Fediverse instances
+receive the crop centre as the media focal point.
+
 ```mermaid
 sequenceDiagram
     participant W as posting-worker

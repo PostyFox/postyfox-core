@@ -353,6 +353,8 @@ test("megalodon getLimits reports character, attachment, MIME and size caps", as
     imageMaxHeight: 2048,
     videoMaxWidth: 1920,
     videoMaxHeight: 1080,
+    imageMinAspectRatio: null,
+    imageMaxAspectRatio: null,
   });
 });
 
@@ -377,6 +379,8 @@ test("megalodon getLimits returns nulls when the instance omits limits", async (
     imageMaxHeight: 2048,
     videoMaxWidth: 1920,
     videoMaxHeight: 1080,
+    imageMinAspectRatio: null,
+    imageMaxAspectRatio: null,
   });
 });
 
@@ -419,6 +423,8 @@ test("megalodon getLimits bypasses Pixelfed's null contact-account converter", a
     imageMaxHeight: 2048,
     videoMaxWidth: 1920,
     videoMaxHeight: 1080,
+    imageMinAspectRatio: null,
+    imageMaxAspectRatio: null,
   });
 });
 
@@ -711,4 +717,32 @@ test("megalodon oauth complete exchanges the session token for an access token",
   // MiAuth ignores the (empty) verifier and exchanges the stored session token.
   assert.equal(exchanged?.code, "sess-tok");
   assert.deepEqual(JSON.parse(done.secretJson), { AccessToken: "new-access-token", Sns: "firefish" });
+});
+
+test("megalodon deliver sends the crop centre as the media focal point", async () => {
+  const store = fakeMediaStore(Buffer.from("img-bytes"));
+  const options: ({ description?: string; focus?: string } | undefined)[] = [];
+  const connector = build(
+    fakeClient({
+      async uploadMedia(_file, opts) {
+        options.push(opts);
+        return { data: { id: `media-${options.length}` } };
+      },
+    }),
+    store,
+  );
+
+  const result = await connector.deliver(ctx, {
+    title: null,
+    body: "framed",
+    tags: [],
+    media: [
+      // Crop centred at (0.75, 0.25) of the image → right of centre and above it.
+      { container: "media", key: "u1/a/one.jpg", contentType: "image/jpeg", alt: null, framing: { mode: "crop", crop: { x: 0.5, y: 0, width: 0.5, height: 0.5 } } },
+      { container: "media", key: "u1/a/two.jpg", contentType: "image/jpeg", alt: null, framing: { mode: "pad", background: "#000000" } },
+    ],
+  });
+  assert.equal(result.success, true);
+  assert.equal(options[0]?.focus, "0.50,0.50");
+  assert.equal(options[1]?.focus, undefined);
 });

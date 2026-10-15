@@ -85,6 +85,18 @@ public sealed class FakeConnectorWithMediaSpec(string platform, MediaSpec mediaS
         => Task.FromResult(DeliveryResult.Ok("ext-1"));
 }
 
+/// <summary>A connector reporting live limits (as connectors-node ones do), e.g. an aspect-ratio range.</summary>
+public sealed class FakeConnectorWithLimits(string platform, ConnectorLimits limits) : IConnector, ILimitsConnector
+{
+    public ConnectorDescriptor Describe() => new(platform, platform, true, true, false, null);
+    public Task<ConnectorLimits?> GetLimitsAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult<ConnectorLimits?>(limits);
+    public Task<AuthState> IsAuthenticatedAsync(ConnectorContext c, CancellationToken t = default) => Task.FromResult(new AuthState(true));
+    public Task<IReadOnlyList<ConnectorTarget>> ListTargetsAsync(ConnectorContext c, CancellationToken t = default)
+        => Task.FromResult<IReadOnlyList<ConnectorTarget>>([]);
+    public Task<DeliveryResult> DeliverAsync(ConnectorContext c, RenderedPost post, CancellationToken t = default)
+        => Task.FromResult(DeliveryResult.Ok("ext-1"));
+}
+
 /// <summary>A connector for platforms exposing multiple user-selectable destinations (e.g. Telegram).</summary>
 public sealed class FakeMultiTargetConnector(string platform) : IConnector
 {

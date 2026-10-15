@@ -1,3 +1,5 @@
+import type { MediaFraming } from "./media/types.js";
+
 /** Context object shared by all connector operations. */
 export interface ConnectorContext {
   connectorId: string;
@@ -27,6 +29,8 @@ export interface PostMedia {
    * single-image connector then falls back to the first item.
    */
   isDefault?: boolean;
+  /** Author's aspect-ratio framing choice (see media/types.ts), or null/undefined for none. */
+  framing?: MediaFraming | null;
 }
 
 export interface Post {
@@ -83,6 +87,9 @@ export interface ConnectorLimits {
   /** Max video pixel dimensions; null means "not reported / no cap". */
   videoMaxWidth: number | null;
   videoMaxHeight: number | null;
+  /** Width ÷ height bounds images must fall within (issue #39); null means no bound. */
+  imageMinAspectRatio: number | null;
+  imageMaxAspectRatio: number | null;
 }
 
 /** Result of deleting an already-delivered post from its platform. */

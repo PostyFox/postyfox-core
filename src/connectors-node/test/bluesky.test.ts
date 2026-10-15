@@ -265,6 +265,8 @@ test("bluesky getLimits reports the platform's fixed media caps", async () => {
     imageMaxHeight: 2000,
     videoMaxWidth: 1920,
     videoMaxHeight: 1080,
+    imageMinAspectRatio: null,
+    imageMaxAspectRatio: null,
   });
 });
 
@@ -374,4 +376,29 @@ test("bluesky deliver posts markdown links as link facets over their text", asyn
       features: [{ $type: "app.bsky.richtext.facet#link", uri: "https://postyfox.com" }],
     },
   ]);
+});
+
+test("bluesky deliver sends each image's aspect ratio so the app doesn't square-crop it", async () => {
+  const png = await sharp({ create: { width: 300, height: 600, channels: 3, background: "#123456" } }).png().toBuffer();
+  let postedRecord: { embed?: unknown } | undefined;
+  const connector = new BlueskyConnector(
+    () =>
+      fakeAgent({
+        async post(record) {
+          postedRecord = record;
+          return { uri: "at://did:plc:abc/app.bsky.feed.post/xyz123", cid: "cid1" };
+        },
+      }),
+    fakeMediaStore(png),
+  );
+
+  const result = await connector.deliver(ctx, {
+    title: null,
+    body: "tall",
+    tags: [],
+    media: [{ container: "media", key: "u1/a/tall.png", contentType: "image/png", alt: null }],
+  });
+  assert.equal(result.success, true);
+  const embed = postedRecord?.embed as { images: { aspectRatio?: { width: number; height: number } }[] };
+  assert.deepEqual(embed.images[0].aspectRatio, { width: 300, height: 600 });
 });

@@ -52,6 +52,32 @@ public class HttpConnectorTests
     }
 
     [Fact]
+    public async Task Deliver_sends_the_authors_framing_choice()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":true}");
+        var post = Post([
+            new MediaRef("media", "u1/x/pic.png", "image/png", Framing: new MediaFraming(MediaFramingMode.Crop, Crop: new CropRegion(0.25, 0, 0.5, 1))),
+            new MediaRef("media", "u1/y/pic2.png", "image/png", Framing: new MediaFraming(MediaFramingMode.Pad, "#112233")),
+            new MediaRef("media", "u1/z/pic3.png", "image/png"),
+        ]);
+        await New(handler).DeliverAsync(Ctx(), post);
+
+        Assert.Contains("\"framing\":{\"mode\":\"crop\",\"background\":null,\"crop\":{\"x\":0.25,\"y\":0,\"width\":0.5,\"height\":1}}", handler.LastBody);
+        Assert.Contains("\"framing\":{\"mode\":\"pad\",\"background\":\"#112233\",\"crop\":null}", handler.LastBody);
+        Assert.Contains("\"framing\":null", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task GetLimits_reads_the_image_aspect_ratio_range()
+    {
+        var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"maxMediaAttachments\":10,\"imageMinAspectRatio\":0.8,\"imageMaxAspectRatio\":1.91}");
+        var limits = await New(handler).GetLimitsAsync(Ctx());
+
+        Assert.Equal(0.8, limits!.ImageMinAspectRatio);
+        Assert.Equal(1.91, limits.ImageMaxAspectRatio);
+    }
+
+    [Fact]
     public async Task Deliver_sends_the_authors_chosen_default_image_flag()
     {
         var handler = new StubHttpHandler(HttpStatusCode.OK, "{\"success\":true}");
