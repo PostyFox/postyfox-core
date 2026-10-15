@@ -108,12 +108,13 @@ period, or Instagram revoked it), `isAuthenticated` starts failing and the user 
 
 **Media delivery.** Unlike every other connector, Instagram's Content Publishing API fetches media
 by public URL (`image_url`/`video_url`) rather than accepting a direct upload. The connector stages
-normalised bytes in the object store under a short-lived presigned URL for Instagram to fetch, then
-deletes the staged object once the container is created. This only works when the object store is
-actually reachable from the public internet — true for real S3 in a deployed stack, but **not** true
-for a local MinIO dev stack reachable only inside the Docker network. Instagram delivery cannot be
-exercised end-to-end against a local-only dev stack; it needs at least a tunnel (e.g. ngrok) or a
-real S3 bucket.
+normalised bytes in the object store's `instagram-staging` container, and core-api serves them
+anonymously at `${PUBLIC_BASE_URL}/api/media/staged/{uuid}.{ext}` (oauth2-proxy's skip-auth routes
+must include that path, and the proxy must be restarted when they change). The staged object is
+deleted once the attempt finishes, successful or not. `PUBLIC_BASE_URL` must be reachable from the
+public internet, so Instagram delivery cannot be exercised end-to-end against a local-only dev stack
+without a tunnel (e.g. ngrok). Feed and carousel images must be 4:5 to 1.91:1; one outside that range
+needs the author's pad/crop choice (see ARCHITECTURE.md, aspect-ratio framing).
 
 ## Operator setup (SoFurry)
 

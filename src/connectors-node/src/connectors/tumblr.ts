@@ -252,7 +252,7 @@ export class TumblrConnector implements Connector {
         const resolved: TumblrMedia[] = [];
         for (const item of media) {
           const raw = await this.mediaStore.fetch(item.container, item.key);
-          const normalized = await normalizeMedia(raw, item.contentType, TUMBLR_SPEC);
+          const normalized = await normalizeMedia(raw, item.contentType, TUMBLR_SPEC, item.framing);
           resolved.push({
             fileName: renameExtension(basename(item.key) || item.key, normalized.contentType),
             contentType: normalized.contentType,

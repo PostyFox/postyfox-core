@@ -18,9 +18,9 @@ export const TUMBLR_SPEC: MediaSpec = {
 
 // Meta's documented Content Publishing API limits: JPEG only for images (PNG/WebP are converted),
 // 8MB cap; video (Reels) up to 1GB/limited duration, MP4/MOV container. maxAttachments is the
-// carousel cap (2–10 items).
+// carousel cap (2–10 items). Feed and carousel images must be 4:5 to 1.91:1.
 export const INSTAGRAM_SPEC: MediaSpec = {
-  image: { maxWidth: 1440, maxHeight: 1800, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg"] },
+  image: { maxWidth: 1440, maxHeight: 1800, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg"], minAspectRatio: 0.8, maxAspectRatio: 1.91 },
   video: { maxWidth: 1920, maxHeight: 1080, maxBytes: 1_073_741_824, maxDurationSeconds: 900, allowedMimeTypes: ["video/mp4"] },
   maxAttachments: 10,
 };
@@ -106,6 +106,8 @@ export function limitsFromSpec(spec: MediaSpec): ConnectorLimits {
     imageMaxHeight: spec.image.maxHeight ?? null,
     videoMaxWidth: spec.video.maxWidth ?? null,
     videoMaxHeight: spec.video.maxHeight ?? null,
+    imageMinAspectRatio: spec.image.minAspectRatio ?? null,
+    imageMaxAspectRatio: spec.image.maxAspectRatio ?? null,
   };
 }
 

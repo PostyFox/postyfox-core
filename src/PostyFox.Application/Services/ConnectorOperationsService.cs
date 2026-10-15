@@ -107,6 +107,8 @@ public sealed class ConnectorOperationsService(
                 (isImage && height is { } ih && limits.ImageMaxHeight is { } imh && ih > imh) ||
                 (isVideo && width is { } vw && limits.VideoMaxWidth is { } vmw && vw > vmw) ||
                 (isVideo && height is { } vh && limits.VideoMaxHeight is { } vmh && vh > vmh);
+            var needsFraming = isImage && width is { } fw && height is { } fh && fh > 0 &&
+                (fw / (double)fh < limits.ImageMinAspectRatio || fw / (double)fh > limits.ImageMaxAspectRatio);
 
             result.Add(new MediaCheckResultItem(
                 connectorId,
@@ -119,7 +121,10 @@ public sealed class ConnectorOperationsService(
                 limits.ImageMaxWidth,
                 limits.ImageMaxHeight,
                 limits.VideoMaxWidth,
-                limits.VideoMaxHeight));
+                limits.VideoMaxHeight,
+                limits.ImageMinAspectRatio,
+                limits.ImageMaxAspectRatio,
+                needsFraming));
         }
         return result;
     }

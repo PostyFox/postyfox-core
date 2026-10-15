@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import sharp from "sharp";
 import { InstagramConnector } from "../src/connectors/instagram.js";
 import type { MediaStore } from "../src/media-store.js";
 import type { ConnectorContext, Post } from "../src/types.js";
@@ -107,6 +108,8 @@ test("instagram getLimits reports the platform's fixed media caps", async () => 
     imageMaxHeight: 1800,
     videoMaxWidth: 1920,
     videoMaxHeight: 1080,
+    imageMinAspectRatio: 0.8,
+    imageMaxAspectRatio: 1.91,
   });
 });
 
@@ -291,4 +294,38 @@ test("instagram refresh returns null when there is no stored secret", async () =
   const connector = buildConnector();
   const result = await connector.refresh({ ...ctx, secretJson: null });
   assert.equal(result, null);
+});
+
+test("instagram deliver refuses an out-of-range image with no framing before calling the API", async () => {
+  const tall = await sharp({ create: { width: 400, height: 1000, channels: 3, background: "#123456" } }).jpeg().toBuffer();
+  const store = fakeMediaStore(tall);
+  const result = await withFetch(
+    (url) => {
+      throw new Error(`unexpected request: ${url}`);
+    },
+    () => buildConnector(store).deliver(ctx, mediaPost),
+  );
+  assert.equal(result.success, false);
+  assert.match(result.error ?? "", /aspect ratio 0\.40 is outside .*0\.8–1\.91.*choose pad or crop/);
+  assert.equal(store.puts.length, 0);
+});
+
+test("instagram deliver pads an out-of-range image when the author chose padding", async () => {
+  const tall = await sharp({ create: { width: 400, height: 1000, channels: 3, background: "#123456" } }).jpeg().toBuffer();
+  const store = fakeMediaStore(tall);
+  const framed: Post = {
+    ...post,
+    media: [{ ...mediaPost.media[0], framing: { mode: "pad", background: null } }],
+  };
+  const result = await withFetch(
+    (url) => {
+      if (url.pathname === "/ig1/media") return json({ id: "container-1" });
+      if (url.pathname === "/ig1/media_publish") return json({ id: "published-1" });
+      if (url.pathname === "/published-1") return json({ permalink: "https://instagram.com/p/xyz" });
+      throw new Error(`unexpected request: ${url}`);
+    },
+    () => buildConnector(store).deliver(ctx, framed),
+  );
+  assert.equal(result.success, true);
+  assert.equal(store.puts[0].contentType, "image/jpeg");
 });

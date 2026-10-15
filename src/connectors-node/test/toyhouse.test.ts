@@ -109,6 +109,8 @@ test("toyhouse getLimits reports the platform's fixed media caps", async () => {
     imageMaxHeight: null,
     videoMaxWidth: null,
     videoMaxHeight: null,
+    imageMinAspectRatio: null,
+    imageMaxAspectRatio: null,
   });
 });
 

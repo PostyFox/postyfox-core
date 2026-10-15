@@ -384,7 +384,9 @@ public sealed record MediaCheckRequest(
 /// <see cref="ImageMaxWidth"/>/<see cref="ImageMaxHeight"/>/<see cref="VideoMaxWidth"/>/
 /// <see cref="VideoMaxHeight"/> are in pixels — all null means the connector reports no cap for that
 /// axis. <see cref="MaxMediaAttachments"/> is the connector's cap on the number of files a single post
-/// can carry; null means no reported cap.
+/// can carry; null means no reported cap. <see cref="NeedsFraming"/> is true when the image's aspect
+/// ratio falls outside <see cref="ImageMinAspectRatio"/>..<see cref="ImageMaxAspectRatio"/>, so the
+/// author must choose to pad or crop it (issue #39) before the platform will accept it.
 /// </summary>
 public sealed record MediaCheckResultItem(
     Guid ConnectorId,
@@ -397,7 +399,10 @@ public sealed record MediaCheckResultItem(
     int? ImageMaxWidth = null,
     int? ImageMaxHeight = null,
     int? VideoMaxWidth = null,
-    int? VideoMaxHeight = null);
+    int? VideoMaxHeight = null,
+    double? ImageMinAspectRatio = null,
+    double? ImageMaxAspectRatio = null,
+    bool NeedsFraming = false);
 
 public sealed record TriggerRegistrationRequest(
     string SourceType,

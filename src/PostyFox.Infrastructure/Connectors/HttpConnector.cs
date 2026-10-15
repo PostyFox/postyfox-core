@@ -43,10 +43,12 @@ public sealed class HttpConnector(
         int? imgH = r.TryGetProperty("imageMaxHeight", out var ih) && ih.ValueKind == JsonValueKind.Number ? ih.GetInt32() : null;
         int? vidW = r.TryGetProperty("videoMaxWidth", out var vw) && vw.ValueKind == JsonValueKind.Number ? vw.GetInt32() : null;
         int? vidH = r.TryGetProperty("videoMaxHeight", out var vh) && vh.ValueKind == JsonValueKind.Number ? vh.GetInt32() : null;
+        double? minAr = r.TryGetProperty("imageMinAspectRatio", out var mn) && mn.ValueKind == JsonValueKind.Number ? mn.GetDouble() : null;
+        double? maxAr = r.TryGetProperty("imageMaxAspectRatio", out var mx) && mx.ValueKind == JsonValueKind.Number ? mx.GetDouble() : null;
         IReadOnlyList<string>? mimes = null;
         if (r.TryGetProperty("supportedMimeTypes", out var t) && t.ValueKind == JsonValueKind.Array)
             mimes = t.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!).ToList();
-        return new ConnectorLimits(max, att, mimes, img, vid, imgW, imgH, vidW, vidH);
+        return new ConnectorLimits(max, att, mimes, img, vid, imgW, imgH, vidW, vidH, minAr, maxAr);
     }
 
     public async Task<OAuthStart?> StartAuthorizationAsync(string callbackUrl, string? configJson, CancellationToken ct = default)
@@ -110,7 +112,17 @@ public sealed class HttpConnector(
                 tags = post.Tags,
                 rating = post.Rating?.ToString().ToLowerInvariant(),
                 // Media is passed by reference; the Node service fetches the bytes from the object store.
-                media = post.Media.Select(m => new { container = m.Container, key = m.Key, contentType = m.ContentType, alt = m.Alt, isDefault = m.IsDefault })
+                media = post.Media.Select(m => new
+                {
+                    container = m.Container,
+                    key = m.Key,
+                    contentType = m.ContentType,
+                    alt = m.Alt,
+                    isDefault = m.IsDefault,
+                    framing = m.Framing is { } f
+                        ? new { mode = f.Mode.ToString().ToLowerInvariant(), background = f.Background, crop = f.Crop }
+                        : null
+                })
             }
         };
         var res = await PostAsync("deliver", payload, ct);
