@@ -42,6 +42,20 @@ public class MediaEndpointsTests(CustomWebApplicationFactory factory) : IClassFi
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
     }
 
+    [Theory]
+    [InlineData("image/svg+xml", "logo.svg")]
+    [InlineData("application/octet-stream", "logo.SVG")]
+    public async Task Upload_rejects_svg(string contentType, string fileName)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent("<svg/>"u8.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        form.Add(file, "file", fileName);
+
+        var resp = await _client.PostAsync("/api/media", form);
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+    }
+
     [Fact]
     public async Task Limits_reports_the_configured_max_upload_size()
     {

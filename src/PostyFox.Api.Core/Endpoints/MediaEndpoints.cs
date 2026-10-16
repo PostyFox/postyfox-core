@@ -29,6 +29,9 @@ public static class MediaEndpoints
                 return Results.BadRequest(new { error = Messages.NoFileUploaded });
 
             var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+            if (contentType.StartsWith("image/svg", StringComparison.OrdinalIgnoreCase) ||
+                Path.GetExtension(file.FileName).ToLowerInvariant() is ".svg" or ".svgz")
+                return Results.BadRequest(new { error = Messages.SvgUnsupported });
             var key = $"{user.UserId()}/{Guid.NewGuid():N}/{Path.GetFileName(file.FileName)}";
 
             await using var stream = file.OpenReadStream();

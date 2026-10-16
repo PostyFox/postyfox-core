@@ -16,6 +16,9 @@
   <data name="NoFileUploaded" xml:space="preserve">
     <value>No file uploaded</value>
   </data>
+  <data name="SvgUnsupported" xml:space="preserve">
+    <value>SVG isn't supported. Export it as a PNG or JPEG and upload that.</value>
+  </data>
   <data name="InviteExpired" xml:space="preserve">
     <value>This invite has expired.</value>
   </data>
