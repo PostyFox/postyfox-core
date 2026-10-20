@@ -306,7 +306,7 @@ Volumes (named per stack):
 Tunables (in `.env`):
 
 ```
-VAULT_VERSION=2.1.2     # Vault image tag
+VAULT_VERSION=2.2.0     # Vault image tag
 VAULT_KEY_SHARES=5       # Shamir key shares generated on first init
 VAULT_KEY_THRESHOLD=3    # shares required to unseal
 VAULT_ROLE_ID=...        # AppRole RoleId, pinned by vault-init, used by the app

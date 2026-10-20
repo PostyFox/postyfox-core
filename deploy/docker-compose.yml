@@ -63,7 +63,7 @@ services:
       retries: 20
 
   rustfs:
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.3
     environment:
       RUSTFS_ACCESS_KEY: rustfsadmin
       RUSTFS_SECRET_KEY: rustfsadmin
@@ -108,7 +108,7 @@ services:
   # at `secret/` — so unlike docker-compose.server.yml's vault there's no vault-init bootstrap
   # sidecar or AppRole provisioning step needed. Not for anything you'd mind losing on `down -v`.
   vault:
-    image: "hashicorp/vault:2.1.2"
+    image: "hashicorp/vault:2.2.0"
     command: ["server", "-dev", "-dev-root-token-id=postyfox-dev-root-token"]
     environment:
       # The `vault` CLI defaults to https://127.0.0.1:8200 without this — needed for the
@@ -123,7 +123,7 @@ services:
     restart: unless-stopped
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.162.0
+    image: otel/opentelemetry-collector-contrib:0.163.1
     command: ["--config=/etc/otel/config.yaml"]
     volumes: ["./otel/config.yaml:/etc/otel/config.yaml:ro"]
     ports: ["4317:4317", "4318:4318"]
@@ -244,7 +244,7 @@ services:
       retries: 20      
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.8.0
+    image: quay.io/keycloak/keycloak:26.8.1
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -267,7 +267,7 @@ services:
   # Internal path router behind oauth2-proxy. Fans /api/posts + /api/webhooks to post-api and
   # everything else to core-api, preserving the full request path. Not published publicly.
   gateway:
-    image: nginx:1.31.6-alpine
+    image: nginx:1.31.7-alpine
     # Before starting nginx, derive its DNS `resolver` from the container's /etc/resolv.conf and
     # write it to the http-context include (nginx.conf pulls in /etc/nginx/resolver.d/*.conf). nginx
     # can't read resolv.conf itself and needs a literal IP, which is runtime-specific: Docker's

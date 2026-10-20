@@ -1,6 +1,6 @@
 # Mastodon test stack
 
-Brings up a local Mastodon instance (`ghcr.io/mastodon/mastodon:v4.7.1`) for manually testing the
+Brings up a local Mastodon instance (`ghcr.io/mastodon/mastodon:v4.7.3`) for manually testing the
 PostyFox `mastodon` connector. Fully automated — see [../README.md](../README.md) for what that
 means and what's disabled (federation, outbound mail) and why.
 

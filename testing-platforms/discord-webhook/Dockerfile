@@ -1,4 +1,4 @@
-FROM python:3.12-alpine
+FROM python:3.15-alpine
 COPY app/server.py /app/server.py
 EXPOSE 8090
 USER 65534:65534
