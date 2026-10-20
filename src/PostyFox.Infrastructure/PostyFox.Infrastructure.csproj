@@ -17,9 +17,9 @@
     <PackageReference Include="aneillans.adapters-secrets.HashiCorpVault" Version="1.2.31" />
     <PackageReference Include="aneillans.adapters-secrets.Infisical" Version="1.2.31" />
     <PackageReference Include="aneillans.adapters-secrets.InMemory" Version="1.2.31" />
-    <PackageReference Include="AWSSDK.S3" Version="4.0.104.3" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.5" />
     <PackageReference Include="FFMpegCore" Version="5.5.0" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="4.1.2" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="4.1.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -28,7 +28,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.13" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-    <PackageReference Include="OpenTelemetry" Version="1.19.1" />
+    <PackageReference Include="OpenTelemetry" Version="1.20.0" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
     <PackageReference Include="WTelegramClient" Version="4.4.9" />
   </ItemGroup>

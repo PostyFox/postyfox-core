@@ -40,7 +40,7 @@ services:
   # One-shot: runs the DB migrations and seed data (Owner/Admin/Moderator UserRole rows —
   # admin-init's `--role Owner` needs these) the prebuilt image doesn't run on its own, then exits.
   migrate:
-    image: ghcr.io/mastodon/mastodon:v4.7.1
+    image: ghcr.io/mastodon/mastodon:v4.7.3
     env_file: .env
     command: ["bash", "-c", "bundle exec rails db:migrate && bundle exec rails db:seed"]
     volumes:
@@ -51,7 +51,7 @@ services:
     networks: [net]
 
   web:
-    image: ghcr.io/mastodon/mastodon:v4.7.1
+    image: ghcr.io/mastodon/mastodon:v4.7.3
     restart: unless-stopped
     env_file: .env
     command: bundle exec puma -C config/puma.rb
@@ -70,7 +70,7 @@ services:
     networks: [net]
 
   streaming:
-    image: ghcr.io/mastodon/mastodon-streaming:v4.7.1
+    image: ghcr.io/mastodon/mastodon-streaming:v4.7.3
     restart: unless-stopped
     env_file: .env
     command: node ./streaming/index.js
@@ -81,7 +81,7 @@ services:
     networks: [net]
 
   sidekiq:
-    image: ghcr.io/mastodon/mastodon:v4.7.1
+    image: ghcr.io/mastodon/mastodon:v4.7.3
     restart: unless-stopped
     env_file: .env
     command: bundle exec sidekiq
@@ -98,7 +98,7 @@ services:
   # Preferences > Administration > Server Settings, which never happens here since the account is
   # created headlessly), then exits. See README.md for the credentials.
   admin-init:
-    image: ghcr.io/mastodon/mastodon:v4.7.1
+    image: ghcr.io/mastodon/mastodon:v4.7.3
     env_file: .env
     entrypoint: ["/bin/bash", "-c"]
     command:

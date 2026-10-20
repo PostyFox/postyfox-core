@@ -1,6 +1,6 @@
 # GoToSocial test stack
 
-Brings up a local GoToSocial instance (`docker.io/superseriousbusiness/gotosocial:0.22.1`, sqlite
+Brings up a local GoToSocial instance (`docker.io/superseriousbusiness/gotosocial:0.22.2`, sqlite
 backend, no separate database container needed) for manually testing the PostyFox `gotosocial`
 connector. See [../README.md](../README.md) for the shared conventions (what's disabled and why).
 

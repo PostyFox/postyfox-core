@@ -8,7 +8,7 @@
 
 services:
   gotosocial:
-    image: docker.io/superseriousbusiness/gotosocial:0.22.1
+    image: docker.io/superseriousbusiness/gotosocial:0.22.2
     restart: unless-stopped
     env_file: .env
     user: "1000:1000"
@@ -30,7 +30,7 @@ services:
   # like this. Not promoted to admin — a normal confirmed account is all the PostyFox connector
   # needs (OAuth login + posting). See README.md for the credentials.
   admin-init:
-    image: docker.io/superseriousbusiness/gotosocial:0.22.1
+    image: docker.io/superseriousbusiness/gotosocial:0.22.2
     env_file: .env
     user: "1000:1000"
     entrypoint: ["/bin/sh", "-c"]
