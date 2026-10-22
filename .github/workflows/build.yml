@@ -94,8 +94,6 @@ jobs:
         PROJECT=${{ matrix.project }}
         ASSEMBLY=${{ matrix.assembly }}
         VERSION=${{ needs.version.outputs.version }}
-      # full SHA is the tag Deploy uses
-      extra_tags: type=sha,format=long,prefix=
     secrets:
       registry_password: ${{ secrets.GITHUB_TOKEN }}
       build_secrets: |
