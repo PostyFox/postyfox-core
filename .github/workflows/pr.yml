@@ -24,7 +24,9 @@ jobs:
       project: PostyFox.Platform.slnx
       # ImageSharp 4 needs its licence at build time; dependabot PRs read it from Dependabot secrets
       env_secrets: SIXLABORS_LICENSE_KEY
-    secrets: inherit
+    # secrets: inherit doesn't cross from the PostyFox org to a personal-account template
+    secrets:
+      secrets_json: ${{ toJSON(secrets) }}
 
   connectors-node:
     uses: aneillans/github-templates/.github/workflows/node-ci.yml@v1
@@ -36,6 +38,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: aneillans/github-templates/actions/setup-node-cache@v1
+        with:
+          # no lockfile here
+          cache: ""
       - run: node clients/postyfox-connect/scripts/validate.mjs
       - run: node --check clients/postyfox-connect/browser-extension/popup.js
       - run: node clients/postyfox-connect/scripts/smoke.mjs

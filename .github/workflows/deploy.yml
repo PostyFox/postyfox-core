@@ -197,7 +197,7 @@ jobs:
         config.email.host=EMAIL_SMTP_HOST
         config.email.user=EMAIL_SMTP_USER
         config.email.from=EMAIL_SMTP_FROM
-    secrets: inherit
+    # everything mapped above is a production environment secret/variable, read by the template job
 
   release:
     needs: [resolve, production]
