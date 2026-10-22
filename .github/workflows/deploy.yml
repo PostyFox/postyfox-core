@@ -1,92 +1,141 @@
-name: deploy
+name: Deploy
+
+# Ships images already built by Build; nothing is rebuilt here.
+#   development: automatic after every successful main Build, or manual for any built commit
+#   production:  manual only, and only for commits with a successful Build on main.
+#                Optionally tags vX.Y.Z (the version baked in at build) and publishes a GitHub Release.
+
+on:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [development, production]
+        default: development
+      sha:
+        description: Commit to deploy (blank = latest successful main Build)
+        required: false
+        type: string
+      release:
+        description: Production only. Tag vX.Y.Z and publish a GitHub Release after deploying
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
-on:
-  workflow_run:
-    workflows: [platform-ci]
-    types: [completed]
-    branches: [main]
-
 env:
-  REGISTRY: ghcr.io
-  DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-  DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-  DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-  DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+  IMAGE_REPOSITORY: ghcr.io/postyfox/postyfox-core
 
 jobs:
-  check-prerequisites:
-    # Verify all required secrets are configured
+  resolve:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    outputs:
+      environment: ${{ steps.target.outputs.environment }}
+      sha: ${{ steps.sha.outputs.sha }}
+      version: ${{ steps.image.outputs.version }}
     steps:
-      - name: Check required secrets
+      - name: Resolve environment
+        id: target
+        env:
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: echo "environment=${INPUT_ENVIRONMENT:-development}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve commit
+        id: sha
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.sha }}
         run: |
-          missing=0
-
-          if [ -z "$DEPLOY_HOST" ]; then
-            echo "❌ Missing required secret: DEPLOY_HOST"
-            missing=1
+          if [ -n "$RUN_SHA" ]; then
+            sha="$RUN_SHA"
+          elif [ -n "$INPUT_SHA" ]; then
+            [[ "$INPUT_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]] || { echo "::error::Not a commit SHA: $INPUT_SHA"; exit 1; }
+            sha="$(git rev-parse --verify "${INPUT_SHA}^{commit}")"
+          else
+            sha="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build.yml/runs?branch=main&status=success&per_page=1" \
+              --jq '.workflow_runs[0].head_sha // empty')"
+            [ -n "$sha" ] || { echo "::error::No successful main Build found"; exit 1; }
           fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Deploying $sha"
 
-          if [ -z "$DEPLOY_USER" ]; then
-            echo "❌ Missing required secret: DEPLOY_USER"
-            missing=1
-          fi
-
-          if [ -z "$DEPLOY_SSH_KEY" ]; then
-            echo "❌ Missing required secret: DEPLOY_SSH_KEY"
-            missing=1
-          fi
-
-          if [ "$missing" -ne 0 ]; then
-            echo
-            echo "Configure them in: Settings -> Secrets and variables -> Actions"
+      - name: Require a successful Build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.sha.outputs.sha }}
+          ENVIRONMENT: ${{ steps.target.outputs.environment }}
+        run: |
+          branch_filter='true'
+          [ "$ENVIRONMENT" = production ] && branch_filter='.head_branch == "main"'
+          count="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build.yml/runs?head_sha=$SHA&status=success" \
+            --jq "[.workflow_runs[] | select($branch_filter)] | length")"
+          if [ "$count" -eq 0 ]; then
+            [ "$ENVIRONMENT" = production ] && echo "::error::$SHA has no successful Build on main" \
+              || echo "::error::$SHA has no successful Build"
             exit 1
           fi
 
-          echo "✅ Required deployment secrets are configured"
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-  deploy-dev:
-    # Runs on the self-hosted dev agent. Production is deployed separately, to Kubernetes via
-    # Helm, only through release.yml / deploy-manual.yml's production job.
-    needs: check-prerequisites
-    if: |
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+      - name: Require images and read version
+        id: image
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          for service in core-api post-api worker connectors-node; do
+            docker buildx imagetools inspect "$IMAGE_REPOSITORY-$service:$SHA" >/dev/null \
+              || { echo "::error::Missing image $IMAGE_REPOSITORY-$service:$SHA"; exit 1; }
+          done
+          version="$(docker buildx imagetools inspect "$IMAGE_REPOSITORY-core-api:$SHA" --format '{{json .Image}}' \
+            | jq -r '.config.Env[] | select(startswith("POSTYFOX_VERSION=")) | sub("^POSTYFOX_VERSION="; "")')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version $version"
+
+  development:
+    needs: resolve
+    if: needs.resolve.outputs.environment == 'development'
     runs-on: [self-hosted]
     environment: development
+    concurrency: deploy-development
+    env:
+      STACK_DIR: /opt/postyfox/dev
+      IMAGE_TAG: ${{ needs.resolve.outputs.sha }}
+      COMPOSE_PROJECT_NAME: postyfox-dev
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Resolve image repository
-        id: image
-        run: |
-          echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-
-      - name: Determine stack dir
-        id: stack
-        run: |
-          echo "dir=/opt/postyfox/dev" >> "$GITHUB_OUTPUT"
+          ref: ${{ needs.resolve.outputs.sha }}
 
       - name: Copy deployment files
-        env:
-          STACK_DIR: ${{ steps.stack.outputs.dir }}
         run: |
-          echo "🧹 Removing stale gateway config, preserving any frontend-deployed overrides (conf.d/*.conf is glob-included; leftover fragments would still load)..."
-          # The postyfox-frontend deploy drops routes/90-root.conf + upstreams/frontend.conf into this
-          # same tree to point the SPA route at its container. Back those two up, wipe core's base, and
-          # restore them after the copy so a frontend deploy survives a core redeploy.
           cd "$STACK_DIR"
+          # The frontend deploy drops these two fragments into core's gateway tree; keep them across
+          # the wipe, since conf.d/*.conf is glob-included and stale fragments would otherwise load.
           rm -rf .gwbak
           mkdir -p .gwbak/routes .gwbak/upstreams
           cp -p gateway/conf.d/routes/90-root.conf .gwbak/routes/ 2>/dev/null || true
           cp -p gateway/conf.d/upstreams/frontend.conf .gwbak/upstreams/ 2>/dev/null || true
           rm -rf gateway
-          echo "📦 Copying deployment files to dev stack..."
           cp -a "$GITHUB_WORKSPACE"/deploy/docker-compose.server.yml \
             "$GITHUB_WORKSPACE"/deploy/docker-compose.dev.yml \
             "$GITHUB_WORKSPACE"/deploy/rabbitmq \
@@ -95,72 +144,85 @@ jobs:
             "$GITHUB_WORKSPACE"/deploy/vault \
             "$GITHUB_WORKSPACE"/deploy/fluent-bit \
             "$STACK_DIR"/
-          echo "📦 Syncing otel collector config to dev stack (preserves any otel/certs)..."
-          mkdir -p "$STACK_DIR"/otel
-          cp -a "$GITHUB_WORKSPACE"/deploy/otel/config.yaml \
-            "$GITHUB_WORKSPACE"/deploy/otel/config.central.yaml \
-            "$STACK_DIR"/otel/
-          echo "🔧 Restoring frontend gateway overrides (no-op on a core-only stack)..."
-          [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/90-root.conf || true
-          [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/frontend.conf || true
+          # otel/ may hold certs, so only sync the config files
+          mkdir -p otel
+          cp -a "$GITHUB_WORKSPACE"/deploy/otel/config.yaml "$GITHUB_WORKSPACE"/deploy/otel/config.central.yaml otel/
+          [ -f .gwbak/routes/90-root.conf ] && cp -p .gwbak/routes/90-root.conf gateway/conf.d/routes/ || true
+          [ -f .gwbak/upstreams/frontend.conf ] && cp -p .gwbak/upstreams/frontend.conf gateway/conf.d/upstreams/ || true
           rm -rf .gwbak
 
       - name: Deploy dev stack
-        env:
-          IMAGE_REPOSITORY: ${{ steps.image.outputs.repository }}
-          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
-          STACK_DIR: ${{ steps.stack.outputs.dir }}
         run: |
-          echo "🚀 Deploying to dev stack..."
           cd "$STACK_DIR"
-          echo '📋 Checking .env file exists...'
-          [ -f .env ] || { echo '❌ Missing .env file'; exit 1; }
-          # Capture the workflow-resolved image coords BEFORE sourcing .env: a pinned or `latest`
-          # IMAGE_TAG in .env would otherwise clobber the correct commit-SHA tag (there is no
-          # `:latest` image; build-images only pushes commit-SHA tags).
-          WF_IMAGE_REPOSITORY="${IMAGE_REPOSITORY}"; WF_IMAGE_TAG="${IMAGE_TAG}"
+          [ -f .env ] || { echo "::error::Missing $STACK_DIR/.env"; exit 1; }
+          # .env may pin IMAGE_REPOSITORY/IMAGE_TAG; the workflow's values win
+          wf_repository="$IMAGE_REPOSITORY"; wf_tag="$IMAGE_TAG"
           source .env 2>/dev/null || true
-          export IMAGE_REPOSITORY="${WF_IMAGE_REPOSITORY}"
-          export IMAGE_TAG="${WF_IMAGE_TAG}"
-          export COMPOSE_PROJECT_NAME=postyfox-dev
-          echo '🔄 Pulling latest images...'
-          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull || { echo '❌ Failed to pull images'; exit 1; }
-          echo '⬆️ Updating services...'
-          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d --build || { echo '❌ Failed to start services'; exit 1; }
-          echo '🔄 Reloading gateway + oauth2-proxy (their conf.d/templates are bind-mounted; up -d alone does not pick up content changes)...'
-          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml restart gateway oauth2-proxy || { echo '❌ Failed to restart gateway/oauth2-proxy'; exit 1; }
-          echo '✅ Dev stack deployed successfully'
-          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps
+          export IMAGE_REPOSITORY="$wf_repository" IMAGE_TAG="$wf_tag"
+          compose() { docker compose -f docker-compose.server.yml -f docker-compose.dev.yml "$@"; }
+          compose pull
+          compose up -d --build
+          # conf.d/templates are bind-mounted; up -d doesn't pick up content changes
+          compose restart gateway oauth2-proxy
+          compose ps
 
-      - name: Health check
+  production:
+    needs: resolve
+    if: needs.resolve.outputs.environment == 'production'
+    concurrency: deploy-production
+    uses: aneillans/github-templates/.github/workflows/helm-deploy.yml@v1
+    with:
+      environment: production
+      # cluster API is only reachable from the self-hosted runner
+      runs_on: self-hosted
+      ref: ${{ needs.resolve.outputs.sha }}
+      chart: deploy/helm/postyfox
+      release: postyfox
+      namespace: postyfox
+      values_files: deploy/helm/postyfox/values-prod.yaml
+      set_values: image.tag=${{ needs.resolve.outputs.sha }}
+      secret_values: |
+        rabbitmq.password=RABBITMQ_PASSWORD
+        redis.password=REDIS_PASSWORD
+        secrets.externalPostgresConnection=EXTERNAL_POSTGRES_CONNECTION
+        secrets.hashiCorpVaultSecretId=VAULT_SECRET_ID
+        secrets.internalToken=INTERNAL_TOKEN
+        secrets.objectStoreAccessKey=RUSTFS_ACCESS_KEY
+        secrets.objectStoreSecretKey=RUSTFS_SECRET_KEY
+        secrets.emailPassword=EMAIL_SMTP_PASSWORD
+        config.hashiCorpVaultRoleId=VAULT_ROLE_ID
+        oauth2Proxy.clientSecret=OIDC_CLIENT_SECRET
+        oauth2Proxy.cookieSecret=OAUTH2_PROXY_COOKIE_SECRET
+      var_values: |
+        config.email.host=EMAIL_SMTP_HOST
+        config.email.user=EMAIL_SMTP_USER
+        config.email.from=EMAIL_SMTP_FROM
+    secrets: inherit
+
+  release:
+    needs: [resolve, production]
+    if: inputs.release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - name: Tag and publish release
         env:
-          STACK_DIR: ${{ steps.stack.outputs.dir }}
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+          VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          echo "🏥 Running health checks..."
-          sleep 10
-          cd "$STACK_DIR"
-          docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps | grep -E '(core-api|post-api)' | grep -E '(Up|healthy)' || {
-            echo '⚠️ Warning: Some services may not be healthy yet'
-          }
-          true
-
-      - name: Deployment summary
-        if: success()
-        run: |
-          cat << 'EOF'
-          ✅ Dev deployment completed successfully!
-          
-          📊 Stack Information:
-          - Environment: Development (auto-deploy on every push)
-          - Project: postyfox-dev
-          - Location: /opt/postyfox/dev
-          - Images: ${{ steps.image.outputs.repository }}-*:${{ github.event.workflow_run.head_sha }}
-          
-          🔗 Access points:
-          - Core API: http://${{ env.DEPLOY_HOST }}:8080
-          - Post API: http://${{ env.DEPLOY_HOST }}:8081
-          - RabbitMQ Admin: http://${{ env.DEPLOY_HOST }}:15672
-          
-          📝 Check logs:
-          - ssh ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd /opt/postyfox/dev && docker compose logs -f core-api"
-          EOF
+          tag="v${VERSION%%+*}"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::No release version baked into the image (got '$VERSION')"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "::error::$tag already exists; deployed $SHA without tagging"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag" "$SHA"
+          git push origin "$tag"
+          gh release create "$tag" --verify-tag --title "$tag" --generate-notes

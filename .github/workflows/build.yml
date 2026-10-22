@@ -1,0 +1,102 @@
+name: Build
+
+# Validates, then builds and pushes every service image to GHCR tagged with the full commit SHA.
+# Deploy only ever ships images built here; production only accepts builds of main.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    uses: ./.github/workflows/pr.yml
+    secrets: inherit
+
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Compute next version (Conventional Commits)
+        id: semver
+        uses: paulhatch/semantic-version@v6.0.4
+        with:
+          tag_prefix: "v"
+          # `type!:` or BREAKING CHANGE -> major; `feat:` -> minor; else patch
+          major_pattern: '/^\w+(\(.+\))?!:|BREAKING CHANGE/'
+          minor_pattern: '/^feat(\(.+\))?:/'
+          version_format: '${major}.${minor}.${patch}'
+          search_commit_body: true
+      # baked into the images; Deploy reads it back to name the optional release tag
+      - name: Stamp build
+        id: version
+        env:
+          SEMVER: ${{ steps.semver.outputs.version }}
+        run: echo "version=${SEMVER}+$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+  images:
+    needs: [validate, version]
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - service: core-api
+            context: .
+            dockerfile: Dockerfile
+            target: final
+            project: src/PostyFox.Api.Core/PostyFox.Api.Core.csproj
+            assembly: PostyFox.Api.Core.dll
+          - service: post-api
+            context: .
+            dockerfile: Dockerfile
+            target: final
+            project: src/PostyFox.Api.Post/PostyFox.Api.Post.csproj
+            assembly: PostyFox.Api.Post.dll
+          - service: worker
+            context: .
+            dockerfile: Dockerfile
+            # only the worker shells out to ffmpeg
+            target: with-ffmpeg
+            project: src/PostyFox.Worker.Posting/PostyFox.Worker.Posting.csproj
+            assembly: PostyFox.Worker.Posting.dll
+          - service: connectors-node
+            context: src/connectors-node
+            dockerfile: src/connectors-node/Dockerfile
+            target: runtime
+            project: ""
+            assembly: ""
+    uses: aneillans/github-templates/.github/workflows/docker-build-push.yml@v1
+    with:
+      registry: ghcr.io
+      registry_username: ${{ github.actor }}
+      image_name: postyfox/postyfox-core-${{ matrix.service }}
+      context: ${{ matrix.context }}
+      dockerfile: ${{ matrix.dockerfile }}
+      target: ${{ matrix.target }}
+      build_args: |
+        PROJECT=${{ matrix.project }}
+        ASSEMBLY=${{ matrix.assembly }}
+        VERSION=${{ needs.version.outputs.version }}
+      # full SHA is the tag Deploy uses
+      extra_tags: type=sha,format=long,prefix=
+    secrets:
+      registry_password: ${{ secrets.GITHUB_TOKEN }}
+      build_secrets: |
+        sixlabors_license=${{ secrets.SIXLABORS_LICENSE_KEY }}

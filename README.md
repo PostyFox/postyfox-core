@@ -193,7 +193,7 @@ gh secret set SIXLABORS_LICENSE_KEY -R PostyFox/postyfox-core --app dependabot <
 ## Deploy
 
 All modes consume the same published images (`{registry}/{repository}-{service}:{tag}`, built by
-CI in [`.github/workflows/platform-ci.yml`](./.github/workflows/platform-ci.yml)):
+[`.github/workflows/build.yml`](./.github/workflows/build.yml)):
 
 - **docker-compose**: `deploy/docker-compose.yml` (local / single-host).
 - **Helm**: `deploy/helm/postyfox` for any Kubernetes (`helm install postyfox deploy/helm/postyfox`);
