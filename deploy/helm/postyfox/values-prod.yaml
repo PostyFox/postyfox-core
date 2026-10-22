@@ -1,7 +1,7 @@
 # Production overlay for the postyfox-core Helm chart.
 # Secret values are NOT set here: they are rendered at deploy time from GitHub Environment
-# secrets into a gitignored values-secrets.yaml and passed as an extra -f to `helm upgrade`
-# (see .github/workflows/release.yml). This file only carries non-sensitive configuration.
+# secrets into a temporary values file and passed as an extra -f to `helm upgrade`
+# (see `secret_values` in .github/workflows/deploy.yml). This file only carries non-sensitive configuration.
 
 config:
   authOidcAudience: oauth2-proxy

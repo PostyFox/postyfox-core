@@ -20,9 +20,9 @@ these (the self-hosted runner deploys locally); `production` needs the Kubernete
 **`production` environment secrets** (Kubernetes/Helm deploy):
 - `KUBE_CONFIG`: base64-encoded kubeconfig for the target cluster (a Service Account token scoped
   to the `postyfox` namespace is strongly recommended over a personal/admin credential)
-- `DB_PASSWORD`, `RABBITMQ_PASSWORD`, `REDIS_PASSWORD`: passwords for the chart's own
-  Postgres/RabbitMQ/Redis (only needed if you leave `postgres.enabled`/etc `true` in
-  `values-prod.yaml`, see that file)
+- `RABBITMQ_PASSWORD`, `REDIS_PASSWORD`: passwords for the chart's own RabbitMQ/Redis. If you
+  enable the bundled Postgres in `values-prod.yaml`, add `DB_PASSWORD` and map it to
+  `postgres.password` in `deploy.yml`'s `secret_values`
 - `EXTERNAL_POSTGRES_CONNECTION`: full connection string, only used if `postgres.enabled: false`
 - `VAULT_ROLE_ID` / `VAULT_SECRET_ID`: AppRole credentials pinned into the bundled Vault
 - `INTERNAL_TOKEN`: shared token between core/worker and connectors-node
@@ -35,36 +35,36 @@ Environment variables; kept out of the repo the same way, just not treated as se
 - `EMAIL_SMTP_HOST`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_FROM`: SMTP relay host/username/from-address.
   Leaving these unset still works: invites are created, the email just doesn't send (logged).
 
-These are rendered into a workflow-local, gitignored values file at deploy time (never committed,
-see the "Render secret overrides" step in `release.yml`/`deploy-manual.yml`) and layered on top of
+These are mapped to chart values by `secret_values`/`var_values` in `deploy.yml`, written to a
+temporary values file at deploy time (never committed) and layered on top of
 `deploy/helm/postyfox/values-prod.yaml`, which holds the non-secret cluster configuration
 (hostnames, ingress class, replica counts, toggles).
 
 ### 4. Self-hosted runner
 Install a Linux self-hosted GitHub Actions runner on the dev deployment host. Dev deploy jobs run
-there directly (docker-compose); production deploys run on GitHub-hosted runners against the
-Kubernetes cluster via `helm upgrade`.
+there directly (docker-compose). Production deploys also run on it, since the Kubernetes API
+is only reachable from there, via `helm upgrade --install`.
 
 ### 5. GitHub Environments
 Create in repository → Settings → Environments:
 - `development`: auto-deploy from main on the self-hosted runner
-- `production`: requires approval for manual deployment
+- `production`: requires approval; deployment branch policy limited to `main`
 
 ## Deployment Flow
 
 ```
-Push to main
-    ↓
-platform-ci.yml: test, build, push images
-    ↓
-    └─→ Dev: self-hosted runner deploy (docker-compose) ✅
+Pull request → pr.yml (PR Validation): .NET + node tests, terraform validate, helm lint
 
-release.yml (manual dispatch, semver)
+Push to main → build.yml (Build): PR Validation again, then push images tagged <commit sha>,
+               with the next semver (Conventional Commits) baked in as <x.y.z>+<short sha>
     ↓
-    ├─→ Dev: self-hosted runner deploy (docker-compose) ✅
-    │
-    └─→ Prod: wait for approval → helm upgrade --install (Kubernetes) ⏳
+deploy.yml (Deploy)
+    ├─→ Dev: automatic after each main Build, or manual for any built commit (docker-compose)
+    └─→ Prod: manual only, main builds only, approval → helm upgrade --install (Kubernetes)
+              optional: tag vX.Y.Z on the deployed commit + GitHub Release
 ```
+
+Nothing is rebuilt at deploy time; rollback is a manual Deploy of an older main commit.
 
 Production is a **separate Kubernetes deployment target** from dev: dev stays on docker-compose
 (self-hosted runner, single host); prod is a Helm chart (`deploy/helm/postyfox`) deployed into a
@@ -74,9 +74,9 @@ Production is a **separate Kubernetes deployment target** from dev: dev stays on
 
 | File | Purpose |
 |------|---------|
-| `.github/workflows/deploy.yml` | Auto deploy: dev on self-hosted runner (docker-compose) |
-| `.github/workflows/deploy-manual.yml` | Manual deploy: dev on self-hosted runner, prod via Helm |
-| `.github/workflows/release.yml` | Semver release: dev via docker-compose, prod via Helm (approval-gated) |
+| `.github/workflows/pr.yml` | PR Validation: tests and IaC lint (also called by Build) |
+| `.github/workflows/build.yml` | Build: validate, then push images tagged with the commit SHA |
+| `.github/workflows/deploy.yml` | Deploy: dev (auto/manual, docker-compose), prod (manual, Helm, optional release tag) |
 | `deploy/docker-compose.server.yml` | Dev-stack deployment base composition |
 | `deploy/docker-compose.dev.yml` | Dev overrides (isolation, lighter resources) |
 | `deploy/.env.dev.example` | Dev configuration template |

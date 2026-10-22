@@ -16,7 +16,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 # Published application container images (built + pushed by this repo's CI). One repo per
-# service, shared tag - see .github/workflows/release.yml.
+# service, shared tag (the commit SHA) - see .github/workflows/build.yml.
 image:
   registry: ghcr.io
   repository: your-org/postyfox     # images: {registry}/{repository}-{service}:{tag}

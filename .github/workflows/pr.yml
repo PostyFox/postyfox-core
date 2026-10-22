@@ -1,0 +1,58 @@
+name: PR Validation
+
+on:
+  pull_request:
+  # Build runs the same checks before producing images
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # only supersede PR runs; a cancelled call from Build would fail that build
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dotnet:
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    uses: aneillans/github-templates/.github/workflows/dotnet-ci.yml@v1
+    with:
+      project: PostyFox.Platform.slnx
+      # ImageSharp 4 needs its licence at build time; dependabot PRs read it from Dependabot secrets
+      env_secrets: SIXLABORS_LICENSE_KEY
+    # secrets: inherit doesn't cross from the PostyFox org to a personal-account template
+    secrets:
+      secrets_json: ${{ toJSON(secrets) }}
+
+  connectors-node:
+    uses: aneillans/github-templates/.github/workflows/node-ci.yml@v1
+    with:
+      working_directory: src/connectors-node
+
+  connect-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aneillans/github-templates/actions/setup-node-cache@v1
+        with:
+          # no lockfile here
+          cache: ""
+      - run: node clients/postyfox-connect/scripts/validate.mjs
+      - run: node --check clients/postyfox-connect/browser-extension/popup.js
+      - run: node clients/postyfox-connect/scripts/smoke.mjs
+
+  terraform:
+    uses: aneillans/github-templates/.github/workflows/terraform-validate.yml@v1
+    with:
+      working_directory: deploy/terraform-aca
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+      - run: helm lint deploy/helm/postyfox
