@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { OAuthCompleteResult, OAuthProvider, OAuthStartResult } from "../types.js";
+import { fetchWithUserAgent } from "../user-agent.js";
 
 // From https://api.sofurry.com/.well-known/openid-configuration.
 const AUTHORIZE_URL = "https://api.sofurry.com/oauth/authorize";
@@ -40,7 +41,7 @@ export class SofurryGrantRejectedError extends Error {}
 export class SofurryOAuth2Provider implements OAuthProvider {
   constructor(
     private readonly app: SofurryAppCredentials,
-    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly fetchImpl: typeof fetch = fetchWithUserAgent,
   ) {}
 
   async startAuthorization({ callbackUrl }: { callbackUrl: string }): Promise<OAuthStartResult> {

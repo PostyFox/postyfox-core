@@ -2,6 +2,7 @@ import { AtpAgent } from "@atproto/api";
 import { buildRichText } from "./bluesky-richtext.js";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
+import { fetchWithUserAgent } from "../user-agent.js";
 import { normalizeMedia } from "../media/normalize.js";
 import { BLUESKY_SPEC, limitsFromSpec } from "../media/specs.js";
 import type {
@@ -58,7 +59,7 @@ interface BlueskySecret {
 const DEFAULT_SERVICE = "https://bsky.social";
 
 const defaultAgentFactory: BlueskyAgentFactory = () =>
-  new AtpAgent({ service: DEFAULT_SERVICE }) as unknown as BlueskyAgentLike;
+  new AtpAgent({ service: DEFAULT_SERVICE, fetch: fetchWithUserAgent }) as unknown as BlueskyAgentLike;
 
 export class BlueskyConnector implements Connector {
   constructor(

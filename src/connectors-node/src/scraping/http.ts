@@ -1,4 +1,5 @@
 import { CookieJar } from "tough-cookie";
+import { DEFAULT_USER_AGENT } from "../user-agent.js";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
@@ -28,7 +29,6 @@ export type FetchLike = (input: string | URL | Request, init?: RequestInit) => P
  * Cookie-aware HTTP session for form-driven websites. The origin is fixed at construction time so
  * connector-controlled paths cannot become an SSRF escape hatch.
  */
-const FALLBACK_USER_AGENT = "Mozilla/5.0 (compatible; PostyFox/1.0; +http://docs.postyfox.com)";
 
 export class CookieScraperSession implements ScraperSession {
   private readonly origin: string;
@@ -65,7 +65,7 @@ export class CookieScraperSession implements ScraperSession {
       options.fetch ?? fetch,
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES,
-      options.userAgent?.trim() || FALLBACK_USER_AGENT,
+      options.userAgent?.trim() || DEFAULT_USER_AGENT,
     );
     await session.importCookieHeader(cookieHeader);
     return session;

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { OAuthCompleteResult, OAuthProvider, OAuthStartResult } from "../types.js";
+import { fetchWithUserAgent } from "../user-agent.js";
 
 const AUTHORIZE_URL = "https://www.instagram.com/oauth/authorize";
 const TOKEN_URL = "https://api.instagram.com/oauth/access_token";
@@ -89,7 +90,7 @@ export class InstagramOAuth2Provider implements OAuthProvider {
       redirect_uri: callbackUrl,
       code,
     });
-    const res = await fetch(TOKEN_URL, {
+    const res = await fetchWithUserAgent(TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
@@ -105,7 +106,7 @@ export class InstagramOAuth2Provider implements OAuthProvider {
     url.searchParams.set("grant_type", "ig_exchange_token");
     url.searchParams.set("client_secret", this.app.appSecret);
     url.searchParams.set("access_token", shortLivedToken);
-    const res = await fetch(url.toString());
+    const res = await fetchWithUserAgent(url.toString());
     const text = await res.text();
     if (!res.ok) throw new Error(`Instagram long-lived token exchange failed (${res.status}): ${text.slice(0, 500)}`);
     return JSON.parse(text) as LongLivedTokenResponse;
@@ -117,7 +118,7 @@ export async function refreshLongLivedToken(accessToken: string): Promise<LongLi
   const url = new URL(`${GRAPH_URL}/refresh_access_token`);
   url.searchParams.set("grant_type", "ig_refresh_token");
   url.searchParams.set("access_token", accessToken);
-  const res = await fetch(url.toString());
+  const res = await fetchWithUserAgent(url.toString());
   const text = await res.text();
   if (!res.ok) throw new Error(`Instagram token refresh failed (${res.status}): ${text.slice(0, 500)}`);
   return JSON.parse(text) as LongLivedTokenResponse;
