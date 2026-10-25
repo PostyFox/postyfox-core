@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { describeError } from "./errors.js";
 import { InstagramOAuth2Provider, refreshLongLivedToken, type InstagramAppCredentials, type InstagramSecret } from "./instagram-oauth.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
+import { fetchWithUserAgent } from "../user-agent.js";
 import { normalizeMedia } from "../media/normalize.js";
 import { INSTAGRAM_SPEC, limitsFromSpec } from "../media/specs.js";
 import type {
@@ -62,7 +63,7 @@ async function graphFetch(path: string, params: Record<string, string>, method: 
   } else {
     init = { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params) };
   }
-  const res = await fetch(url.toString(), init);
+  const res = await fetchWithUserAgent(url.toString(), init);
   const text = await res.text();
   if (!res.ok) throw new Error(`Instagram API error (${res.status}): ${text.slice(0, 1000)}`);
   return text ? JSON.parse(text) : {};

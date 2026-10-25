@@ -7,6 +7,7 @@ import {
   type SofurrySecret,
 } from "./sofurry-oauth.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
+import { fetchWithUserAgent } from "../user-agent.js";
 import { SOFURRY_SPEC, limitsFromSpec } from "../media/specs.js";
 import type {
   Connector,
@@ -71,7 +72,7 @@ export class SofurryConnector implements Connector {
 
   constructor(private readonly options: SofurryConnectorOptions = {}) {
     this.mediaStore = options.mediaStore ?? mediaStoreFromEnv();
-    this.fetchImpl = options.fetch ?? fetch;
+    this.fetchImpl = options.fetch ?? fetchWithUserAgent;
     this.oauth = {
       startAuthorization: async (input) => this.provider(input.operationalSecretJson).startAuthorization(input),
       completeAuthorization: async (input) => this.provider(input.operationalSecretJson).completeAuthorization(input),
