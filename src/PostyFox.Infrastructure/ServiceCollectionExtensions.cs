@@ -15,6 +15,7 @@ using PostyFox.Application.Posting;
 using PostyFox.Infrastructure.Avatars;
 using PostyFox.Infrastructure.Connectors;
 using PostyFox.Infrastructure.Email;
+using PostyFox.Infrastructure.Http;
 using PostyFox.Infrastructure.Media;
 using PostyFox.Infrastructure.Messaging;
 using PostyFox.Infrastructure.Persistence;
@@ -49,7 +50,11 @@ public static class ServiceCollectionExtensions
 
         // Profile images (issue #420): proxied from Gravatar so the browser never contacts it.
         services.AddMemoryCache();
-        services.AddHttpClient(nameof(GravatarAvatarProvider), c => c.Timeout = TimeSpan.FromSeconds(5));
+        services.AddHttpClient(nameof(GravatarAvatarProvider), c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(5);
+            OutboundHttp.UseDefaultUserAgent(c);
+        });
         services.AddSingleton<IAvatarProvider, GravatarAvatarProvider>();
 
         var conn = config.GetConnectionString("Postgres")
@@ -74,7 +79,7 @@ public static class ServiceCollectionExtensions
 
         // --- Connectors ---
         // Discord webhook (in-process HTTP)
-        services.AddHttpClient(nameof(DiscordWebhookConnector));
+        services.AddHttpClient(nameof(DiscordWebhookConnector), OutboundHttp.UseDefaultUserAgent);
         services.AddSingleton<IConnector, DiscordWebhookConnector>();
 
         // Telegram: MTProto user account via WTelegramClient (behind a gateway seam)

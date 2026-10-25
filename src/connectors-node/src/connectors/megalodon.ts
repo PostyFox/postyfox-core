@@ -6,6 +6,7 @@ import { basename, join } from "node:path";
 import generator, { detector } from "megalodon";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
+import { fetchWithUserAgent } from "../user-agent.js";
 import { normalizeMedia } from "../media/normalize.js";
 import { FEDIVERSE_SPEC, mergeLiveLimits } from "../media/specs.js";
 import type {
@@ -172,7 +173,7 @@ const defaultClientFactory: MegalodonClientFactory = (sns, baseUrl, accessToken)
     // description and leave setMediaComment undefined.
     const apiBase = baseUrl.replace(/\/+$/, "");
     client.setMediaComment = async (fileId, comment) => {
-      const resp = await fetch(`${apiBase}/api/drive/files/update`, {
+      const resp = await fetchWithUserAgent(`${apiBase}/api/drive/files/update`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ i: accessToken, fileId, comment }),
@@ -191,7 +192,7 @@ const defaultDetector: SnsDetector = (url) => detector(url) as Promise<Megalodon
 type PixelfedInstanceFetcher = (instanceUrl: string) => Promise<MegalodonInstance>;
 
 const defaultPixelfedInstanceFetcher: PixelfedInstanceFetcher = async (instanceUrl) => {
-  const response = await fetch(`${instanceUrl}/api/v1/instance`);
+  const response = await fetchWithUserAgent(`${instanceUrl}/api/v1/instance`);
   if (!response.ok) {
     const body = await response.text();
     throw new Error(
