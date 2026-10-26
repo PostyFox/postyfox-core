@@ -22,6 +22,7 @@ public sealed class DeliverTargetHandler(
     IAppDbContext db,
     IConnectorRegistry registry,
     ISecretsProvider secrets,
+    ConnectorTokenRefreshService tokens,
     IMessageBus bus,
     IClock clock,
     IOptions<PipelineOptions> options,
@@ -64,6 +65,7 @@ public sealed class DeliverTargetHandler(
             var uc = await db.UserConnectors.FirstOrDefaultAsync(c => c.Id == connectorId, ct);
             configJson = uc?.ConfigJson ?? "{}";
             secretJson = await secrets.GetSecretAsync(UserConnectorService.SecretName(connectorId, userId), ct);
+            secretJson = await tokens.RefreshIfExpiredAsync(connector, new ConnectorContext(connectorId, userId, configJson, secretJson, null), ct);
             secretJson = await PairedUserAgentService.ApplyAsync(db, target.Platform, secretJson, ct);
         }
 

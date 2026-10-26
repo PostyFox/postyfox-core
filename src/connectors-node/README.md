@@ -12,6 +12,7 @@ are Node-only:
 - **X** via [`rettiwt-api`](https://github.com/Rishikant181/Rettiwt-API) and a paired browser session
 - **Ko-fi** via its authenticated site forms
 - **SoFurry** via its documented public API and an OAuth2 + PKCE connect flow
+- **DeviantArt** via its documented API (Sta.sh submit + publish) and an OAuth2 + PKCE connect flow
 - **Artconomy** via the JSON API its own frontend uses, with a paired browser session
 - **Instagram** via the Instagram Content Publishing API (Business Login for Instagram)
 
@@ -54,7 +55,7 @@ If `INTERNAL_TOKEN` is not configured, all requests are allowed (dev only).
 
 ## HTTP contract
 
-`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Kofi`, `Artconomy`, `SoFurry`, `Instagram`, and the supported
+`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Kofi`, `Artconomy`, `SoFurry`, `DeviantArt`, `Instagram`, and the supported
 Fediverse platforms (case-insensitive). Unknown platforms
 return `404 { "error": "unknown platform" }`.
 
@@ -212,6 +213,22 @@ upload raw bytes. The runtime image installs the `ffmpeg` binary for the video p
   account's folders before anything is posted, and a non-Clean rating is refused up front when the
   account has adult content off. `externalUrl` is `https://sofurry.com/s/<id>`.
 - A failure after the draft is created leaves a private draft on the account; the API has no delete.
+
+### DeviantArt
+
+- Optional `configJson` fields (per-submission options): `Mode` (`"stash"` uploads to Sta.sh without
+  publishing), `GalleryIds` (comma-separated gallery folder UUIDs), `AllowComments` (`"false"` to turn
+  off), `NoAi` / `AiGenerated` (`"true"`/`"false"`; omitted leaves the account default).
+- `secretJson` → `{ "AccessToken": "", "RefreshToken": "", "ExpiresAt": "2026-11-01T00:00:00Z" }`, from
+  the OAuth2 + PKCE connect flow (scopes `basic user stash publish`). Access tokens last an hour, so core
+  calls `refresh-token` before use once `ExpiresAt` is near; refresh tokens last three months.
+- `operationalSecretJson` → Vault-sourced app credentials: `{ "clientId": "", "clientSecret": "" }`.
+- `deliver` uploads one image (the post's default, else the first; JPEG, PNG or GIF) with
+  `POST /stash/submit`, then publishes it with `POST /stash/publish` unless `Mode` is `stash`. Needs a
+  rating: General is not mature, Mature maps to `moderate`, Adult and Extreme to `strict`. Tags are
+  reduced to letters, numbers and underscores (spaces become underscores). `externalUrl` is the
+  deviation URL the API returns; a Sta.sh-only delivery returns the item id and no URL.
+- A failure after the Sta.sh upload leaves the item in the account's Sta.sh.
 
 ### FurAffinity
 

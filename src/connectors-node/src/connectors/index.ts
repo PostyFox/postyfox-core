@@ -2,6 +2,7 @@ import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import type { Connector } from "../types.js";
 import { ArtconomyConnector } from "./artconomy.js";
 import { BlueskyConnector } from "./bluesky.js";
+import { DeviantartConnector } from "./deviantart.js";
 import { FurAffinityConnector } from "./furaffinity.js";
 import { InstagramConnector } from "./instagram.js";
 import { KofiConnector } from "./kofi.js";
@@ -26,6 +27,7 @@ export function createDefaultRegistry(
   registry.set("artconomy", new ArtconomyConnector({ mediaStore }));
   registry.set("instagram", new InstagramConnector(undefined, mediaStore));
   registry.set("sofurry", new SofurryConnector({ mediaStore }));
+  registry.set("deviantart", new DeviantartConnector({ mediaStore }));
   registry.set("x", new XConnector({ mediaStore }));
 
   // Fediverse platforms served by megalodon. The SNS is auto-detected from the instance's nodeinfo

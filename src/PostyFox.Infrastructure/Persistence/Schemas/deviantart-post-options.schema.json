@@ -1,0 +1,40 @@
+{
+  "$comment": "DeviantArt's per-submission choices, mapped onto /stash/submit and /stash/publish (deviantart.readme.io). Values are strings, as for every post option.",
+  "Mode": {
+    "label": "Publish",
+    "placeholder": "Publish to gallery (default)",
+    "options": [
+      {"value":"stash","label":"Sta.sh only: upload without publishing"}
+    ]
+  },
+  "GalleryIds": {
+    "label": "Gallery folder IDs",
+    "placeholder": "3f2a…, 9c1b…",
+    "help": "Optional. Gallery folder UUIDs to publish into. Separate several with commas.",
+    "pattern": "^[0-9A-Fa-f-]+( *, *[0-9A-Fa-f-]+)*$",
+    "message": "Gallery folder IDs must be comma-separated UUIDs."
+  },
+  "AllowComments": {
+    "label": "Comments",
+    "placeholder": "Allowed (default)",
+    "options": [
+      {"value":"false","label":"Disabled"}
+    ]
+  },
+  "NoAi": {
+    "label": "Third-party AI datasets",
+    "placeholder": "Account default",
+    "options": [
+      {"value":"true","label":"Not authorised (NoAI)"},
+      {"value":"false","label":"Authorised"}
+    ]
+  },
+  "AiGenerated": {
+    "label": "AI generated",
+    "placeholder": "Not stated",
+    "options": [
+      {"value":"true","label":"Yes"},
+      {"value":"false","label":"No"}
+    ]
+  }
+}

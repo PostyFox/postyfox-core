@@ -21,6 +21,8 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
     public const string InstagramAppSecret = "InstagramAppSecret";
     public const string SofurryClientId = "SofurryClientId";
     public const string SofurryClientSecret = "SofurryClientSecret";
+    public const string DeviantartClientId = "DeviantartClientId";
+    public const string DeviantartClientSecret = "DeviantartClientSecret";
 
     private static readonly IReadOnlyList<Definition> Definitions =
     [
@@ -31,7 +33,9 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
         new(InstagramAppId, "Instagram", "App ID", "Meta app ID configured for Instagram API with Business Login."),
         new(InstagramAppSecret, "Instagram", "App secret", "Meta app secret configured for Instagram API with Business Login."),
         new(SofurryClientId, "SoFurry", "Client ID", "SoFurry OAuth application client ID, from developer.sofurry.com/apps."),
-        new(SofurryClientSecret, "SoFurry", "Client secret", "SoFurry OAuth application client secret, from developer.sofurry.com/apps.")
+        new(SofurryClientSecret, "SoFurry", "Client secret", "SoFurry OAuth application client secret, from developer.sofurry.com/apps."),
+        new(DeviantartClientId, "DeviantArt", "Client ID", "DeviantArt OAuth application client_id, from deviantart.com/studio/apps."),
+        new(DeviantartClientSecret, "DeviantArt", "Client secret", "DeviantArt OAuth application client_secret, from deviantart.com/studio/apps.")
     ];
 
     public async Task<IReadOnlyList<OperationalSecretStatus>> ListAsync(CancellationToken ct = default)
@@ -91,6 +95,15 @@ public sealed class OperationalSecretService(ISecretsProvider secrets)
             var values = await secrets.GetSecretsAsync([SofurryClientId, SofurryClientSecret], ct);
             values.TryGetValue(SofurryClientId, out var clientId);
             values.TryGetValue(SofurryClientSecret, out var clientSecret);
+            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret)) return null;
+            return JsonSerializer.Serialize(new { clientId, clientSecret });
+        }
+
+        if (platform.Equals("DeviantArt", StringComparison.OrdinalIgnoreCase))
+        {
+            var values = await secrets.GetSecretsAsync([DeviantartClientId, DeviantartClientSecret], ct);
+            values.TryGetValue(DeviantartClientId, out var clientId);
+            values.TryGetValue(DeviantartClientSecret, out var clientSecret);
             if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret)) return null;
             return JsonSerializer.Serialize(new { clientId, clientSecret });
         }

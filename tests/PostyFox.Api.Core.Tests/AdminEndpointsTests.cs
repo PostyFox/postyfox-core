@@ -66,6 +66,22 @@ public class AdminEndpointsTests
     }
 
     [Fact]
+    public async Task Admin_can_configure_the_DeviantArt_oauth_app()
+    {
+        using var factory = new CustomWebApplicationFactory { DevAdmin = true };
+        using var client = factory.CreateClient();
+
+        foreach (var key in new[] { OperationalSecretService.DeviantartClientId, OperationalSecretService.DeviantartClientSecret })
+            Assert.Equal(HttpStatusCode.OK,
+                (await client.PutAsJsonAsync($"/api/admin/operational-secrets/{key}", new { value = "v" })).StatusCode);
+        var list = await client.GetFromJsonAsync<List<OperationalSecretStatus>>("/api/admin/operational-secrets");
+
+        var deviantart = list!.Where(item => item.Component == "DeviantArt").ToList();
+        Assert.Equal(2, deviantart.Count);
+        Assert.All(deviantart, item => Assert.True(item.Configured));
+    }
+
+    [Fact]
     public async Task Paired_user_agent_settings_require_the_admin_role()
     {
         using var factory = new CustomWebApplicationFactory();

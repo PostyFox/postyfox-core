@@ -247,4 +247,23 @@ public class HttpConnectorTests
 
         Assert.Null(json);
     }
+
+    [Fact]
+    public async Task DeviantArt_sends_operational_credentials_only_once_both_are_set()
+    {
+        var services = new ServiceCollection();
+        services.AddInMemorySecretsProvider();
+        services.AddScoped<OperationalSecretService>();
+        await using var provider = services.BuildServiceProvider();
+        var secrets = provider.GetRequiredService<ISecretsProvider>();
+        var operational = provider.GetRequiredService<OperationalSecretService>();
+
+        await secrets.SetSecretAsync(OperationalSecretService.DeviantartClientId, "vault-client");
+        Assert.Null(await operational.ConnectorCredentialsJsonAsync("DeviantArt"));
+
+        await secrets.SetSecretAsync(OperationalSecretService.DeviantartClientSecret, "vault-secret");
+        var json = await operational.ConnectorCredentialsJsonAsync("DeviantArt");
+        Assert.Contains("\"clientId\":\"vault-client\"", json);
+        Assert.Contains("\"clientSecret\":\"vault-secret\"", json);
+    }
 }

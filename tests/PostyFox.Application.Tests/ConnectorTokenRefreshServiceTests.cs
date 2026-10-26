@@ -117,4 +117,63 @@ public class ConnectorTokenRefreshServiceTests
 
         Assert.Equal(1, refreshed);
     }
+
+    private static ConnectorContext Context(Guid id, string secretJson) => new(id, "u1", "{}", secretJson, null);
+
+    [Fact]
+    public async Task RefreshIfExpired_refreshes_and_persists_an_expired_token()
+    {
+        using var db = TestDbContext.Create();
+        var id = Guid.NewGuid();
+        var secrets = new FakeSecretStore();
+        var connector = new FakeRefreshableConnector("DeviantArt");
+
+        var secret = await New(db, secrets, new FakeRegistry(connector)).RefreshIfExpiredAsync(
+            connector, Context(id, """{"AccessToken":"old","ExpiresAt":"2026-07-23T00:03:00Z"}""")); // inside the 5 min margin
+
+        Assert.Contains("\"AccessToken\":\"new\"", secret);
+        Assert.Equal(secret, secrets.Store[UserConnectorService.SecretName(id, "u1")]);
+    }
+
+    [Fact]
+    public async Task RefreshIfExpired_leaves_a_live_token_alone()
+    {
+        using var db = TestDbContext.Create();
+        var connector = new FakeRefreshableConnector("DeviantArt");
+        var original = """{"AccessToken":"old","ExpiresAt":"2026-07-23T01:00:00Z"}""";
+
+        var secret = await New(db, new FakeSecretStore(), new FakeRegistry(connector))
+            .RefreshIfExpiredAsync(connector, Context(Guid.NewGuid(), original));
+
+        Assert.Equal(original, secret);
+        Assert.Equal(0, connector.RefreshCount);
+    }
+
+    [Fact]
+    public async Task RefreshIfExpired_falls_back_to_the_stored_secret_when_refresh_fails()
+    {
+        using var db = TestDbContext.Create();
+        var secrets = new FakeSecretStore();
+        var original = """{"AccessToken":"old","ExpiresAt":"2000-01-01T00:00:00Z"}""";
+        var declined = new FakeRefreshableConnector("DeviantArt", refresh: _ => null);
+        var throwing = new FakeRefreshableConnector("DeviantArt", refresh: _ => throw new InvalidOperationException("boom"));
+        var service = New(db, secrets, new FakeRegistry());
+
+        Assert.Equal(original, await service.RefreshIfExpiredAsync(declined, Context(Guid.NewGuid(), original)));
+        Assert.Equal(original, await service.RefreshIfExpiredAsync(throwing, Context(Guid.NewGuid(), original)));
+        Assert.Empty(secrets.Store);
+    }
+
+    [Fact]
+    public async Task RefreshIfExpired_ignores_secrets_without_an_expiry_and_non_refreshable_connectors()
+    {
+        using var db = TestDbContext.Create();
+        var refreshable = new FakeRefreshableConnector("DeviantArt");
+        var service = New(db, new FakeSecretStore(), new FakeRegistry());
+        var expired = """{"AccessToken":"old","ExpiresAt":"2000-01-01T00:00:00Z"}""";
+
+        await service.RefreshIfExpiredAsync(refreshable, Context(Guid.NewGuid(), """{"AccessToken":"old"}"""));
+        Assert.Equal(expired, await service.RefreshIfExpiredAsync(new FakeConnector("Tumblr"), Context(Guid.NewGuid(), expired)));
+        Assert.Equal(0, refreshable.RefreshCount);
+    }
 }

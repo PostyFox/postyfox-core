@@ -18,7 +18,17 @@ public class ConnectorOperationsServiceTests
     }
 
     private static ConnectorOperationsService New(TestDbContext db, params IConnector[] connectors) =>
-        new(db, new FakeSecretStore(), new FakeRegistry(connectors), new FakeTelegramGateway());
+        New(db, new FakeSecretStore(), new FakeTelegramGateway(), connectors);
+
+    private static ConnectorOperationsService New(
+        TestDbContext db, FakeSecretStore secrets, FakeTelegramGateway telegram, params IConnector[] connectors)
+    {
+        var registry = new FakeRegistry(connectors);
+        var tokens = new ConnectorTokenRefreshService(db, secrets, registry, new FixedClock(DateTimeOffset.UtcNow),
+            Microsoft.Extensions.Options.Options.Create(new PostyFox.Application.Options.ConnectorRefreshOptions()),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ConnectorTokenRefreshService>.Instance);
+        return new(db, secrets, registry, telegram, tokens);
+    }
 
     [Fact]
     public async Task IsAuthenticated_dispatches_to_connector()
@@ -30,6 +40,23 @@ public class ConnectorOperationsServiceTests
         var state = await svc.IsAuthenticatedAsync("u1", id);
         Assert.NotNull(state);
         Assert.True(state!.IsAuthenticated);
+    }
+
+    [Fact]
+    public async Task IsAuthenticated_refreshes_an_expired_token_first()
+    {
+        using var db = TestDbContext.Create();
+        var id = await SeedAsync(db, "DeviantArt", "{}");
+        var secrets = new FakeSecretStore();
+        var key = UserConnectorService.SecretName(id, "u1");
+        secrets.Store[key] = """{"AccessToken":"old","ExpiresAt":"2000-01-01T00:00:00Z"}""";
+        var connector = new FakeRefreshableConnector("DeviantArt");
+
+        var state = await New(db, secrets, new FakeTelegramGateway(), connector).IsAuthenticatedAsync("u1", id);
+
+        Assert.True(state!.IsAuthenticated);
+        Assert.Equal(1, connector.RefreshCount);
+        Assert.Contains("\"new\"", secrets.Store[key]);
     }
 
     [Fact]
@@ -56,7 +83,7 @@ public class ConnectorOperationsServiceTests
         var id = await SeedAsync(db, "Telegram", "{\"PhoneNumber\":\"+123\"}");
         var gw = new FakeTelegramGateway();
         gw.Steps.Enqueue(new TelegramLoginStep(TelegramLoginStep.NeedsCode, "value", "Verification Code"));
-        var svc = new ConnectorOperationsService(db, new FakeSecretStore(), new FakeRegistry(), gw);
+        var svc = New(db, new FakeSecretStore(), gw);
 
         var step = await svc.TelegramLoginAsync("u1", id, null);
         Assert.Equal(TelegramLoginStep.NeedsCode, step!.Status);
@@ -67,7 +94,7 @@ public class ConnectorOperationsServiceTests
     {
         using var db = TestDbContext.Create();
         var id = await SeedAsync(db, "Telegram", "{}");
-        var svc = new ConnectorOperationsService(db, new FakeSecretStore(), new FakeRegistry(), new FakeTelegramGateway());
+        var svc = New(db);
         Assert.Null(await svc.TelegramLoginAsync("u1", id, null));
     }
 

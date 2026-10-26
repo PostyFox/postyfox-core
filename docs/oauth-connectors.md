@@ -2,7 +2,7 @@
 
 Some platforms let a user connect by clicking a button and authorising in the provider's UI, rather
 than pasting API tokens. Today this covers **Tumblr** (OAuth 1.0a), **Instagram** (OAuth2, Business
-Login for Instagram), **SoFurry** (OAuth2 with PKCE) and the **Fediverse** platforms (Mastodon, Pleroma, Akkoma, Friendica,
+Login for Instagram), **SoFurry** and **DeviantArt** (OAuth2 with PKCE) and the **Fediverse** platforms (Mastodon, Pleroma, Akkoma, Friendica,
 Iceshrimp, GoToSocial, Hometown and Pixelfed), all served by one generic megalodon connector that
 auto-detects the instance's software (nodeinfo → SNS) and runs whichever authorisation the instance
 uses (OAuth2 for Mastodon-family, MiAuth for Iceshrimp/Misskey-family).
@@ -155,6 +155,41 @@ the user must reconnect. The sweeper runs every `ConnectorRefresh:SweepIntervalH
 so this assumes access tokens live comfortably longer than that. SoFurry doesn't document its token
 lifetime; if tokens turn out to be short-lived, delivery will need to refresh on use.
 
+## Operator setup (DeviantArt)
+
+DeviantArt's API is documented at <https://deviantart.readme.io/docs/authentication>. New apps use
+OAuth 2.1: authorisation code with mandatory PKCE (S256) and exact redirect-URI matching.
+
+1. Register an application at <https://www.deviantart.com/developers/register> as a **confidential**
+   client. Note its **client_id** and **client_secret**.
+2. Add the redirect URI to the application's whitelist:
+
+   ```
+   {OAUTH_CALLBACK_BASE_URL}/api/connectors/oauth/callback
+   ```
+
+   Same callback base as the other OAuth connectors. It **must match exactly**.
+3. Sign in with a Keycloak account carrying the `postyfox-admin` realm role, open
+   **Administration**, and set the DeviantArt client ID and client secret. They are stored as
+   `DeviantartClientId` and `DeviantartClientSecret`.
+
+   If either operational secret is missing, DeviantArt OAuth and refresh fail closed with a
+   configuration error.
+
+**Scopes.** `basic user stash publish`: `user` for `/user/whoami`, `stash` for uploading, `publish` for
+turning the Sta.sh item into a deviation.
+
+**Token lifetime.** Access tokens last one hour and refresh tokens three months. The connect flow
+stores `{AccessToken, RefreshToken, ExpiresAt}`. Before core uses the connector (auth check, target
+listing, delivery, automations) it refreshes the token once `ExpiresAt` is within five minutes and
+persists the result, including any rotated refresh token. The sweeper also refreshes it on every run,
+which keeps the refresh token alive while the connector is idle. A refused refresh means the user
+must reconnect.
+
+**Terms acceptance.** `/stash/publish` can fail with "Must accept DA submission policy" or "Must
+accept DA terms of service". The current API spec has no field to accept them, so PostyFox sends
+none and surfaces the error; the user resolves it on DeviantArt.
+
 ## Operator setup (Iceshrimp / Fediverse)
 
 **Nothing to configure.** Unlike Tumblr, the Fediverse connector registers its own application on the
@@ -188,4 +223,6 @@ per-user secret holds only `{AccessToken, Sns}`.
   `IRefreshableConnector` on the core side (see `instagram.ts` / `HttpConnector.RefreshTokenAsync`).
   The connector's secret JSON must carry an `ExpiresAt` field — `ConnectorTokenRefreshService` reads
   it generically across every `IRefreshableConnector`, so a new expiring-token platform needs no
-  sweeper changes, only the connector-level `refresh` implementation.
+  sweeper changes, only the connector-level `refresh` implementation. An already-expired token is
+  also refreshed before use (`ConnectorTokenRefreshService.RefreshIfExpiredAsync`), which is what
+  keeps hour-long tokens such as DeviantArt's usable.
