@@ -106,6 +106,15 @@ public class ServiceEndpointsTests(CustomWebApplicationFactory factory) : IClass
         Assert.Equal(2000, sofurry.MaxContentLength);
         Assert.Contains("\"FolderIds\"", sofurry.PostOptionsSchema);
 
+        var deviantart = Assert.Single(defs!, d => d.Id == "DeviantArt");
+        Assert.True(deviantart.SupportsOAuth);
+        Assert.True(deviantart.SupportsTitle);
+        Assert.True(deviantart.RequiresMedia);
+        Assert.True(deviantart.RequiresRating);
+        Assert.False(deviantart.RequiresTags);
+        Assert.Null(deviantart.MaxContentLength);
+        Assert.Contains("\"GalleryIds\"", deviantart.PostOptionsSchema);
+
         // A platform that requires tags without declaring a minimum needs one.
         Assert.Equal(1, Assert.Single(defs!, d => d.Id == "FurAffinity").MinTags);
         Assert.Equal(0, kofi.MinTags);

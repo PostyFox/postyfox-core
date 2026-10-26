@@ -393,6 +393,35 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
             sp.GetRequiredService<IServiceScopeFactory>()));
 
+        services.AddSingleton<IConnector>(sp => new HttpConnector(
+            "DeviantArt",
+            new ConnectorDescriptor(
+                "DeviantArt",
+                "DeviantArt",
+                SupportsTitle: true,
+                SupportsMedia: true,
+                SupportsThreads: false,
+                // The API documents no cap on artist comments.
+                MaxContentLength: null,
+                // DeviantArt's documented API (deviantart.readme.io) with an OAuth2 authorization-code
+                // + PKCE connect flow. The app's client id/secret are operational secrets
+                // (DeviantartClientId/DeviantartClientSecret). Access tokens last an hour, so they are
+                // refreshed before use as well as by the sweeper.
+                SupportsOAuth: true,
+                // General → not mature, Mature → moderate, Adult/Extreme → strict.
+                SupportsRating: true,
+                RequiresRating: true,
+                SupportsTags: true,
+                // A post is one Sta.sh upload, so there are no text-only posts.
+                RequiresMedia: true,
+                PostOptionsSchema: EmbeddedSchema.Load("deviantart-post-options.schema.json")
+                // No SupportsRepost/SupportsDelete: not implemented.
+                ),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NodeConnectorsOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HttpConnector>>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
+
         AddFediverse("Mastodon", "Mastodon", 500);
         AddFediverse("Pleroma", "Pleroma", 5000);
         AddFediverse("Akkoma", "Akkoma", 5000);

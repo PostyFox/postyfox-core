@@ -70,6 +70,10 @@ public static class ServiceDefinitionSeeder
     // chosen per submission (see the connector descriptor's PostOptionsSchema).
     private const string SofurryConfigSchema = "{}";
 
+    // DeviantArt's account comes from its OAuth2 connect flow, and the publish mode, gallery folders
+    // and AI flags are chosen per submission (see the connector descriptor's PostOptionsSchema).
+    private const string DeviantartConfigSchema = "{}";
+
     // FurAffinity's connector holds nothing but the account itself: it authenticates from a browser
     // session handed over by PostyFox Connect, and its category/species/gender/folder choices belong
     // to an individual submission, not the account. Those live on the connector descriptor's
@@ -133,6 +137,9 @@ public static class ServiceDefinitionSeeder
         // SoFurry credentials come from its OAuth2 "connect" flow (SupportsOAuth), not entered by hand.
         new() { Id = "SoFurry", Name = "SoFurry", Platform = "SoFurry", Enabled = true,
                 ConfigSchema = SofurryConfigSchema, SecureConfigSchema = null },
+        // DeviantArt credentials come from its OAuth2 "connect" flow (SupportsOAuth), not entered by hand.
+        new() { Id = "DeviantArt", Name = "DeviantArt", Platform = "DeviantArt", Enabled = true,
+                ConfigSchema = DeviantartConfigSchema, SecureConfigSchema = null },
         // Fediverse platforms: credentials come from the OAuth/MiAuth "connect" flow (SupportsOAuth),
         // not entered by hand, so there is no user-facing secure config schema. All share one config
         // schema (just the instance URL); the connector auto-detects the server software at connect.

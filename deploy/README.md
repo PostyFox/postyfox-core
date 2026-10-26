@@ -256,8 +256,8 @@ for Infisical set `Secrets__Infisical__ClientId`/`ClientSecret`/`ProjectId`/`Env
 
 > Connector operational secrets can be managed in the admin UI by a user with the Keycloak
 > `postyfox-admin` realm role. The current catalogue is `TelegramApiID`/`TelegramApiHash`,
-> `TumblrConsumerKey`/`TumblrConsumerSecret`, `InstagramAppId`/`InstagramAppSecret` and
-> `SofurryClientId`/`SofurryClientSecret`. Trigger keys (`trigger-{sourceType}-signing`) still
+> `TumblrConsumerKey`/`TumblrConsumerSecret`, `InstagramAppId`/`InstagramAppSecret`,
+> `SofurryClientId`/`SofurryClientSecret` and `DeviantartClientId`/`DeviantartClientSecret`. Trigger keys (`trigger-{sourceType}-signing`) still
 > require direct seeding.
 
 For an external Keycloak realm, ensure the oauth2-proxy client includes realm roles in its ID token.

@@ -71,6 +71,14 @@ export const SOFURRY_SPEC: MediaSpec = {
   maxAttachments: 10,
 };
 
+// A Sta.sh item holds one file. The API documents neither accepted types nor a size cap, so only the
+// common web image formats are allowed and no byte cap is asserted.
+export const DEVIANTART_SPEC: MediaSpec = {
+  image: { allowedMimeTypes: ["image/jpeg", "image/png", "image/gif"] },
+  video: { allowedMimeTypes: [] },
+  maxAttachments: 1,
+};
+
 /** Fallback used before an instance's live limits are known (or when it reports none). */
 export const FEDIVERSE_SPEC: MediaSpec = {
   image: { maxWidth: 2048, maxHeight: 2048, maxBytes: 8_388_608, allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] },

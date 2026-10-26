@@ -15,7 +15,8 @@ public sealed class ConnectorOperationsService(
     IAppDbContext db,
     ISecretsProvider secrets,
     IConnectorRegistry registry,
-    ITelegramGateway telegram)
+    ITelegramGateway telegram,
+    ConnectorTokenRefreshService tokens)
 {
     public async Task<AuthState?> IsAuthenticatedAsync(string userId, Guid connectorId, CancellationToken ct = default)
     {
@@ -199,7 +200,10 @@ public sealed class ConnectorOperationsService(
             .FirstOrDefaultAsync(c => c.UserId == userId && c.Id == connectorId, ct);
         if (uc?.ServiceDefinition is null) return null;
         var secret = await secrets.GetSecretAsync(UserConnectorService.SecretName(connectorId, userId), ct);
-        return (uc.ServiceDefinition.Platform, new ConnectorContext(connectorId, userId, uc.ConfigJson, secret, null));
+        var context = new ConnectorContext(connectorId, userId, uc.ConfigJson, secret, null);
+        if (registry.TryGet(uc.ServiceDefinition.Platform, out var connector))
+            context = context with { SecretJson = await tokens.RefreshIfExpiredAsync(connector, context, ct) };
+        return (uc.ServiceDefinition.Platform, context);
     }
 
     private static string? Field(string? json, string name)

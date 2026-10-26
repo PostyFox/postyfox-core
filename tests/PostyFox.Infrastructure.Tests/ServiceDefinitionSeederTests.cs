@@ -81,4 +81,13 @@ public class ServiceDefinitionSeederTests
         Assert.Equal("{}", sofurry.ConfigSchema);
         Assert.Null(sofurry.SecureConfigSchema);
     }
+
+    [Fact]
+    public void DeviantArt_connector_has_no_account_settings()
+    {
+        var deviantart = ServiceDefinitionSeeder.Definitions.Single(d => d.Id == "DeviantArt");
+
+        Assert.Equal("{}", deviantart.ConfigSchema);
+        Assert.Null(deviantart.SecureConfigSchema);
+    }
 }

@@ -81,4 +81,32 @@ public sealed class ConnectorTokenRefreshService(
         }
         return refreshed;
     }
+
+    /// <summary>
+    /// Returns the context's secret, or a refreshed and persisted replacement when its token has
+    /// expired or is about to. Covers tokens too short-lived for the sweeper to keep current
+    /// (DeviantArt's last an hour). A failed refresh falls back to the stored secret, so the
+    /// connector reports the auth failure itself.
+    /// </summary>
+    public async Task<string?> RefreshIfExpiredAsync(IConnector connector, ConnectorContext context, CancellationToken ct = default)
+    {
+        if (context.SecretJson is null || connector is not IRefreshableConnector refreshable) return context.SecretJson;
+        try
+        {
+            var expiresAt = Json.Deserialize<ExpiringSecret>(context.SecretJson)?.ExpiresAt;
+            if (expiresAt is null || expiresAt.Value - clock.UtcNow > ExpiryMargin) return context.SecretJson;
+
+            var newSecretJson = await refreshable.RefreshTokenAsync(context, ct);
+            if (newSecretJson is null) return context.SecretJson;
+            await secrets.SetSecretAsync(UserConnectorService.SecretName(context.ConnectorId, context.UserId), newSecretJson, ct);
+            return newSecretJson;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Token refresh before use failed for connector {ConnectorId}.", context.ConnectorId);
+            return context.SecretJson;
+        }
+    }
+
+    private static readonly TimeSpan ExpiryMargin = TimeSpan.FromMinutes(5);
 }
