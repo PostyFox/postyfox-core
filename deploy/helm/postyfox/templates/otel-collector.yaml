@@ -21,6 +21,9 @@ data:
             - job_name: rabbitmq
               scrape_interval: 30s
               static_configs: [{ targets: ["{{ include "postyfox.fullname" . }}-rabbitmq:15692"] }]
+              # Erlang VM internals were over half of all metric docs in OpenSearch and nothing charts them.
+              metric_relabel_configs:
+                - { source_labels: [__name__], regex: "erlang_vm_.*", action: drop }
             - job_name: oauth2-proxy
               scrape_interval: 30s
               static_configs: [{ targets: ["{{ include "postyfox.fullname" . }}-oauth2-proxy:44180"] }]
