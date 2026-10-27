@@ -83,6 +83,9 @@
   <data name="InvalidMediaReference" xml:space="preserve">
     <value>Invalid media reference.</value>
   </data>
+  <data name="InvalidMediaFraming" xml:space="preserve">
+    <value>Invalid image framing: padding needs a #rrggbb colour or none for transparent, and a crop needs a region inside the image.</value>
+  </data>
   <data name="TagRequired" xml:space="preserve">
     <value>{0}: at least one tag is required for this platform.</value>
     <comment>{0} = connector display name</comment>
