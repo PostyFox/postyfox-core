@@ -13,30 +13,30 @@
     "test": "node --import tsx --test \"test/**/*.test.ts\""
   },
   "dependencies": {
-    "@atproto/api": "^0.28.1",
-    "@aws-sdk/client-s3": "^3.1153.0",
-    "@fastify/rate-limit": "^11.2.0",
-    "@opentelemetry/api": "^1.9.1",
-    "@opentelemetry/auto-instrumentations-node": "^0.81.2",
-    "@opentelemetry/sdk-node": "^0.223.0",
+    "@atproto/api": "^0.29.5",
+    "@aws-sdk/client-s3": "^3.1157.0",
+    "@fastify/rate-limit": "^11.2.1",
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.82.0",
+    "@opentelemetry/sdk-node": "^0.300.0",
     "fastify": "^5.12.7",
     "fluent-ffmpeg": "^2.1.3",
-    "megalodon": "^10.3.0",
+    "megalodon": "^10.3.1",
     "node-html-parser": "^9.0.5",
     "oauth-1.0a": "^2.2.6",
-    "rettiwt-api": "7.1.4",
+    "rettiwt-api": "^7.1.5",
     "sharp": "^0.35.5",
     "tough-cookie": "^6.0.2",
     "tumblr.js": "^5.0.1"
   },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.28",
-    "@types/node": "^24.0.0",
-    "tsx": "^4.19.2",
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
   "overrides": {
-    "axios": "1.20.0",
+    "axios": "1.21.0",
     "ws": "8.22.0"
   }
 }

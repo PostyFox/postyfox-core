@@ -2,11 +2,8 @@
 // (NodeSDK + all auto-instrumentations; exporters/resource-detectors come from the OTEL_* env),
 // but adds an ignore hook so the container's GET /health check produces NO span or metric.
 // Launched via `node --import ./instrumentation.mjs dist/index.js` (see Dockerfile).
-import otel from "@opentelemetry/sdk-node";
-import autoInstrumentations from "@opentelemetry/auto-instrumentations-node";
-
-const { NodeSDK } = otel;
-const { getNodeAutoInstrumentations } = autoInstrumentations;
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 
 const sdk = new NodeSDK({
   instrumentations: getNodeAutoInstrumentations({
