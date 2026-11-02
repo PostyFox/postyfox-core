@@ -77,8 +77,8 @@ flowchart TB
 
 | Component | Runtime | Responsibility |
 |-----------|---------|----------------|
-| **core-api** | ASP.NET Core (.NET 10) | Identity/API keys, service catalogue, connector CRUD + auth/target ops, templates, trigger registration. Applies EF migrations + seeds catalogue on boot. |
-| **post-api** | ASP.NET Core (.NET 10) | Post intake + status; inbound external-trigger webhook callbacks. Publishes pipeline commands. |
+| **core-api** | ASP.NET Core (.NET 11) | Identity/API keys, service catalogue, connector CRUD + auth/target ops, templates, trigger registration. Applies EF migrations + seeds catalogue on boot. |
+| **post-api** | ASP.NET Core (.NET 11) | Post intake + status; inbound external-trigger webhook callbacks. Publishes pipeline commands. |
 | **posting-worker** | .NET Worker | Consumes `generate`/`deliver` queues; renders + delivers each target; owns retries/backoff/DLQ + status rollup. |
 | **connectors-node** | Node 24 / Fastify | Bluesky (`@atproto/api`), Tumblr (`tumblr.js`), FurAffinity and Toyhouse (authenticated HTML forms), X (`rettiwt-api` over a paired browser session), and Fediverse connectors behind an `IConnector`-shaped HTTP contract; internal-token auth; stateless. |
 | PostgreSQL | n/a | System of record. |
