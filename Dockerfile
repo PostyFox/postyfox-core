@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build shared by all PostyFox .NET services.
 # Build with: --build-arg PROJECT=<csproj path> --build-arg ASSEMBLY=<dll name>
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 ARG PROJECT
 WORKDIR /src
 COPY . .
@@ -14,7 +14,7 @@ RUN --mount=type=secret,id=sixlabors_license,target=/run/secrets/sixlabors.lic \
     LIC=""; [ -s /run/secrets/sixlabors.lic ] && LIC="/p:SixLaborsLicenseFile=/run/secrets/sixlabors.lic"; \
     dotnet publish "$PROJECT" -c Release -o /app --no-restore /p:UseAppHost=false $LIC
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 # curl is required by the container healthcheck (not present in the aspnet base image).
 RUN apt-get update \
