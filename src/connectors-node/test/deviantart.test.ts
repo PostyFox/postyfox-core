@@ -253,3 +253,17 @@ test("deviantart refresh reports a revoked refresh token as declined", async () 
   const { connector } = connectorWith([[400, { error: "invalid_request" }]]);
   assert.equal(await connector.refresh(context), null);
 });
+
+test("deviantart takes a video only when the post converts it to GIF", async () => {
+  const clip = { container: "media", key: "u/clip.mp4", contentType: "video/mp4", alt: null };
+  const refused = await connectorWith([]).connector.deliver(context, { ...post, media: [clip] });
+  assert.match(refused.error ?? "", /JPEG, PNG, and GIF/);
+
+  // With the option the video passes validation and is fetched for conversion; the fake bytes then
+  // fail to convert, before anything is sent.
+  const { connector, calls } = connectorWith([]);
+  const converting = await connector.deliver(withConfig({ VideoAsGif: "true" }), { ...post, media: [clip] });
+  assert.equal(converting.success, false);
+  assert.doesNotMatch(converting.error ?? "", /JPEG, PNG, and GIF/);
+  assert.equal(calls.length, 0);
+});

@@ -46,6 +46,9 @@ function fakeAgent(over: Partial<BlueskyAgentLike> = {}): BlueskyAgentLike {
       return { uri: "at://did:plc:abc/app.bsky.feed.repost/r1", cid: "cid2" };
     },
     async deletePost() {},
+    session: { did: "did:plc:abc" },
+    pdsUrl: new URL("https://pds.example.com"),
+    com: { atproto: { server: { async getServiceAuth() { return { data: { token: "service-token" } }; } } } },
     ...over,
   };
 }
@@ -401,4 +404,79 @@ test("bluesky deliver sends each image's aspect ratio so the app doesn't square-
   assert.equal(result.success, true);
   const embed = postedRecord?.embed as { images: { aspectRatio?: { width: number; height: number } }[] };
   assert.deepEqual(embed.images[0].aspectRatio, { width: 300, height: 600 });
+});
+
+/** Answers the video service's upload and status calls in turn, recording each request. */
+function fakeVideoService(responses: [number, unknown][]) {
+  const calls: { url: string; init?: RequestInit }[] = [];
+  const impl = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    const [status, body] = responses.shift()!;
+    return new Response(JSON.stringify(body), { status });
+  }) as typeof fetch;
+  return { calls, impl };
+}
+
+const video = { container: "media", key: "u/1/clip.mp4", contentType: "video/mp4", alt: "a clip" };
+
+test("bluesky uploads a video through the video service and embeds it", async () => {
+  let record: Record<string, unknown> | undefined;
+  let auth: unknown;
+  const agent = fakeAgent({
+    async post(r) {
+      record = r as Record<string, unknown>;
+      return { uri: "at://did:plc:abc/app.bsky.feed.post/xyz123", cid: "cid1" };
+    },
+    com: { atproto: { server: { async getServiceAuth(params) { auth = params; return { data: { token: "service-token" } }; } } } },
+  });
+  // Unprobeable bytes pass through normalisation untouched, as video/mp4.
+  const service = fakeVideoService([
+    [200, { jobId: "job-1", state: "JOB_STATE_CREATED" }],
+    [200, { jobStatus: { jobId: "job-1", state: "JOB_STATE_ENCODING" } }],
+    [200, { jobStatus: { jobId: "job-1", state: "JOB_STATE_COMPLETED", blob: { ref: "video-blob" } } }],
+  ]);
+  const connector = new BlueskyConnector(() => agent, fakeMediaStore(Buffer.from("not-a-real-video")), service.impl, 0);
+
+  const result = await connector.deliver(ctx, { ...post, media: [video] });
+
+  assert.equal(result.success, true, result.error);
+  assert.equal((auth as { aud: string }).aud, "did:web:pds.example.com");
+  assert.equal((auth as { lxm: string }).lxm, "com.atproto.repo.uploadBlob");
+  const upload = new URL(service.calls[0].url);
+  assert.equal(upload.origin + upload.pathname, "https://video.bsky.app/xrpc/app.bsky.video.uploadVideo");
+  assert.equal(upload.searchParams.get("did"), "did:plc:abc");
+  assert.equal(upload.searchParams.get("name"), "clip.mp4");
+  assert.equal((service.calls[0].init?.headers as Record<string, string>).authorization, "Bearer service-token");
+  assert.equal(new URL(service.calls[1].url).searchParams.get("jobId"), "job-1");
+  assert.deepEqual(record?.embed, { $type: "app.bsky.embed.video", video: { ref: "video-blob" }, alt: "a clip" });
+});
+
+test("bluesky uses the earlier blob when the video was already processed", async () => {
+  const service = fakeVideoService([[409, { jobId: "job-2", state: "JOB_STATE_FAILED", error: "already_exists", blob: { ref: "old" } }]]);
+  const connector = new BlueskyConnector(() => fakeAgent(), fakeMediaStore(Buffer.from("x")), service.impl, 0);
+  const result = await connector.deliver(ctx, { ...post, media: [video] });
+  assert.equal(result.success, true, result.error);
+  assert.equal(service.calls.length, 1);
+});
+
+test("bluesky reports a failed video job", async () => {
+  const service = fakeVideoService([
+    [200, { jobId: "job-3", state: "JOB_STATE_CREATED" }],
+    [200, { jobStatus: { jobId: "job-3", state: "JOB_STATE_FAILED", message: "too long" } }],
+  ]);
+  const connector = new BlueskyConnector(() => fakeAgent(), fakeMediaStore(Buffer.from("x")), service.impl, 0);
+  const result = await connector.deliver(ctx, { ...post, media: [video] });
+  assert.equal(result.success, false);
+  assert.match(result.error ?? "", /video processing failed: too long/);
+});
+
+test("bluesky refuses a video mixed with images", async () => {
+  const png = await sharp({ create: { width: 4, height: 4, channels: 3, background: "#000" } }).png().toBuffer();
+  const connector = new BlueskyConnector(() => fakeAgent(), fakeMediaStore(png), fakeVideoService([]).impl, 0);
+  const result = await connector.deliver(ctx, {
+    ...post,
+    media: [video, { container: "media", key: "u/2/a.png", contentType: "image/png", alt: null }],
+  });
+  assert.equal(result.success, false);
+  assert.match(result.error ?? "", /one video or up to four images/);
 });

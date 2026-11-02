@@ -9,6 +9,7 @@ import {
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { fetchWithUserAgent } from "../user-agent.js";
 import { SOFURRY_SPEC, limitsFromSpec } from "../media/specs.js";
+import { fetchMedia, withVideoAsGif, type VideoAsGifConfig } from "../media/video-as-gif.js";
 import type {
   Connector,
   ConnectorContext,
@@ -31,7 +32,7 @@ const PUBLIC = 3;
 const RATINGS: Record<NonNullable<Post["rating"]>, number> = { general: 0, mature: 10, adult: 20, extreme: 20 };
 
 /** Per-submission options (see sofurry-post-options.schema.json); values arrive as strings. */
-interface SofurryConfig {
+interface SofurryConfig extends VideoAsGifConfig {
   Type?: string;
   Privacy?: string;
   FolderIds?: string;
@@ -107,6 +108,7 @@ export class SofurryConnector implements Connector {
     try {
       const secret = parseSecret(ctx);
       const config = parseConfig(ctx);
+      post = withVideoAsGif(post, config);
       const input = this.validate(post, config);
 
       const user = await this.currentUser(secret);
@@ -120,7 +122,7 @@ export class SofurryConnector implements Connector {
 
       const contentOrder: string[] = [];
       for (const media of post.media) {
-        const bytes = await this.mediaStore.fetch(media.container, media.key);
+        const bytes = await fetchMedia(this.mediaStore, media, SOFURRY_SPEC.image);
         const form = new FormData();
         form.set("file", new Blob([bytes], { type: media.contentType }), basename(media.key) || "image");
         const content = await this.api<{ contentId?: string }>(secret, `/v1/submission/${draft.id}/content`, {

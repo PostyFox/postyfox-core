@@ -387,6 +387,8 @@ public sealed record MediaCheckRequest(
 /// can carry; null means no reported cap. <see cref="NeedsFraming"/> is true when the image's aspect
 /// ratio falls outside <see cref="ImageMinAspectRatio"/>..<see cref="ImageMaxAspectRatio"/>, so the
 /// author must choose to pad or crop it (issue #39) before the platform will accept it.
+/// <see cref="SupportedMimeTypes"/> lists the image and video formats the platform takes (null means
+/// no restriction reported); one with no video format is image-only (issue #40).
 /// </summary>
 public sealed record MediaCheckResultItem(
     Guid ConnectorId,
@@ -402,7 +404,8 @@ public sealed record MediaCheckResultItem(
     int? VideoMaxHeight = null,
     double? ImageMinAspectRatio = null,
     double? ImageMaxAspectRatio = null,
-    bool NeedsFraming = false);
+    bool NeedsFraming = false,
+    IReadOnlyList<string>? SupportedMimeTypes = null);
 
 public sealed record TriggerRegistrationRequest(
     string SourceType,

@@ -113,10 +113,7 @@ public sealed class WTelegramGateway(
                 // InputMediaUploadedDocument, i.e. every image arrived in Telegram as a "file"
                 // instead of a photo. Build the InputMedia ourselves instead, exactly as the album
                 // path below already (correctly) does.
-                InputMedia inputMedia = content[0].ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
-                    ? new InputMediaUploadedPhoto { file = file }
-                    : new InputMediaUploadedDocument { file = file, mime_type = content[0].ContentType };
-                var msg = await client.SendMessageAsync(peer, text, inputMedia, entities: entities);
+                var msg = await client.SendMessageAsync(peer, text, ToInputMedia(content[0], file), entities: entities);
                 return DeliveryResult.Ok(msg.id.ToString());
             }
 
@@ -126,9 +123,7 @@ public sealed class WTelegramGateway(
             {
                 using var ms = new MemoryStream(m.Data);
                 var file = await client.UploadFileAsync(ms, m.FileName);
-                album.Add(m.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
-                    ? new InputMediaUploadedPhoto { file = file }
-                    : new InputMediaUploadedDocument { file = file, mime_type = m.ContentType });
+                album.Add(ToInputMedia(m, file));
             }
             var messages = await client.SendAlbumAsync(peer, album, text, entities: entities);
             return DeliveryResult.Ok(messages.FirstOrDefault()?.id.ToString());
@@ -138,6 +133,29 @@ public sealed class WTelegramGateway(
             logger.LogError(ex, "Telegram send failed for {User}", userId);
             return DeliveryResult.Fail(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// A photo for images, a playable video when the item was probed as video, otherwise a plain
+    /// document. Without the video attribute Telegram shows an MP4 as a file to download.
+    /// </summary>
+    internal static InputMedia ToInputMedia(MediaContent media, InputFileBase file)
+    {
+        if (media.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return new InputMediaUploadedPhoto { file = file };
+        var document = new InputMediaUploadedDocument { file = file, mime_type = media.ContentType };
+        if (media.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase) && media.Width is { } w && media.Height is { } h)
+            document.attributes =
+            [
+                new DocumentAttributeVideo
+                {
+                    flags = DocumentAttributeVideo.Flags.supports_streaming,
+                    w = w,
+                    h = h,
+                    duration = media.DurationSeconds ?? 0,
+                },
+            ];
+        return document;
     }
 
     public async Task<bool> DeleteMessageAsync(string userId, string phoneNumber, string chatId, int messageId, CancellationToken ct = default)

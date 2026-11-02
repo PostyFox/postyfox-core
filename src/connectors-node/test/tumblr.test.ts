@@ -228,3 +228,26 @@ test("tumblr oauth complete exchanges verifier for the stored token pair", async
     globalThis.fetch = origFetch;
   }
 });
+
+test("tumblr passes a video through as video and refuses a second one", async () => {
+  let received: { contentType: string }[] | undefined;
+  const connector = buildConnector(
+    fakeClient({
+      async createPhotoPost(_blog, params) {
+        received = params.media;
+        return { id_string: "791", post_url: "https://myblog.tumblr.com/post/791" };
+      },
+    }),
+    // Unprobeable bytes pass through normalisation untouched.
+    fakeMediaStore(Buffer.from("not-a-real-video")),
+  );
+  const clip = { container: "media", key: "u1/abc/clip.mp4", contentType: "video/mp4", alt: null };
+
+  const one = await connector.deliver(ctx, { title: null, body: "b", tags: [], media: [clip] });
+  assert.equal(one.success, true, one.error);
+  assert.equal(received?.[0].contentType, "video/mp4");
+
+  const two = await connector.deliver(ctx, { title: null, body: "b", tags: [], media: [clip, { ...clip, key: "u1/def/b.mp4" }] });
+  assert.equal(two.success, false);
+  assert.match(two.error ?? "", /at most one uploaded video/);
+});

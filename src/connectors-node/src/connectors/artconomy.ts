@@ -2,6 +2,7 @@ import { basename, extname } from "node:path";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { ARTCONOMY_SPEC, limitsFromSpec } from "../media/specs.js";
+import { fetchMedia, withVideoAsGif, type VideoAsGifConfig } from "../media/video-as-gif.js";
 import { throwIfCloudflareChallenge } from "../scraping/cloudflare.js";
 import {
   CookieScraperSession,
@@ -34,7 +35,7 @@ const EXTENSIONS: Record<string, string> = {
 };
 
 /** Per-submission options (see artconomy-post-options.schema.json); values arrive as strings. */
-interface ArtconomyConfig {
+interface ArtconomyConfig extends VideoAsGifConfig {
   CreditAsArtist?: string;
   Private?: string;
   DisableComments?: string;
@@ -111,6 +112,7 @@ export class ArtconomyConnector implements Connector {
   async deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {
     try {
       const config = this.config(ctx);
+      post = withVideoAsGif(post, config);
       const title = post.title?.trim() ?? "";
       if (post.media.length === 0) {
         this.validateJournal(title, post.body);
@@ -140,7 +142,7 @@ export class ArtconomyConnector implements Connector {
     config: ArtconomyConfig,
   ): Promise<DeliverResult> {
     const media = post.media[0];
-    const bytes = await this.mediaStore.fetch(media.container, media.key);
+    const bytes = await fetchMedia(this.mediaStore, media, ARTCONOMY_SPEC.image);
     const form = new FormData();
     form.set("files[]", new Blob([bytes], { type: media.contentType }), this.filename(media.key, media.contentType));
 

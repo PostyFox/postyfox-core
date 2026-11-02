@@ -152,6 +152,18 @@ fails that delivery cleanly. Fediverse connectors merge the instance's live limi
 `normalizeMedia(bytes, contentType, spec)` right after `mediaStore.fetch`, never
 upload raw bytes. The runtime image installs the `ffmpeg` binary for the video path.
 
+Video reaches each platform in its own shape (issue #40): Bluesky embeds a single video as
+`app.bsky.embed.video`, uploaded through Bluesky's video service (`video.bsky.app`) and polled until
+processed, with an animated GIF presented as a GIF; a post takes one video or up to four images.
+Tumblr sends it as an NPF `video` block, at most one per post.
+
+Image-only platforms that accept GIF (FurAffinity, Toyhouse, Ko-fi, Artconomy, SoFurry, DeviantArt)
+offer a `VideoAsGif` post option. When it is `"true"`, `withVideoAsGif` presents each video as the GIF
+it will become, so the connector's own GIF checks apply, and `fetchMedia` converts it
+(`videoToGif`): videos over 30 seconds are refused, then the GIF is built at 12 fps / 480px wide and
+retried at 8 fps / 320px if it exceeds the platform's image byte cap. The audio is dropped, which is
+why it is opt-in per target.
+
 ## Connector credential shapes
 
 ### Bluesky
