@@ -48,7 +48,7 @@ public sealed class FfmpegVideoProcessor(ILogger<FfmpegVideoProcessor> logger)
             if (decision.Action == VideoAction.Fail)
                 throw new InvalidOperationException(decision.Reason ?? "video does not meet this platform's limits");
             if (decision.Action == VideoAction.Passthrough)
-                return source;
+                return source with { Width = vs.Width, Height = vs.Height, DurationSeconds = duration };
 
             var ext = ExtensionFor(decision.TargetMime);
             var output = Path.Combine(dir.FullName, "out" + ext);
@@ -91,6 +91,9 @@ public sealed class FfmpegVideoProcessor(ILogger<FfmpegVideoProcessor> logger)
                 Data = bytes,
                 ContentType = decision.TargetMime,
                 FileName = WithExtension(source.FileName, ext),
+                Width = decision.TargetWidth,
+                Height = decision.TargetHeight,
+                DurationSeconds = duration,
             };
         }
         finally

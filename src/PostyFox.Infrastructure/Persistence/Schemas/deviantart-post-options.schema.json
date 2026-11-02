@@ -36,5 +36,13 @@
       {"value":"true","label":"Yes"},
       {"value":"false","label":"No"}
     ]
+  },
+  "VideoAsGif": {
+    "label": "Video",
+    "placeholder": "Not accepted (default)",
+    "help": "This platform takes images only. Converting turns a video of up to 30 seconds into a silent GIF.",
+    "options": [
+      {"value":"true","label":"Convert to GIF (no audio)"}
+    ]
   }
 }

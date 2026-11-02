@@ -280,7 +280,13 @@ public sealed record CropRegion(double X, double Y, double Width, double Height)
 public sealed record MediaFraming(MediaFramingMode Mode, string? Background = null, CropRegion? Crop = null);
 
 /// <summary>Media bytes resolved from the object store by a connector at delivery time.</summary>
-public sealed record MediaContent(string FileName, string ContentType, byte[] Data, string? Alt = null);
+/// <remarks>
+/// <see cref="Width"/>, <see cref="Height"/> and <see cref="DurationSeconds"/> are set for video once
+/// probed during normalisation (Telegram needs them to send a playable video), and null otherwise.
+/// </remarks>
+public sealed record MediaContent(
+    string FileName, string ContentType, byte[] Data, string? Alt = null,
+    int? Width = null, int? Height = null, double? DurationSeconds = null);
 
 public static class MediaContainers
 {

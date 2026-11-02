@@ -3,6 +3,7 @@ import { parse } from "node-html-parser";
 import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { KOFI_SPEC, limitsFromSpec } from "../media/specs.js";
+import { fetchMedia, withVideoAsGif, type VideoAsGifConfig } from "../media/video-as-gif.js";
 import { throwIfCloudflareChallenge } from "../scraping/cloudflare.js";
 import {
   CookieScraperSession,
@@ -23,7 +24,7 @@ import type {
 const BASE_URL = "https://ko-fi.com";
 const AUDIENCES = ["public", "supporter", "recurringSupporter"];
 
-interface KofiConfig {
+interface KofiConfig extends VideoAsGifConfig {
   Audience?: string;
 }
 
@@ -92,7 +93,9 @@ export class KofiConnector implements Connector {
     try {
       const title = post.title?.trim();
       if (!title) throw new Error("Ko-fi posts require a title");
-      const audience = this.audience(ctx);
+      const config = this.config(ctx);
+      const audience = this.audience(config);
+      post = withVideoAsGif(post, config);
       this.validateMedia(post.media);
 
       const session = await this.createSession(ctx);
@@ -145,7 +148,7 @@ export class KofiConnector implements Connector {
   ): Promise<DeliverResult> {
     const uploadIds: string[] = [];
     for (const media of post.media) {
-      const bytes = await this.mediaStore.fetch(media.container, media.key);
+      const bytes = await fetchMedia(this.mediaStore, media, KOFI_SPEC.image);
       const filename = basename(media.key) || "image";
       const form = new FormData();
       form.set("__RequestVerificationToken", token);
@@ -196,13 +199,15 @@ export class KofiConnector implements Connector {
         throw new Error("Ko-fi integration currently supports JPEG, PNG, and GIF image uploads");
   }
 
-  private audience(ctx: ConnectorContext): string {
-    let config: KofiConfig;
+  private config(ctx: ConnectorContext): KofiConfig {
     try {
-      config = JSON.parse(ctx.configJson || "{}") as KofiConfig;
+      return JSON.parse(ctx.configJson || "{}") as KofiConfig;
     } catch {
       throw new Error("invalid Ko-fi config JSON");
     }
+  }
+
+  private audience(config: KofiConfig): string {
     const audience = config.Audience?.trim() || "public";
     if (!AUDIENCES.includes(audience)) throw new Error(`invalid Ko-fi audience '${audience}'`);
     return audience;

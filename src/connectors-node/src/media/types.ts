@@ -54,7 +54,7 @@ export interface MediaFraming {
 export interface NormalizedMedia {
   bytes: Buffer;
   contentType: string;
-  /** Pixel dimensions of a still image's output; undefined for video or untouched input. */
+  /** Pixel dimensions of the output; undefined for untouched input that was never probed. */
   width?: number;
   height?: number;
 }

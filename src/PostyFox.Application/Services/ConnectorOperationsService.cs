@@ -63,7 +63,7 @@ public sealed class ConnectorOperationsService(
         return new ConnectorLimits(
             descriptor.MaxContentLength,
             descriptor.MediaSpec?.MaxAttachments,
-            descriptor.MediaSpec?.Image.AllowedMimeTypes,
+            descriptor.MediaSpec is { } spec ? [.. spec.Image.AllowedMimeTypes, .. spec.Video.AllowedMimeTypes] : null,
             descriptor.MediaSpec?.Image.MaxBytes,
             descriptor.MediaSpec?.Video.MaxBytes,
             descriptor.MediaSpec?.Image.MaxWidth,
@@ -125,7 +125,8 @@ public sealed class ConnectorOperationsService(
                 limits.VideoMaxHeight,
                 limits.ImageMinAspectRatio,
                 limits.ImageMaxAspectRatio,
-                needsFraming));
+                needsFraming,
+                limits.SupportedMimeTypes));
         }
         return result;
     }

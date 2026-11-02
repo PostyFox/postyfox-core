@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import ffmpeg from "fluent-ffmpeg";
-import type { NormalizedMedia, VideoSpec } from "./types.js";
+import type { ImageSpec, NormalizedMedia, VideoSpec } from "./types.js";
 
 export type VideoAction = "passthrough" | "transcode" | "fail";
 
@@ -109,7 +109,7 @@ export async function normalizeVideo(
       contentType,
     );
     if (decision.action === "fail") throw new Error(decision.reason ?? "video exceeds this platform's limits");
-    if (decision.action === "passthrough") return { bytes, contentType };
+    if (decision.action === "passthrough") return { bytes, contentType, width: stream.width, height: stream.height };
 
     const ext = decision.targetMime.includes("webm") ? ".webm" : ".mp4";
     const output = join(dir, `out${ext}`);
@@ -127,10 +127,81 @@ export async function normalizeVideo(
         `video is ${outBytes.length} bytes after transcoding, above this platform's ${spec.maxBytes}-byte limit`,
       );
     }
-    return { bytes: outBytes, contentType: decision.targetMime };
+    return {
+      bytes: outBytes,
+      contentType: decision.targetMime,
+      width: decision.targetWidth,
+      height: decision.targetHeight,
+    };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/** Longest video converted to GIF; anything longer is far too large for an image-only platform. */
+export const MAX_GIF_SECONDS = 30;
+
+/** Frame rate and max width for each GIF attempt, tried in order until one fits the byte cap. */
+export const GIF_ATTEMPTS = [
+  { fps: 12, maxWidth: 480 },
+  { fps: 8, maxWidth: 320 },
+];
+
+/** Why a video can't become a GIF, or undefined when it can be attempted. */
+export function gifRefusal(durationSeconds: number): string | undefined {
+  return durationSeconds > MAX_GIF_SECONDS + 0.5
+    ? `video is ${Math.round(durationSeconds)}s but conversion to GIF allows at most ${MAX_GIF_SECONDS}s`
+    : undefined;
+}
+
+/**
+ * Converts a video to an animated GIF for platforms that take images only, when the author opted in
+ * (the audio is lost). Downscales and drops the frame rate per {@link GIF_ATTEMPTS} until the GIF
+ * fits the image spec's byte cap, and throws when even the last attempt doesn't.
+ */
+export async function videoToGif(bytes: Buffer, spec: ImageSpec): Promise<NormalizedMedia> {
+  const dir = await mkdtemp(join(tmpdir(), "postyfox-gif-"));
+  const input = join(dir, "in.bin");
+  try {
+    await writeFile(input, bytes);
+    const data = await probe(input);
+    const stream = data.streams.find((s) => s.codec_type === "video");
+    if (!stream?.width || !stream.height) throw new Error("video has no readable picture to convert to GIF");
+    const refusal = gifRefusal(Number(data.format.duration ?? stream.duration ?? 0) || 0);
+    if (refusal) throw new Error(refusal);
+
+    let size = 0;
+    for (const [i, attempt] of GIF_ATTEMPTS.entries()) {
+      const maxWidth = Math.min(attempt.maxWidth, spec.maxWidth ?? attempt.maxWidth);
+      const [width, height] = fitWithin(stream.width, stream.height, maxWidth, spec.maxHeight);
+      const output = join(dir, `out${i}.gif`);
+      await toGif(input, output, attempt.fps, width, height);
+      const gif = await readFile(output);
+      if (spec.maxBytes === undefined || gif.length <= spec.maxBytes)
+        return { bytes: gif, contentType: "image/gif", width, height };
+      size = gif.length;
+    }
+    throw new Error(`video is ${size} bytes as a GIF, above this platform's ${spec.maxBytes}-byte limit`);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+function toGif(input: string, output: string, fps: number, width: number, height: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    ffmpeg(input)
+      .noAudio()
+      .outputOptions([
+        "-vf",
+        // A palette built from the clip itself keeps colours far closer than ffmpeg's default one.
+        `fps=${fps},scale=${width}:${height}:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse`,
+        "-loop",
+        "0",
+      ])
+      .on("end", () => resolve())
+      .on("error", (err) => reject(err))
+      .save(output);
+  });
 }
 
 function probe(input: string): Promise<ffmpeg.FfprobeData> {

@@ -28,7 +28,7 @@ interface TumblrBlog {
   title?: string;
 }
 
-/** A decoded image to attach to a photo post. */
+/** A decoded image or video to attach to a photo post. */
 export interface TumblrMedia {
   fileName: string;
   contentType: string;
@@ -134,11 +134,12 @@ const defaultClientFactory: TumblrClientFactory = (creds) => {
           const item = params.media[i];
           const filePath = join(dir, item.fileName || `image-${i}`);
           await writeFile(filePath, item.bytes);
-          content.push({
-            type: "image",
-            media: createReadStream(filePath),
-            alt_text: item.alt,
-          });
+          // NPF video blocks take no alt text.
+          content.push(
+            item.contentType.startsWith("video/")
+              ? { type: "video", media: createReadStream(filePath) }
+              : { type: "image", media: createReadStream(filePath), alt_text: item.alt },
+          );
         }
         return (await client.createPost(blogIdentifier, {
           content,
@@ -260,6 +261,9 @@ export class TumblrConnector implements Connector {
             bytes: normalized.bytes,
           });
         }
+        // NPF allows one natively uploaded video per post.
+        if (resolved.filter((m) => m.contentType.startsWith("video/")).length > 1)
+          throw new Error("Tumblr posts take at most one uploaded video");
         result = await client.createPhotoPost(username, {
           title: post.title ?? undefined,
           body: post.body,

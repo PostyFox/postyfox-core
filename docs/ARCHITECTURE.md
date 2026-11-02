@@ -342,6 +342,13 @@ over `IMediaProcessor` (ImageSharp for stills, FFMpegCore for video); in connect
 the instance's reported caps over the static spec. The `ffmpeg` binary is installed in the
 posting-worker and connectors-node runtime images.
 
+**Video (issue #40).** Platforms that take video receive it in their own native form (Bluesky video
+embed via its video service, Tumblr NPF video block, Telegram document with a video attribute so it
+plays inline). An image-only platform that accepts GIF can take a video as a silent GIF when the author
+picks the `VideoAsGif` post option for that target; without it, the compose form blocks the post.
+`supportedMimeTypes` in a connector's limits includes its video formats, which is how the client tells
+the two kinds of platform apart.
+
 **Aspect-ratio framing (issue #39).** A spec can declare a width ÷ height range the platform rejects
 images outside of (Instagram: 4:5 to 1.91:1), reported to the frontend through the connector's
 limits and the media-check endpoint (`NeedsFraming`). The author chooses, per image, to pad (a colour,

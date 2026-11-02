@@ -1,6 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="PostyFox.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\PostyFox.Application\PostyFox.Application.csproj" />
     <ProjectReference Include="..\PostyFox.Domain\PostyFox.Domain.csproj" />
   </ItemGroup>

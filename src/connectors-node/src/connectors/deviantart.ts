@@ -9,6 +9,7 @@ import {
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { fetchWithUserAgent } from "../user-agent.js";
 import { DEVIANTART_SPEC, limitsFromSpec } from "../media/specs.js";
+import { fetchMedia, withVideoAsGif, type VideoAsGifConfig } from "../media/video-as-gif.js";
 import type {
   Connector,
   ConnectorContext,
@@ -29,7 +30,7 @@ const MATURE_LEVELS: Record<NonNullable<Post["rating"]>, string | null> = {
 };
 
 /** Per-submission options (see deviantart-post-options.schema.json); values arrive as strings. */
-interface DeviantartConfig {
+interface DeviantartConfig extends VideoAsGifConfig {
   Mode?: string;
   GalleryIds?: string;
   AllowComments?: string;
@@ -98,9 +99,10 @@ export class DeviantartConnector implements Connector {
     try {
       const secret = parseSecret(ctx);
       const config = parseConfig(ctx);
+      post = withVideoAsGif(post, config);
       const input = validate(post, config);
 
-      const bytes = await this.mediaStore.fetch(input.media.container, input.media.key);
+      const bytes = await fetchMedia(this.mediaStore, input.media, DEVIANTART_SPEC.image);
       const form = new FormData();
       if (input.title) form.set("title", input.title);
       if (post.body) form.set("artist_comments", post.body);

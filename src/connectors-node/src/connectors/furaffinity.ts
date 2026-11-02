@@ -5,6 +5,7 @@ import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { normalizeMedia } from "../media/normalize.js";
 import { FURAFFINITY_SPEC, limitsFromSpec } from "../media/specs.js";
+import { fetchMedia, withVideoAsGif, type VideoAsGifConfig } from "../media/video-as-gif.js";
 import { throwIfCloudflareChallenge } from "../scraping/cloudflare.js";
 import {
   CookieScraperSession,
@@ -26,7 +27,7 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_KEYWORDS_LENGTH = 500;
 const MINIMUM_POST_INTERVAL_MS = 70_000;
 
-interface FurAffinityConfig {
+interface FurAffinityConfig extends VideoAsGifConfig {
   Category?: string;
   Theme?: string;
   Species?: string;
@@ -114,6 +115,7 @@ export class FurAffinityConnector implements Connector {
   async deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {
     if (post.media.length === 0) return this.deliverJournal(ctx, post);
     try {
+      post = withVideoAsGif(post, this.parseConfig(ctx));
       const input = this.validatePost(post);
       const session = await this.createSession(ctx);
       const login = await this.checkLogin(session);
@@ -124,7 +126,7 @@ export class FurAffinityConnector implements Connector {
         await this.waitForRateLimit(login.username!.toLowerCase());
         this.lastPostAt.set(login.username!.toLowerCase(), this.now());
 
-        const source = await this.mediaStore.fetch(input.media.container, input.media.key);
+        const source = await fetchMedia(this.mediaStore, input.media, FURAFFINITY_SPEC.image);
         const normalized = await this.normalizeImage(source, input.media.contentType);
         const thumbnail = await sharp(normalized.bytes, { animated: false })
           .resize({ width: 300, height: 300, fit: "inside", withoutEnlargement: true })

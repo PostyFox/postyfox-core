@@ -4,6 +4,7 @@ import { describeError } from "./errors.js";
 import { mediaStoreFromEnv, type MediaStore } from "../media-store.js";
 import { normalizeMedia } from "../media/normalize.js";
 import { limitsFromSpec, TOYHOUSE_SPEC } from "../media/specs.js";
+import { fetchMedia, withVideoAsGif, type VideoAsGifConfig } from "../media/video-as-gif.js";
 import { throwIfCloudflareChallenge } from "../scraping/cloudflare.js";
 import {
   CookieScraperSession,
@@ -24,7 +25,7 @@ const BASE_URL = "https://toyhou.se";
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_CAPTION_LENGTH = 255;
 
-interface ToyhouseConfig {
+interface ToyhouseConfig extends VideoAsGifConfig {
   CharacterIds?: string;
   ArtistName?: string;
   OffSiteArtistUrl?: string;
@@ -99,8 +100,9 @@ export class ToyhouseConnector implements Connector {
 
   async deliver(ctx: ConnectorContext, post: Post): Promise<DeliverResult> {
     try {
-      const input = this.validatePost(post);
       const config = this.parseConfig(ctx);
+      post = withVideoAsGif(post, config);
+      const input = this.validatePost(post);
       const characterIds = this.characterIds(config.CharacterIds);
       const artistName = this.requireArtistName(config);
       const session = await this.createSession(ctx);
@@ -114,7 +116,7 @@ export class ToyhouseConnector implements Connector {
         const token = this.metaContent(page.body, "csrf-token");
         if (!token) throw new Error("Toyhouse form token was not found; the site form may have changed");
 
-        const source = await this.mediaStore.fetch(input.media.container, input.media.key);
+        const source = await fetchMedia(this.mediaStore, input.media, TOYHOUSE_SPEC.image);
         const normalized = await this.normalizeImage(source, input.media.contentType);
 
         const formData = new FormData();

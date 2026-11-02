@@ -114,6 +114,8 @@ public class ConnectorOperationsServiceTests
         Assert.NotNull(limits);
         Assert.Equal(5_000_000, limits!.ImageSizeLimit);
         Assert.Equal(50_000_000, limits.VideoSizeLimit);
+        // Video formats count too, so the client can tell a video platform from an image-only one.
+        Assert.Equal(["image/jpeg", "video/mp4"], limits.SupportedMimeTypes);
     }
 
     [Fact]
@@ -283,5 +285,20 @@ public class ConnectorOperationsServiceTests
         var results = await svc.CheckMediaAsync("u1", [Guid.NewGuid()], fileSize: 1_000_000, mimeType: "image/jpeg");
 
         Assert.Empty(results);
+    }
+
+    [Fact]
+    public async Task CheckMedia_reports_the_platforms_formats()
+    {
+        using var db = TestDbContext.Create();
+        var spec = new MediaSpec(
+            new ImageSpec(null, null, null, ["image/jpeg", "image/gif"]),
+            new VideoSpec(null, null, null, null, []));
+        var id = await SeedAsync(db, "ImageOnly", "{}");
+        var svc = New(db, new FakeConnectorWithMediaSpec("ImageOnly", spec));
+
+        var results = await svc.CheckMediaAsync("u1", [id], 1000, "video/mp4");
+
+        Assert.Equal(["image/jpeg", "image/gif"], Assert.Single(results).SupportedMimeTypes);
     }
 }

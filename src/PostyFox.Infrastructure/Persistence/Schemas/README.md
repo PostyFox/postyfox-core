@@ -65,3 +65,11 @@ Toyhouse connector descriptor's `PostOptionsSchema`. `AuthorizedViewers`, `Publi
 Images are attached to character pages rather than a standalone gallery, so `CharacterIds` is required and
 free-text for the same reason FurAffinity's `FolderIds` is: characters belong to an individual
 account, with no static list to mirror.
+
+## VideoAsGif (shared)
+
+The GIF-capable image-only platforms (FurAffinity, Toyhouse, Ko-fi, Artconomy, SoFurry, DeviantArt)
+each end with the same `VideoAsGif` field: `"true"` converts an attached video to a silent GIF for that
+target (connectors-node `src/media/video-as-gif.ts`). Keep its value and wording identical across the
+files, since the compose form checks for it by name.
+
