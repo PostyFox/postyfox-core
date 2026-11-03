@@ -1,0 +1,60 @@
+name: Release
+
+# Cuts a draft release: tag, notes, images built at the tag, deploy zip. Never deploys.
+# Then deploy the tag to development, validate it, and run Publish Release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version, e.g. 1.5.0 (blank = computed from PRs since the last tag)
+        required: false
+        type: string
+      ref:
+        description: Branch, tag or SHA (blank = main, or the tagged commit when re-cutting)
+        required: false
+        type: string
+      force:
+        description: Re-cut an existing version. Needs version; the tag only moves if ref is set
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency: release
+
+jobs:
+  cut:
+    permissions:
+      contents: write
+      actions: write
+      packages: read
+      pull-requests: read
+    uses: aneillans/github-templates/.github/workflows/release-cut.yml@v1
+    with:
+      version: ${{ inputs.version }}
+      ref: ${{ inputs.ref }}
+      force: ${{ inputs.force }}
+      images: |
+        ghcr.io/postyfox/postyfox-core-core-api
+        ghcr.io/postyfox/postyfox-core-post-api
+        ghcr.io/postyfox/postyfox-core-worker
+        ghcr.io/postyfox/postyfox-core-connectors-node
+      charts: deploy/helm/postyfox
+      # listed explicitly so tracked env files stay out of the zip
+      bundle_paths: |
+        deploy/docker-compose.server.yml
+        deploy/docker-compose.prod.yml
+        deploy/.env.prod.example
+        deploy/README.md
+        deploy/gateway
+        deploy/oauth2-proxy
+        deploy/otel
+        deploy/fluent-bit
+        deploy/rabbitmq
+        deploy/vault
+      release_env: |
+        IMAGE_REPOSITORY=ghcr.io/postyfox/postyfox-core
+        IMAGE_TAG={tag}

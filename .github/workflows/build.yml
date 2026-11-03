@@ -1,7 +1,8 @@
 name: Build
 
 # Validates, then builds and pushes every service image to GHCR tagged with the full commit SHA.
-# Deploy only ever ships images built here; production only accepts builds of main.
+# Deploy only ever ships images built here. Release dispatches this on the tag, which also tags
+# the images with the version and stamps them with it exactly.
 
 on:
   push:
@@ -26,28 +27,15 @@ jobs:
 
   version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.version.outputs.stamp }}
     steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: Compute next version (Conventional Commits)
-        id: semver
-        uses: paulhatch/semantic-version@v6.0.5
-        with:
-          tag_prefix: "v"
-          # `type!:` or BREAKING CHANGE -> major; `feat:` -> minor; else patch
-          major_pattern: '/^\w+(\(.+\))?!:|BREAKING CHANGE/'
-          minor_pattern: '/^feat(\(.+\))?:/'
-          version_format: '${major}.${minor}.${patch}'
-          search_commit_body: true
-      # baked into the images; Deploy reads it back to name the optional release tag
-      - name: Stamp build
+      - name: Compute version (PR branches and titles, commit messages)
         id: version
-        env:
-          SEMVER: ${{ steps.semver.outputs.version }}
-        run: echo "version=${SEMVER}+$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        uses: aneillans/github-templates/actions/next-version@v1
 
   images:
     needs: [validate, version]

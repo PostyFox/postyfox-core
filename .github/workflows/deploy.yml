@@ -1,9 +1,9 @@
 name: Deploy
 
-# Ships images already built by Build; nothing is rebuilt here.
-#   development: automatic after every successful main Build, or manual for any built commit
-#   production:  manual only, and only for built commits on main.
-#                Optionally tags vX.Y.Z (the version baked in at build) and publishes a GitHub Release.
+# Ships images built by Build, dispatching Build first if a branch or tag has none.
+#   development: automatic after every successful main Build, or manual for any branch, tag or commit
+#   production:  manual, with approval, for a published release tag or a commit on main
+# Releases are cut by Release and published by Publish Release, separately from deploying.
 
 on:
   workflow_run:
@@ -16,15 +16,10 @@ on:
         type: choice
         options: [development, production]
         default: development
-      sha:
-        description: Commit to deploy (blank = newest built commit on main)
+      ref:
+        description: Branch, tag or SHA to deploy (blank = newest built commit on main)
         required: false
         type: string
-      release:
-        description: Production only. Tag vX.Y.Z and publish a GitHub Release after deploying
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -42,7 +37,7 @@ jobs:
     outputs:
       environment: ${{ steps.target.outputs.environment }}
       sha: ${{ steps.resolve.outputs.sha }}
-      version: ${{ steps.resolve.outputs.version }}
+      built: ${{ steps.resolve.outputs.built }}
     steps:
       - name: Resolve environment
         id: target
@@ -61,16 +56,30 @@ jobs:
             ghcr.io/postyfox/postyfox-core-worker
             ghcr.io/postyfox/postyfox-core-connectors-node
           run_sha: ${{ github.event.workflow_run.head_sha }}
-          sha: ${{ inputs.sha }}
+          ref: ${{ inputs.ref }}
           require_branch: ${{ steps.target.outputs.environment == 'production' && 'main' || '' }}
+          require_published: ${{ steps.target.outputs.environment == 'production' }}
+          allow_missing: "true"
           version_env: POSTYFOX_VERSION
           registry: ghcr.io
           registry_username: ${{ github.actor }}
           registry_password: ${{ secrets.GITHUB_TOKEN }}
 
-  development:
+  build:
     needs: resolve
-    if: needs.resolve.outputs.environment == 'development'
+    if: needs.resolve.outputs.built == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: aneillans/github-templates/actions/build-and-wait@v1
+        with:
+          ref: ${{ inputs.ref }}
+
+  development:
+    needs: [resolve, build]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && contains(fromJSON('["success","skipped"]'), needs.build.result) && needs.resolve.outputs.environment == 'development' }}
     runs-on: [self-hosted]
     environment: development
     concurrency: deploy-development
@@ -124,8 +133,8 @@ jobs:
           compose ps
 
   production:
-    needs: resolve
-    if: needs.resolve.outputs.environment == 'production'
+    needs: [resolve, build]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && contains(fromJSON('["success","skipped"]'), needs.build.result) && needs.resolve.outputs.environment == 'production' }}
     concurrency: deploy-production
     uses: aneillans/github-templates/.github/workflows/helm-deploy.yml@v1
     with:
@@ -155,15 +164,3 @@ jobs:
         config.email.user=EMAIL_SMTP_USER
         config.email.from=EMAIL_SMTP_FROM
     # everything mapped above is a production environment secret/variable, read by the template job
-
-  release:
-    needs: [resolve, production]
-    if: inputs.release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: aneillans/github-templates/actions/tag-release@v1
-        with:
-          sha: ${{ needs.resolve.outputs.sha }}
-          version: ${{ needs.resolve.outputs.version }}
