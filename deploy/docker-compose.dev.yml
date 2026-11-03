@@ -1,5 +1,5 @@
 # Docker Compose override for DEV environment
-# Usage: docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up
+# Usage: docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml up
 #
 # Dev stack:
 # - Uses external Keycloak and RustFS (shared infrastructure)

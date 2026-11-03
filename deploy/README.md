@@ -112,29 +112,32 @@ Production is a **separate Kubernetes deployment target** from dev: dev stays on
 
 ## Common Commands (Development)
 
+Always pass `-p postyfox-dev`. The Vault, Postgres and other volumes have fixed names, so a compose
+run under any other project name starts a second stack on the same live data.
+
 ### Check Status
 ### Check Status
 ```bash
-ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml ps"
 ```
 
 ### View Logs
 ```bash
-ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml logs -f core-api"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml logs -f core-api"
 ```
 
 ### Stop/Start
 ```bash
-ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml stop"
-ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml start"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml stop"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml start"
 ```
 
 ### Manual Redeploy
 ```bash
 ssh deploy@server "cd /opt/postyfox/dev && \
   source .env && \
-  docker compose -f docker-compose.server.yml -f docker-compose.dev.yml pull && \
-  docker compose -f docker-compose.server.yml -f docker-compose.dev.yml up -d"
+  docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml pull && \
+  docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml up -d"
 ```
 
 ## Maintenance Mode
@@ -323,8 +326,8 @@ VAULT_BASE_PATH=postyfox # path prefix within the mount
 Reach it from another container (e.g. the root token / status):
 
 ```bash
-docker compose -f docker-compose.server.yml -f docker-compose.dev.yml exec vault sh -c 'VAULT_ADDR=http://127.0.0.1:8200 vault status'
-docker compose -f docker-compose.server.yml -f docker-compose.dev.yml exec vault-init cat /vault/init/init.json
+docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml exec vault sh -c 'VAULT_ADDR=http://127.0.0.1:8200 vault status'
+docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml exec vault-init cat /vault/init/init.json
 ```
 
 > ⚠️ **Security trade-off.** Storing the unseal keys next to the server is what makes unattended
@@ -402,7 +405,7 @@ isn't present/ready yet.
 
 ### Development deploy fails
 1. Check GitHub Actions logs: https://github.com/yourorg/postyfox-core/actions
-2. Check server logs: `ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml logs"`
+2. Check server logs: `ssh deploy@server "cd /opt/postyfox/dev && docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml logs"`
 3. Verify SSH access: `ssh -i deploy_key deploy@server "docker ps"`
 
 ### Development services won't start
@@ -411,10 +414,10 @@ isn't present/ready yet.
 ssh deploy@server "docker stats"
 
 # Check postgres health
-ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml exec postgres pg_isready -U postyfox"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml exec postgres pg_isready -U postyfox"
 
 # Check network connectivity to external services
-ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml exec core-api getent hosts rustfs.example.com"
+ssh deploy@server "cd /opt/postyfox/dev && docker compose -p postyfox-dev -f docker-compose.server.yml -f docker-compose.dev.yml exec core-api getent hosts rustfs.example.com"
 ```
 
 ### Production (Kubernetes) deploy fails
