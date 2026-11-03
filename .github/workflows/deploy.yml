@@ -1,4 +1,5 @@
 name: Deploy
+run-name: Deploy ${{ inputs.ref || github.event.workflow_run.head_sha || 'newest main' }} to ${{ inputs.environment || 'development' }}
 
 # Ships images built by Build, dispatching Build first if a branch or tag has none.
 #   development: automatic after every successful main Build, or manual for any branch, tag or commit
