@@ -56,15 +56,34 @@ Create in repository → Settings → Environments:
 Pull request → pr.yml (PR Validation): .NET + node tests, terraform validate, helm lint
 
 Push to main → build.yml (Build): PR Validation again, then push images tagged <commit sha>,
-               with the next semver (Conventional Commits) baked in as <x.y.z>+<short sha>
+               with the next semver baked in as <x.y.z>+<short sha>
     ↓
-deploy.yml (Deploy)
-    ├─→ Dev: automatic after each main Build, or manual for any built commit (docker-compose)
-    └─→ Prod: manual only, main builds only, approval → helm upgrade --install (Kubernetes)
-              optional: tag vX.Y.Z on the deployed commit + GitHub Release
+deploy.yml (Deploy): takes a branch, tag or SHA; dispatches Build first if it has no images
+    ├─→ Dev: automatic after each main Build, or manual for any ref, no approval (docker-compose)
+    └─→ Prod: manual, approval, published release tags or commits on main only
+              → helm upgrade --install (Kubernetes)
+
+release.yml (Release): tag vX.Y.Z, generated notes, images built at the tag, deploy zip → draft release
+    ↓
+deploy.yml: deploy the tag to dev and validate it
+    ↓
+publish-release.yml (Publish Release): draft → published; prod refuses the tag before this
+    ↓
+deploy.yml: deploy the tag to prod
 ```
 
-Nothing is rebuilt at deploy time; rollback is a manual Deploy of an older main commit.
+The next version comes from the PRs since the last tag: `type!:` or `BREAKING CHANGE` is major, a
+`feat/` or `feature/` branch or a `feat:` title is minor, anything else is patch. Give Release a
+version to override it. Re-running Release for an existing version needs `force`, which regenerates
+the notes, rebuilds the images and zip, and returns a published release to draft. The tag only moves
+if `ref` is also set.
+
+The release's `postyfox-core-vX.Y.Z-deploy.zip` holds the packaged Helm chart with that version's
+image tag as its default, the compose, gateway and config files, `release.env` pinning the image tag,
+and `images.txt` listing image digests.
+
+Nothing is rebuilt at deploy time unless a ref has no images; rollback is a manual Deploy of an older
+release tag.
 
 Production is a **separate Kubernetes deployment target** from dev: dev stays on docker-compose
 (self-hosted runner, single host); prod is a Helm chart (`deploy/helm/postyfox`) deployed into a
@@ -76,7 +95,9 @@ Production is a **separate Kubernetes deployment target** from dev: dev stays on
 |------|---------|
 | `.github/workflows/pr.yml` | PR Validation: tests and IaC lint (also called by Build) |
 | `.github/workflows/build.yml` | Build: validate, then push images tagged with the commit SHA |
-| `.github/workflows/deploy.yml` | Deploy: dev (auto/manual, docker-compose), prod (manual, Helm, optional release tag) |
+| `.github/workflows/deploy.yml` | Deploy: dev (auto/manual, docker-compose), prod (manual, approval, Helm) |
+| `.github/workflows/release.yml` | Release: tag, notes, images built at the tag, deploy zip, as a draft |
+| `.github/workflows/publish-release.yml` | Publish Release: draft to published |
 | `deploy/docker-compose.server.yml` | Dev-stack deployment base composition |
 | `deploy/docker-compose.dev.yml` | Dev overrides (isolation, lighter resources) |
 | `deploy/.env.dev.example` | Dev configuration template |
