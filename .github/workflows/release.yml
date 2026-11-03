@@ -1,4 +1,5 @@
 name: Release
+run-name: Release ${{ inputs.version == '' && 'next version' || startsWith(inputs.version, 'v') && inputs.version || format('v{0}', inputs.version) }}${{ inputs.force && ' (force)' || '' }}
 
 # Cuts a draft release: tag, notes, images built at the tag, deploy zip. Never deploys.
 # Then deploy the tag to development, validate it, and run Publish Release.
@@ -7,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version, e.g. 1.5.0 (blank = computed from PRs since the last tag)
+        description: Version, e.g. v1.5.0 (blank = computed from PRs since the last tag)
         required: false
         type: string
       ref:
-        description: Branch, tag or SHA (blank = main, or the tagged commit when re-cutting)
+        description: Branch, tag (e.g. v1.5.0) or SHA (blank = main, or the tagged commit when re-cutting)
         required: false
         type: string
       force:

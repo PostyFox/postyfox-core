@@ -18,7 +18,7 @@ on:
         options: [development, production]
         default: development
       ref:
-        description: Branch, tag or SHA to deploy (blank = newest built commit on main)
+        description: Branch, tag (e.g. v1.5.0) or SHA to deploy (blank = newest built commit on main)
         required: false
         type: string
 
@@ -38,6 +38,7 @@ jobs:
     outputs:
       environment: ${{ steps.target.outputs.environment }}
       sha: ${{ steps.resolve.outputs.sha }}
+      ref: ${{ steps.resolve.outputs.ref }}
       built: ${{ steps.resolve.outputs.built }}
     steps:
       - name: Resolve environment
@@ -76,7 +77,7 @@ jobs:
     steps:
       - uses: aneillans/github-templates/actions/build-and-wait@v1
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.resolve.outputs.ref }}
 
   development:
     needs: [resolve, build]

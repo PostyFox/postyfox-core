@@ -1,4 +1,5 @@
 name: Publish Release
+run-name: Publish ${{ startsWith(inputs.version, 'v') && inputs.version || format('v{0}', inputs.version) }}
 
 # Publishes a draft release after it has been validated on development.
 # Production refuses a release tag until this has run.
@@ -7,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version to publish, e.g. 1.5.0
+        description: Version to publish, e.g. v1.5.0
         required: true
         type: string
 
