@@ -74,7 +74,7 @@ deploy.yml: deploy the tag to prod
 
 The next version comes from the PRs since the last tag: `type!:` or `BREAKING CHANGE` is major, a
 `feat/` or `feature/` branch or a `feat:` title is minor, anything else is patch. Give Release a
-version to override it. Re-running Release for an existing version needs `force`, which regenerates
+version to override it. Versions are written `v1.5.0` everywhere, and every input also accepts `1.5.0`. Re-running Release for an existing version needs `force`, which regenerates
 the notes, rebuilds the images and zip, and returns a published release to draft. The tag only moves
 if `ref` is also set.
 

@@ -1,4 +1,5 @@
 name: Build
+run-name: ${{ github.ref_type == 'tag' && format('Build {0}', github.ref_name) || github.event.head_commit.message || format('Build {0}', github.ref_name) }}
 
 # Validates, then builds and pushes every service image to GHCR tagged with the full commit SHA.
 # Deploy only ever ships images built here. Release dispatches this on the tag, which also tags
