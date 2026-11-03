@@ -137,32 +137,34 @@ jobs:
   production:
     needs: [resolve, build]
     if: ${{ !cancelled() && needs.resolve.result == 'success' && contains(fromJSON('["success","skipped"]'), needs.build.result) && needs.resolve.outputs.environment == 'production' }}
+    runs-on: self-hosted # cluster API is only reachable from the self-hosted runner
+    environment: production
     concurrency: deploy-production
-    uses: aneillans/github-templates/.github/workflows/helm-deploy.yml@v1
-    with:
-      environment: production
-      # cluster API is only reachable from the self-hosted runner
-      runs_on: self-hosted
-      ref: ${{ needs.resolve.outputs.sha }}
-      chart: deploy/helm/postyfox
-      release: postyfox
-      namespace: postyfox
-      values_files: deploy/helm/postyfox/values-prod.yaml
-      set_values: image.tag=${{ needs.resolve.outputs.sha }}
-      secret_values: |
-        rabbitmq.password=RABBITMQ_PASSWORD
-        redis.password=REDIS_PASSWORD
-        secrets.externalPostgresConnection=EXTERNAL_POSTGRES_CONNECTION
-        secrets.hashiCorpVaultSecretId=VAULT_SECRET_ID
-        secrets.internalToken=INTERNAL_TOKEN
-        secrets.objectStoreAccessKey=RUSTFS_ACCESS_KEY
-        secrets.objectStoreSecretKey=RUSTFS_SECRET_KEY
-        secrets.emailPassword=EMAIL_SMTP_PASSWORD
-        config.hashiCorpVaultRoleId=VAULT_ROLE_ID
-        oauth2Proxy.clientSecret=OIDC_CLIENT_SECRET
-        oauth2Proxy.cookieSecret=OAUTH2_PROXY_COOKIE_SECRET
-      var_values: |
-        config.email.host=EMAIL_SMTP_HOST
-        config.email.user=EMAIL_SMTP_USER
-        config.email.from=EMAIL_SMTP_FROM
-    # everything mapped above is a production environment secret/variable, read by the template job
+    steps:
+      - uses: aneillans/github-templates/actions/helm-deploy@v1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          chart: deploy/helm/postyfox
+          release: postyfox
+          namespace: postyfox
+          values_files: deploy/helm/postyfox/values-prod.yaml
+          set_values: image.tag=${{ needs.resolve.outputs.sha }}
+          secret_values: |
+            rabbitmq.password=RABBITMQ_PASSWORD
+            redis.password=REDIS_PASSWORD
+            secrets.externalPostgresConnection=EXTERNAL_POSTGRES_CONNECTION
+            secrets.hashiCorpVaultSecretId=VAULT_SECRET_ID
+            secrets.internalToken=INTERNAL_TOKEN
+            secrets.objectStoreAccessKey=RUSTFS_ACCESS_KEY
+            secrets.objectStoreSecretKey=RUSTFS_SECRET_KEY
+            secrets.emailPassword=EMAIL_SMTP_PASSWORD
+            config.hashiCorpVaultRoleId=VAULT_ROLE_ID
+            oauth2Proxy.clientSecret=OIDC_CLIENT_SECRET
+            oauth2Proxy.cookieSecret=OAUTH2_PROXY_COOKIE_SECRET
+            config.email.user=EMAIL_SMTP_USER
+          var_values: |
+            config.email.host=EMAIL_SMTP_HOST
+            config.email.from=EMAIL_SMTP_FROM
+          # production environment secrets are only readable from a job with `environment:` set
+          secrets_json: ${{ toJSON(secrets) }}
+          vars_json: ${{ toJSON(vars) }}
