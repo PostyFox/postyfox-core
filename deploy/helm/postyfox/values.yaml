@@ -214,7 +214,7 @@ vault:
 # ---------------------------------------------------------------------------------------------
 otelCollector:
   enabled: true
-  image: "otel/opentelemetry-collector-contrib:0.164.0"
+  image: "otel/opentelemetry-collector-contrib:0.165.0"
   centralHost: ""                  # empty = pipelines still run but exporters will fail to connect;
                                     # set to your central OTLP/gRPC endpoint (host:port form)
   deployEnv: "production"
@@ -231,7 +231,7 @@ otelCollector:
 # ---------------------------------------------------------------------------------------------
 gateway:
   image: "nginx:1.31.8-alpine"
-  fluentBitImage: "fluent/fluent-bit:5.1.5"
+  fluentBitImage: "fluent/fluent-bit:5.2.0"
   maintenanceMode: false           # set true (or --set during an upgrade) to force a 503 + maintenance page
   # In-cluster Service name (in THIS namespace) of an optionally, separately-deployed frontend/SPA.
   # "/" proxies here when frontend.enabled is true; otherwise "/" falls through to core-api.
@@ -249,7 +249,7 @@ gateway:
 # Keycloak specifically beyond the default URL shapes in the examples below).
 # ---------------------------------------------------------------------------------------------
 oauth2Proxy:
-  image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.5"
+  image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.6"
   # OIDC provider endpoints. Fill these in for your own provider; skipOidcDiscovery lets front/back
   # -channel URLs differ (e.g. a public login URL vs an in-cluster token/JWKS endpoint) while the
   # token issuer stays constant - see comments in templates/oauth2-proxy-configmap.yaml.

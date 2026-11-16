@@ -124,7 +124,7 @@ services:
   # Edge collector: shapes + forwards OTLP to the CENTRAL Data Prepper (config.central.yaml).
   # Holds no OpenSearch secrets. Set OTEL_CENTRAL_HOST to the central Data Prepper host.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.164.0
+    image: otel/opentelemetry-collector-contrib:0.165.0
     command: ["--config=/etc/otel/config.yaml"]
     environment:
       OTEL_CENTRAL_HOST: "${OTEL_CENTRAL_HOST:-central-data-prepper}"
@@ -334,7 +334,7 @@ services:
   # (:4319), which routes them to Data Prepper → ss4o_logs-nginx for the nginx integration. Holds
   # NO OpenSearch creds: this host only talks to the collector.
   fluent-bit:
-    image: fluent/fluent-bit:5.1.5
+    image: fluent/fluent-bit:5.2.0
     volumes:
       - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - gateway-logs:/var/log/gateway:ro
@@ -352,7 +352,7 @@ services:
   #   - browser redirects use KEYCLOAK_PUBLIC_URL (the token `iss`)
   #   - server-side token/JWKS use the in-cluster KEYCLOAK_HOST back channel
   oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.5
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6
     environment:
       OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
       # Prometheus metrics endpoint scraped by the otel-collector (job: oauth2-proxy).
