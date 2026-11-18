@@ -15,6 +15,9 @@ are Node-only:
 - **DeviantArt** via its documented API (Sta.sh submit + publish) and an OAuth2 + PKCE connect flow
 - **Artconomy** via the JSON API its own frontend uses, with a paired browser session
 - **Instagram** via the Instagram Content Publishing API (Business Login for Instagram)
+- **Fediverse** (Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown, Pixelfed) via
+  [`megalodon`](https://github.com/h3poteto/megalodon), one generic connector with an OAuth2 / MiAuth
+  connect flow
 
 The service is intentionally small and holds no state: every request carries
 the credentials/config it needs.
@@ -37,6 +40,8 @@ the credentials/config it needs.
 | `OBJECT_STORE_BUCKET`      | `postyfox` | Single bucket that holds every media container. |
 | `OBJECT_STORE_FORCE_PATH_STYLE` | `true` | Path-style addressing (required by MinIO and most self-hosted stores). Set `false` for virtual-host style. |
 | `OBJECT_STORE_REGION`      | `us-east-1` | S3 region. |
+| `RATE_LIMIT_MAX` | `600` | Requests per client IP per minute; `/health` is exempt. Over the limit returns `429`. |
+| `PUBLIC_BASE_URL` | _unset_ | Public edge URL. Instagram fetches staged media from `${PUBLIC_BASE_URL}/api/media/staged/{key}`; Instagram delivery fails without it. |
 
 ### Media object store
 
@@ -55,9 +60,12 @@ If `INTERNAL_TOKEN` is not configured, all requests are allowed (dev only).
 
 ## HTTP contract
 
-`:platform` includes `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Kofi`, `Artconomy`, `SoFurry`, `DeviantArt`, `Instagram`, and the supported
-Fediverse platforms (case-insensitive). Unknown platforms
-return `404 { "error": "unknown platform" }`.
+`:platform` is one of `BlueSky`, `Tumblr`, `FurAffinity`, `Toyhouse`, `X`, `Kofi`, `Artconomy`,
+`SoFurry`, `DeviantArt`, `Instagram`, `Mastodon`, `Pleroma`, `Akkoma`, `Friendica`, `Iceshrimp`,
+`GoToSocial`, `Hometown` or `Pixelfed` (case-insensitive). Unknown platforms return
+`404 { "error": "unknown platform" }`. Optional routes (`limits`, `repost`, `delete`, `refresh-token`,
+`oauth/*`) return `400 { "error": "<capability> not supported" }` for a platform that lacks them, and
+a thrown error returns `502 { "error": "..." }`.
 
 The **context object** used by every endpoint:
 
@@ -67,11 +75,14 @@ The **context object** used by every endpoint:
   "userId": "string",
   "configJson": "string (JSON)",
   "secretJson": "string (JSON) | null",
+  "operationalSecretJson": "string (JSON) | null",
   "targetId": "string | null"
 }
 ```
 
-`configJson` and `secretJson` are JSON **strings** that the service parses.
+`configJson`, `secretJson` and `operationalSecretJson` are JSON **strings** that the service parses.
+`operationalSecretJson` carries operator-managed app credentials (e.g. Tumblr's consumer key), read
+by core from the secret store.
 
 ### `GET /health`
 
@@ -95,6 +106,23 @@ Body: the context object.
 200 { "targets": [ { "id": "string", "name": "string" } ] }
 ```
 
+### `POST /connectors/:platform/limits`
+
+Body: the context object. Every connector implements it; Fediverse connectors query the instance
+live.
+
+```json
+200 {
+  "maxContentLength": 500, "maxMediaAttachments": 4, "supportedMimeTypes": ["image/png"],
+  "imageSizeLimit": 10485760, "videoSizeLimit": 41943040,
+  "imageMaxWidth": null, "imageMaxHeight": null, "videoMaxWidth": null, "videoMaxHeight": null,
+  "imageMinAspectRatio": null, "imageMaxAspectRatio": null
+}
+```
+
+Sizes are bytes; `null` means not reported / no cap. The aspect-ratio bounds drive the frontend's
+pad/crop prompt (issue #39).
+
 ### `POST /connectors/:platform/deliver`
 
 Body:
@@ -106,7 +134,9 @@ Body:
     "title": "string | null",
     "body": "string",
     "tags": ["string"],
-    "media": [ { "container": "string", "key": "string", "contentType": "string", "alt": "string | null" } ]
+    "rating": "general | mature | adult | extreme | null",
+    "media": [ { "container": "string", "key": "string", "contentType": "string", "alt": "string | null",
+                 "isDefault": "boolean?", "framing": "object?" } ]
   }
 }
 ```
@@ -123,13 +153,26 @@ Body:
 > **normalises them to the platform's limits** (see below), uploads them, and
 > applies `alt` as the image's alt text. Bluesky attaches up to 4 images as an
 > `app.bsky.embed.images` embed; Tumblr creates an NPF photo post. Text-only posts
-> are unaffected — except Instagram, which has no text-only post type and rejects
-> a `deliver` call with empty `media` outright (see below).
+> are unaffected, except on Instagram, which has no text-only post type and rejects
+> a `deliver` call with empty `media` outright (see below). `isDefault` marks the
+> image single-image platforms use; `framing` is the author's pad/crop choice.
+
+### `POST /connectors/:platform/repost` and `POST /connectors/:platform/delete`
+
+Body: `{ "context": { ...context object... }, "externalId": "string" }`, where `externalId` is what
+`deliver` returned. Used by post automations (repost or delete after a delay).
+
+```json
+repost 200 { "success": true, "externalId": "string", "externalUrl": "string", "error": "string" }
+delete 200 { "success": true, "error": "string" }
+```
+
+Repost: Bluesky, Fediverse. Delete: Bluesky, Tumblr, Fediverse.
 
 ### `POST /connectors/:platform/refresh-token`
 
-Body: the context object. Only implemented by connectors whose token expires (currently just
-Instagram); returns `400 { "error": "refresh not supported" }` for any other platform.
+Body: the context object. Implemented by connectors whose token expires (Instagram, SoFurry,
+DeviantArt); returns `400 { "error": "refresh not supported" }` for any other platform.
 
 ```json
 200 { "secretJson": "string (JSON) | null" }
@@ -137,7 +180,33 @@ Instagram); returns `400 { "error": "refresh not supported" }` for any other pla
 
 `secretJson: null` means the platform declined the refresh (the caller keeps the existing secret
 and the user must reconnect); a thrown error still returns `502` like every other route. Driven by
-a background sweeper on the core side (`ConnectorTokenRefreshSweeper`), never a user action.
+a background sweeper on the core side (`ConnectorTokenRefreshSweeper`), never a user action. Core
+also refreshes an already-expired token before use (`RefreshIfExpiredAsync`), which keeps DeviantArt's
+one-hour tokens usable.
+
+### `POST /connectors/:platform/oauth/request-token`
+
+Body: `{ "callbackUrl": "string", "configJson": "string?", "operationalSecretJson": "string | null" }`.
+
+```json
+200 { "authorizeUrl": "string", "requestToken": "string", "requestTokenSecret": "string" }
+```
+
+`requestToken` correlates the callback (OAuth1 request token, OAuth2 `state`, or MiAuth session);
+`requestTokenSecret` stays server-side in core until the callback (PKCE connectors keep the code
+verifier there).
+
+### `POST /connectors/:platform/oauth/access-token`
+
+Body: `{ "requestToken": "string", "requestTokenSecret": "string", "verifier": "string",
+"operationalSecretJson": "string | null" }`.
+
+```json
+200 { "secretJson": "string (JSON)" }
+```
+
+The returned `secretJson` is stored as the connector's secret. See
+[docs/oauth-connectors.md](../../docs/oauth-connectors.md) for the per-platform flows.
 
 ### Media normalisation (mandatory core step)
 
@@ -185,7 +254,8 @@ why it is opt-in per target.
 - `operationalSecretJson` → Vault-sourced app credentials:
   `{ "consumerKey": "", "consumerSecret": "" }`
 - `list-targets` returns the user's blogs as `{ id: blog.name, name: blog.title || blog.name }`.
-- `deliver` creates a text post and returns the post `id` and `post_url`.
+- `deliver` creates an NPF post (text, photo, or one video block) and returns the post `id` and
+  `post_url`. `delete` removes it.
 
 ### Instagram
 
@@ -197,15 +267,16 @@ why it is opt-in per target.
 - `operationalSecretJson` → Vault-sourced app credentials: `{ "appId": "", "appSecret": "" }`.
 - `list-targets` returns the single linked account as `{ id: IgUserId, name: "@username" }`
   (Business Login tokens are scoped to one IG user).
-- `deliver` **requires at least one media item** — Instagram has no text-only post type — and
+- `deliver` **requires at least one media item** (Instagram has no text-only post type) and
   publishes via the create-container-then-publish flow: a single image/video container, or one
   child container per item plus a parent `CAROUSEL` container for several. Video containers are
   polled until Instagram finishes processing them before publish is attempted. Unlike every other
   connector here, Instagram fetches media **by URL** rather than accepting a direct upload, so
-  normalised bytes are staged in the object store under a short-lived presigned URL
-  (`MediaStore.put` + `presignedGetUrl`) and deleted again once the container is created — this only
-  works when the object store is reachable from the public internet (not true for a local MinIO dev
-  stack).
+  normalised bytes are written to the object store's `instagram-staging` container
+  (`MediaStore.put`) and served anonymously by core-api at
+  `${PUBLIC_BASE_URL}/api/media/staged/{key}`, then deleted once the attempt finishes. This only
+  works when `PUBLIC_BASE_URL` is reachable from the public internet, so a local dev stack needs a
+  tunnel.
 - `refresh` exchanges the still-valid token for a new one, resetting the 60-day expiry.
 
 ### SoFurry
@@ -242,6 +313,19 @@ why it is opt-in per target.
   deviation URL the API returns; a Sta.sh-only delivery returns the item id and no URL.
 - A failure after the Sta.sh upload leaves the item in the account's Sta.sh.
 
+### Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown, Pixelfed)
+
+- `configJson` → `{ "InstanceUrl": "https://mastodon.example" }`.
+- `secretJson` → `{ "AccessToken": "", "Sns": "mastodon" }`, from the connect flow. The connector
+  registers its own app on the instance at connect time, so there is no `operationalSecretJson`.
+- The instance's software is detected from nodeinfo and mapped to a megalodon SNS driver; the registry
+  value is the fallback (Akkoma uses `pleroma`, Hometown `mastodon`, Iceshrimp `firefish`).
+- `limits` reads the instance's own caps (`getInstance()`); `deliver` merges them over the static
+  media spec and fails clearly when a post exceeds them.
+- `deliver` uploads media (alt text and the crop centre as focal point), then posts the status with
+  the optional `ContentWarning` post option as its spoiler text. `repost` boosts and `delete` removes
+  a delivered status.
+
 ### FurAffinity
 
 - `secretJson` → `{ "CookieHeader": "a=…; b=…" }`. The cookie header must come from a currently
@@ -264,7 +348,7 @@ why it is opt-in per target.
 - `secretJson` → `{ "CookieHeader": "remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d=…", "UserAgent": "…" }`.
   The required cookie is Laravel's long-lived "remember me" cookie, not the short-lived
   `laravel_session` (which expires after 120 minutes of inactivity and is usually already purged from
-  the jar by the time a user opens the pairing flow) — see `CookiePairingSpec` in
+  the jar by the time a user opens the pairing flow); see `CookiePairingSpec` in
   `ServiceCollectionExtensions` for why. The paired User-Agent is replayed on every request since
   Toyhou.se's own Cloudflare challenge binds to it (see
   `PostyFox.Application.Services.ConnectorCookiePairingService`).

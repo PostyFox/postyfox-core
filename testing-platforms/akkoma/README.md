@@ -2,12 +2,12 @@
 
 Brings up a local Akkoma instance for manually testing the PostyFox `akkoma` connector. PostyFox
 talks to Akkoma with the `pleroma` SNS driver (see
-`src/connectors-node/src/connectors/index.ts` — Akkoma is a Pleroma fork and keeps the same client
+`src/connectors-node/src/connectors/index.ts`: Akkoma is a Pleroma fork and keeps the same client
 API). See [../README.md](../README.md) for the shared conventions (what's disabled and why).
 
 **This is the least battle-tested stack in this folder.** Akkoma publishes no prebuilt Docker image
 (unlike Mastodon or Pleroma), so `Dockerfile` here builds it from source and generates its instance
-config non-interactively with Akkoma's own `mix pleroma.instance gen` at build time — a legitimate,
+config non-interactively with Akkoma's own `mix pleroma.instance gen` at build time, a legitimate,
 documented path, but one that couldn't be dry-run against a live daemon while writing this. If
 `docker compose up -d` doesn't converge cleanly, check `docker compose logs` on the failing service
 first; the [Akkoma docs](https://docs.akkoma.dev/stable/installation/docker_en/) are the fallback
@@ -21,7 +21,7 @@ docker compose logs -f admin-init   # wait for it to print success and exit
 ```
 
 **First run builds Akkoma from source** (pinned to the `stable` branch, includes compiling the
-Elixir/Erlang app) — expect this to take several minutes before Postgres extensions/migrations even
+Elixir/Erlang app): expect this to take several minutes before Postgres extensions/migrations even
 start. Subsequent `up`s reuse the built `akkoma-test:local` image and are fast.
 
 `docker compose ps` should settle with `db`/`akkoma` `running` and `db-init`/`migrate`/`admin-init`
@@ -38,7 +38,7 @@ Test admin account (created by `admin-init`):
 | Password | `postyfox-test-1234` |
 
 These are fixed in `Dockerfile` (instance generation) and `docker-compose.yml` (`admin-init`'s
-command) rather than an env file, since they're baked into the image at build time — edit both and
+command) rather than an env file, since they're baked into the image at build time; edit both and
 rebuild (`docker compose build`) if you want different values.
 
 ## What's disabled and why
@@ -52,7 +52,7 @@ rebuild (`docker compose build`) if you want different values.
 
 ## Manual test checklist
 
-1. In PostyFox, add a new **Akkoma** connector with Instance URL `http://localhost:4020` — or, if
+1. In PostyFox, add a new **Akkoma** connector with Instance URL `http://localhost:4020`, or, if
    PostyFox itself is running in the dockerised dev stack, `http://host.containers.internal:4020`
    (Podman) / `http://host.docker.internal:4020` (Docker), see
    [../README.md](../README.md#connecting-from-a-dockerized-postyfox-dev-stack).

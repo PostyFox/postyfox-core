@@ -5,13 +5,17 @@ Quick reference for GitHub Actions-based Docker deployment with two isolated sta
 ## Quick Start
 
 ### 1. Server Setup (one-time)
-Go through and check folders, env file etc is there.
+On the dev host, create `/opt/postyfox/dev` (owned by the runner user) with Docker Compose available.
+Each deploy copies the compose files and the `rabbitmq`, `gateway`, `oauth2-proxy`, `vault`,
+`fluent-bit` and `otel` config into it, but never `.env`: the deploy fails if `.env` is missing.
 
 ### 2. Configure Environment
 ```bash
-sudo nano /opt/postyfox/dev/.env      # Configure dev stack
-sudo nano /opt/postyfox/prod/.env     # Configure prod stack
+cp deploy/.env.dev.example /opt/postyfox/dev/.env   # then fill in the values
 ```
+
+`deploy/.env.prod.example` and `docker-compose.prod.yml` remain for a compose-based production host;
+the live production deployment uses the Helm chart instead (see below).
 
 ### 3. GitHub Secrets
 Add to repository → Settings → Secrets. Split by GitHub Environment: `development` needs none of
@@ -30,10 +34,12 @@ these (the self-hosted runner deploys locally); `production` needs the Kubernete
 - `OIDC_CLIENT_SECRET`, `OAUTH2_PROXY_COOKIE_SECRET`: OIDC edge secrets
 - `EMAIL_SMTP_PASSWORD`: SMTP relay password (issue #409: account-invite delivery).
 
-**`production` environment variables** (not secrets — Settings → Environments → production →
+- `EMAIL_SMTP_USER`: SMTP relay username (read from secrets by `deploy.yml`).
+
+**`production` environment variables** (not secrets: Settings → Environments → production →
 Environment variables; kept out of the repo the same way, just not treated as sensitive by GitHub):
-- `EMAIL_SMTP_HOST`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_FROM`: SMTP relay host/username/from-address.
-  Leaving these unset still works: invites are created, the email just doesn't send (logged).
+- `EMAIL_SMTP_HOST`, `EMAIL_SMTP_FROM`: SMTP relay host and from-address.
+  Leaving the SMTP values unset still works: invites are created, the email just doesn't send (logged).
 
 These are mapped to chart values by `secret_values`/`var_values` in `deploy.yml`, written to a
 temporary values file at deploy time (never committed) and layered on top of
@@ -106,7 +112,6 @@ Production is a **separate Kubernetes deployment target** from dev: dev stays on
 | `deploy/helm/postyfox/` | Production Helm chart (full stack: apps + optional Postgres/RabbitMQ/Redis/Vault/otel-collector/gateway/oauth2-proxy) |
 | `deploy/helm/postyfox/values.yaml` | Chart defaults (generic, reusable by any deployer) |
 | `deploy/helm/postyfox/values-prod.yaml` | Non-secret overlay for the real PostyFox cluster |
-| `deploy/DEPLOYMENT.md` | Full deployment guide |
 
 ## Stack Features
 
@@ -133,7 +138,6 @@ Production is a **separate Kubernetes deployment target** from dev: dev stays on
 
 ## Common Commands (Development)
 
-### Check Status
 ### Check Status
 ```bash
 ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml ps"
@@ -255,7 +259,7 @@ Per-deployment defaults:
 |------------|------------------|
 | `docker-compose.yml` (base / bare) | `InMemory` |
 | dev/prod compose (`+ docker-compose.{dev,prod}.yml`) | `HashiCorpVault` (bundled) |
-| Helm (`deploy/helm`) | `HashiCorpVault` (external Vault) |
+| Helm (`deploy/helm`) | `HashiCorpVault` (bundled, or external with `vault.enabled: false`) |
 | Terraform / ACA (`deploy/terraform-aca`) | `AzureKeyVault` |
 
 Options are passed as env vars named `Secrets__<Provider>__<Option>`. The dev/prod compose files and
@@ -422,9 +426,10 @@ isn't present/ready yet.
 ## Troubleshooting
 
 ### Development deploy fails
-1. Check GitHub Actions logs: https://github.com/yourorg/postyfox-core/actions
+1. Check GitHub Actions logs: https://github.com/PostyFox/postyfox-core/actions
 2. Check server logs: `ssh deploy@server "cd /opt/postyfox/dev && docker compose -f docker-compose.server.yml -f docker-compose.dev.yml logs"`
-3. Verify SSH access: `ssh -i deploy_key deploy@server "docker ps"`
+3. Check the self-hosted runner is online (repository → Settings → Actions → Runners) and that
+   `/opt/postyfox/dev/.env` exists.
 
 ### Development services won't start
 ```bash
@@ -453,6 +458,7 @@ production equivalent of the dev `git log` + redeploy-by-SHA flow.
 
 ## See Also
 
-- [Full Deployment Guide](./DEPLOYMENT.md)
 - [Architecture](../docs/ARCHITECTURE.md)
-- [Local Development](../README.md#run-locally)
+- [Observability](./observability/README.md)
+- [OAuth connector setup](../docs/oauth-connectors.md)
+- [Local Development](../docs/DEVELOPMENT.md#run-the-local-stack)

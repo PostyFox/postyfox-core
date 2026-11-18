@@ -4,58 +4,65 @@
 
 ### Requirements
 
-Visual Studio Code, Visual Studio 2026 or JetBrains Rider (Note, JetBrains Rider has a free, non-commercial license)
-Docker or Podman (for local containerised development)
+- .NET 11 SDK
+- Node.js 24 and npm (for `src/connectors-node`)
+- Docker or Podman (for the local stack)
+- An editor: Visual Studio Code, Visual Studio 2026 or JetBrains Rider (Rider has a free
+  non-commercial licence)
+- The Six Labors ImageSharp licence file (`sixlabors.lic`) in the repo root for Release builds and
+  images. See [ImageSharp licence](../docs/DEVELOPMENT.md#imagesharp-licence).
 
-### Testing against the API with Postman
+### Build and test
 
-Postman is one of the easiest ways to experiment with the API's that are deployed. But in order to do this you need to 
-authenticate and get a Bearer Token or you will receive 401's.
+```bash
+dotnet build
+dotnet test
+cd src/connectors-node && npm ci && npm test
+```
+
+Tests need no Docker. See [the development guide](../docs/DEVELOPMENT.md).
 
 ### Standing up a local dev stack
 
-There is a docker-compose file in the deploy directory that will stand up a local dev stack. This is the easiest way 
-to get started with development and testing.
-Note the comment at the top of the file; 
+`deploy/docker-compose.yml` stands up the whole platform, including Keycloak, oauth2-proxy and the
+nginx gateway:
 
-```
-# PostyFox local stack. Quick start:  docker compose up --build
-#
-# Auth is the production-representative OIDC path: the stack always runs Keycloak + oauth2-proxy +
-# an nginx gateway, and the APIs validate the OIDC bearer token in-app (no DevMode bypass). Reach the
-# APIs through the edge at  http://localhost:4180  (logs you in via Keycloak on http://localhost:8082).
+```bash
+cd deploy
+docker compose up --build
 ```
 
-You will want to do a docker compose up --build to get the stack running.
-Log in and exercise the APIs through the edge at http://localhost:4180; hitting the APIs directly
-(:8080 / :8081) requires a valid `Authorization: Bearer` token. Note that both of these address are NOT normally exposed
-on "real" deployments.
+Log in and exercise the APIs through the edge at http://localhost:4180 as `postyfox` / `postyfox`
+(the realm import is in `deploy/keycloak`). Hitting the APIs directly (`:8080` / `:8081`) requires a
+valid `Authorization: Bearer` token. Neither port is exposed on real deployments. There is no DevMode
+bypass.
 
-The auth path includes a full, complete, Keycloak and all parts needed to validate locally without having any
-external dependencies. Credentials which are imported and available for use can be found in the deploy/keycloak 
-directory. The default username is `postyfox` and the password is `postyfox`.
+To run the frontend against this stack, see the postyfox-frontend README.
 
-### Swagger API Documentation
-Full Swagger Documentation is available for the API's, as they publish OpenAPI specs.
-This is also available on the development endpoint, as well as local stacks.
+### Testing the API with Postman or curl
 
-To access Swagger you *must* be authenticated.
+Create an API key (`POST /api/profile/keys`, or the API keys page in the frontend) and send it as
+`X-API-Key`. That avoids handling Keycloak bearer tokens by hand.
 
-Core: https://api-dev.postyfox.com/swagger/index.html <br/>
-Posting API: https://api-dev.postyfox.com/swagger-post/index.html
+### Swagger API documentation
 
+Both APIs publish OpenAPI documents and Swagger UI. You must be signed in.
 
-## REMINDER
+- Local: http://localhost:4180/swagger and http://localhost:4180/swagger-post
+- Dev: https://dev.postyfox.com/swagger/index.html and https://dev.postyfox.com/swagger-post/index.html
 
-DO NOT checkin any passwords, secrets or other values if you use the local.settings.json file. *PLEASE* use local 
-environment variables for these values for development work to make it less likely that you do so.  We do have scanning 
-setup to try and detect this, but it is not fool proof. 
+### Documentation
 
-The SecretStore variable is a reference to KeyVault - and if left blank should default to a code path in all cases where 
-everything runs local, but you may need to check specific code paths.
+Architecture, decisions and the endpoint reference are under [`docs/`](../docs/README.md). Update
+them in the same change as the code they describe.
 
-## Submitting Issues
+## Reminder
 
-If you have found a bug, something that isn't right or would like to request a feature, please log it on our main 
-project tracker - we will then triage it to the right project for resolution. A single issue might actually spawn multiple tickets for different people to work on to be fully closed.
+Do not commit passwords, secrets, licence files or other credentials. Use environment variables or
+an untracked `.env` for local values. Secret scanning is enabled but not foolproof.
 
+## Submitting issues
+
+Log bugs and feature requests on the
+[postyfox-core issue tracker](https://github.com/PostyFox/postyfox-core/issues). We triage them to the
+right project; one issue may spawn several tickets.

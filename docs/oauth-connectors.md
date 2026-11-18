@@ -15,6 +15,7 @@ opaquely:
 |--------|------------------------------|----------------------------|---------------------|
 | OAuth 1.0a (Tumblr) | request token | `oauth_verifier` | request token + verifier |
 | OAuth2 (Mastodon-style, Instagram) | random `state` echoed back | `code` | authorisation `code` |
+| OAuth2 + PKCE (SoFurry, DeviantArt) | random `state` echoed back | `code` | authorisation `code` + code verifier (held in `requestTokenSecret`) |
 | MiAuth (Iceshrimp/Misskey-family) | session token | *(none)* | stored session token |
 
 The callback route accepts `oauth_token`/`oauth_verifier`, `state`/`code`, or `token`/`session`, and
@@ -25,20 +26,20 @@ gets exchanged).
 
 ```
 Browser ──"Connect"──▶ core POST /api/connectors/{id}/oauth/start
-                         → connectors-node builds the provider authorise URL (request token)
+                         → connectors-node /oauth/request-token builds the provider authorise URL
                          → core stashes the request-token secret, returns the authorise URL
 Browser ──redirect──▶ provider authorise page ──user approves──▶
-Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_token&oauth_verifier
-                         → connectors-node exchanges for the access token
+Browser ──callback──▶ core GET /api/connectors/oauth/callback?<correlation>&<verifier>
+                         → connectors-node /oauth/access-token exchanges for the access token
                          → core stores it as the connector's secret; popup closes
 ```
 
 - The frontend opens the authorise URL in a popup and refreshes on completion (falls back to a
   full-page redirect if popups are blocked).
-- OAuth1 tokens are long-lived, so there is **no refresh** to manage.
-- The connector's per-user secret holds only `{OAuthToken, OAuthTokenSecret}`; the app (consumer)
-  credentials live in the configured operational secret store. Delivery still runs through
-  `tumblr.js`.
+- Tumblr's OAuth1 tokens are long-lived, so there is no refresh to manage. Its per-user secret
+  holds only `{OAuthToken, OAuthTokenSecret}`; the app (consumer) credentials live in the configured
+  operational secret store.
+- Instagram, SoFurry and DeviantArt tokens expire and are refreshed by core (see each section).
 
 ## Operator setup (Tumblr)
 
@@ -76,7 +77,7 @@ Browser ──callback──▶ core GET /api/connectors/oauth/callback?oauth_to
 
 ## Operator setup (Instagram)
 
-Instagram uses **Business Login for Instagram** (Meta's newer, direct-to-Instagram OAuth2 flow —
+Instagram uses **Business Login for Instagram** (Meta's newer, direct-to-Instagram OAuth2 flow,
 not the older Facebook-Login-based Instagram Graph API). Only Business and Creator accounts are
 eligible; personal accounts cannot authorise at all.
 
@@ -89,12 +90,12 @@ eligible; personal accounts cannot authorise at all.
    {OAUTH_CALLBACK_BASE_URL}/api/connectors/oauth/callback
    ```
 
-   Same callback base as Tumblr (see above) — it **must match exactly**.
+   Same callback base as Tumblr (see above); it **must match exactly**.
 3. Sign in with a Keycloak account carrying the `postyfox-admin` realm role, open
    **Administration**, and set the Instagram app ID and app secret. They are stored as
    `InstagramAppId` and `InstagramAppSecret`.
 4. The callback base URL (`OAuth__CallbackBaseUrl` / `PUBLIC_BASE_URL`) is the same one already
-   configured for Tumblr — nothing extra to set there.
+   configured for Tumblr, so nothing extra to set there.
 
    If either operational secret is missing, Instagram OAuth and delivery fail closed with a
    configuration error, same as Tumblr.
@@ -102,7 +103,7 @@ eligible; personal accounts cannot authorise at all.
 **Token lifetime.** The connect flow yields a long-lived token (~60 days) stored as
 `{AccessToken, IgUserId, ExpiresAt}`. Unlike Tumblr's OAuth1 tokens, this one expires: a background
 sweeper (`ConnectorTokenRefreshSweeper`, hosted in the posting worker) refreshes it automatically
-once it's within `ConnectorRefresh:RefreshWithinDays` (default 10) days of expiring — no user action
+once it's within `ConnectorRefresh:RefreshWithinDays` (default 10) days of expiring; no user action
 needed under normal operation. If a token lapses anyway (the sweeper was down for an extended
 period, or Instagram revoked it), `isAuthenticated` starts failing and the user needs to reconnect.
 
@@ -130,7 +131,7 @@ with PKCE, refresh tokens).
    {OAUTH_CALLBACK_BASE_URL}/api/connectors/oauth/callback
    ```
 
-   Same callback base as Tumblr and Instagram — it **must match exactly**.
+   Same callback base as Tumblr and Instagram; it **must match exactly**.
 3. Sign in with a Keycloak account carrying the `postyfox-admin` realm role, open
    **Administration**, and set the SoFurry client ID and client secret. They are stored as
    `SofurryClientId` and `SofurryClientSecret`, and loaded from the secret store whenever the
@@ -221,7 +222,7 @@ per-user secret holds only `{AccessToken, Sns}`.
 - **If the token expires** (Tumblr's and the Fediverse's don't; Instagram's does): implement
   `Connector.refresh` in connectors-node and have the connector class implement
   `IRefreshableConnector` on the core side (see `instagram.ts` / `HttpConnector.RefreshTokenAsync`).
-  The connector's secret JSON must carry an `ExpiresAt` field — `ConnectorTokenRefreshService` reads
+  The connector's secret JSON must carry an `ExpiresAt` field: `ConnectorTokenRefreshService` reads
   it generically across every `IRefreshableConnector`, so a new expiring-token platform needs no
   sweeper changes, only the connector-level `refresh` implementation. An already-expired token is
   also refreshed before use (`ConnectorTokenRefreshService.RefreshIfExpiredAsync`), which is what
