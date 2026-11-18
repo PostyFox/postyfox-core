@@ -1,7 +1,8 @@
 # Platform testing stacks
 
 Local, disposable Docker Compose stacks for manually verifying PostyFox connectors against a real
-copy of each platform we support.
+copy of a platform. Only self-hostable platforms are covered, and Iceshrimp and Pixelfed have no stack
+yet.
 
 | Folder | Platform | Issue |
 |---|---|---|
@@ -22,7 +23,7 @@ email loop to get through by hand.
 
 The **test itself is not automated**. Each platform folder has a README with a short numbered
 checklist: point a PostyFox connector at the instance, connect, compose a post, send it, and confirm
-it landed on the platform. This is deliberate — the point of these stacks is a human sanity-check
+it landed on the platform. This is deliberate: the point of these stacks is a human sanity-check
 against a real target before/after connector changes, not a CI suite.
 
 ## Connecting from a dockerised PostyFox dev stack
@@ -38,19 +39,19 @@ works fine in your browser. Which hostname to use depends on which tool you're r
 with:
 
 - **Podman** (`podman compose …`): use `http://host.containers.internal:PORT`. Podman injects this
-  automatically into every container, pointing at the host — no compose changes needed.
+  automatically into every container, pointing at the host; no compose changes needed.
 - **Docker** (`docker compose …`): use `http://host.docker.internal:PORT`. `connectors-node`'s
   service definition in `deploy/docker-compose.yml` carries `extra_hosts:
   host.docker.internal:host-gateway` for this (Docker Desktop resolves it out of the box anyway;
   that line is what makes it work on Docker Engine on Linux too). Podman also understands
   `host-gateway`, so `host.docker.internal` happens to work there as well if you'd rather use one
-  hostname everywhere — but `host.containers.internal` is the one that needs zero setup on Podman.
+  hostname everywhere, but `host.containers.internal` is the one that needs zero setup on Podman.
 
 For platforms with an OAuth connect flow, the provider's redirect also sends your **browser**
-straight to that same Instance URL (to show its authorise page) — and your browser, running on the
+straight to that same Instance URL (to show its authorise page), and your browser, running on the
 host, has no idea what `host.containers.internal`/`host.docker.internal` mean either, by default.
 Fix that once, for every stack, by adding the line(s) for whichever hostname(s) you use to your
-machine's `/etc/hosts` (not something to script/automate — it's a one-time manual edit):
+machine's `/etc/hosts` (not something to script/automate; it's a one-time manual edit):
 
 ```
 127.0.0.1 host.containers.internal
@@ -64,8 +65,8 @@ can use it as the connector's Instance/Webhook URL for any stack in this folder.
 ## Conventions shared by every stack
 
 - **Isolated per platform.** Each folder is its own Compose project (own network, own volumes) so
-  stacks don't collide and can run side by side. Host ports are chosen to not overlap across folders
-  — see each README for its port.
+  stacks don't collide and can run side by side. Host ports are chosen to not overlap across folders;
+  see each README for its port.
 - **Federation and outbound e-mail are disabled** at the application config level wherever the
   platform exposes a switch for it (closed/allowlist federation mode, `federating: false`,
   registration-confirmation e-mails skipped by creating the test account directly). These are local,
@@ -74,7 +75,7 @@ can use it as the connector's Instance/Webhook URL for any stack in this folder.
   mail to a real inbox. Where a platform genuinely has no such switch (Friendica), the README says so.
 - **Secrets are baked in, not generated per-checkout.** Things like Rails `SECRET_KEY_BASE` or a
   Postgres password are committed with fixed, clearly-fake values in each stack's `.env`. These
-  instances are local-only test doubles with no real user data — treat the values as public, and feel
+  instances are local-only test doubles with no real user data; treat the values as public, and feel
   free to regenerate them (each README says how) if that bothers you.
 - **State lives in Docker volumes**, not bind mounts into the repo, so `git status` stays clean while
   a stack is running. `docker compose down -v` wipes a stack back to nothing.
@@ -82,7 +83,7 @@ can use it as the connector's Instance/Webhook URL for any stack in this folder.
 ## Adding a platform
 
 Copy the shape of an existing folder that's architecturally closest to the new platform (the
-Mastodon-family ones — Mastodon, Hometown — share almost everything; Pleroma and Akkoma share the
+Mastodon-family ones, Mastodon and Hometown, share almost everything; Pleroma and Akkoma share the
 `federating`/`pleroma_ctl`-style config). Keep the same three things every folder has: a
 `docker-compose.yml` that needs zero manual steps beyond `up -d`, a README with the fixed test
 credentials and the manual test checklist, and federation/e-mail turned off wherever the platform

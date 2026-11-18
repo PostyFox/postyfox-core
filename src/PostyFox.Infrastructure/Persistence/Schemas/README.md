@@ -61,10 +61,28 @@ values are the site's own audience identifiers (from PostyBirb's Ko-fi module).
 
 Same arrangement as FurAffinity's: these describe an individual image upload, so they live on the
 Toyhouse connector descriptor's `PostOptionsSchema`. `AuthorizedViewers`, `PublicViewers`, and
-`Watermark` are fixed option IDs from Toyhou.se's own upload form (unlikely to change)'s Toyhouse driver, not scraped).
-Images are attached to character pages rather than a standalone gallery, so `CharacterIds` is required and
+`Watermark` are fixed option IDs from Toyhou.se's own upload form (taken from PostyBirb's Toyhouse
+driver, not scraped; unlikely to change). Images are attached to character pages rather than a standalone gallery, so `CharacterIds` is required and
 free-text for the same reason FurAffinity's `FolderIds` is: characters belong to an individual
 account, with no static list to mirror.
+
+## artconomy-post-options.schema.json
+
+Artconomy's per-submission choices from the site's upload form: `CreditAsArtist` (`false` files the
+piece in the user's collection instead of crediting them), `Private` and `DisableComments`.
+
+## sofurry-post-options.schema.json
+
+`Type` is one of SoFurry's API image type ids (the category is the id rounded down to ten),
+`Privacy` its visibility levels. `FolderIds` is free text because folders belong to the account; the
+connector checks them against the account's folders before posting. `AllowComments`,
+`AllowDownloads`, `WorkInProgress` and `PixelPerfect` map to the API's submission flags.
+
+## deviantart-post-options.schema.json
+
+Mapped onto `/stash/submit` and `/stash/publish`. `Mode` set to `stash` uploads to Sta.sh without
+publishing. `GalleryIds` is free text (gallery folder UUIDs belong to the account). `NoAi` and
+`AiGenerated` leave the account default when unset.
 
 ## VideoAsGif (shared)
 

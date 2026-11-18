@@ -2,7 +2,7 @@
 
 This describes the **containerised PostyFox platform**.
 For the key decisions and their rationale see [`DECISIONS.md`](./DECISIONS.md);
-for operational how-to see [`../README.md`](../README.md).
+for running, building and configuring it see [`DEVELOPMENT.md`](./DEVELOPMENT.md).
 
 > Diagrams are Mermaid (render on GitHub).
 
@@ -25,8 +25,8 @@ event arrives. This repo is the backend + infrastructure only (the control-panel
 - **Uniform extensibility**: adding a platform means implementing one connector contract; adding an
   event source means implementing one trigger-source contract.
 - **Two language stacks by fit**: C# for the bulk; Node/TypeScript where its libraries or web-form
-  tooling are materially better (Bluesky, Tumblr, FurAffinity, Toyhouse, X), behind the same connector
-  contract.
+  tooling are materially better (every platform except Discord and Telegram), behind the same
+  connector contract.
 
 ---
 
@@ -38,28 +38,28 @@ flowchart TB
     edge["Edge: oauth2-proxy<br/>(OIDC → Keycloak)<br/>+ nginx gateway fan-out"]
 
     subgraph apps["PostyFox services (containers)"]
-        core["core-api (C#)<br/>profile/keys, services,<br/>connectors, templates, triggers"]
-        post["post-api (C#)<br/>post intake + status,<br/>webhook callbacks"]
-        worker["posting-worker (C#)<br/>generate → deliver pipeline"]
-        node["connectors-node (TS)<br/>Bluesky, Tumblr, FurAffinity, Toyhouse, X"]
+        core["core-api (C#)<br/>profile/keys, admin, services,<br/>connectors, media, templates, triggers"]
+        post["post-api (C#)<br/>post intake, drafts, status,<br/>webhook callbacks"]
+        worker["posting-worker (C#)<br/>generate → deliver pipeline,<br/>sweepers"]
+        node["connectors-node (TS)<br/>Bluesky, Tumblr, Instagram, Fediverse,<br/>FurAffinity, Toyhouse, Ko-fi, SoFurry,<br/>DeviantArt, Artconomy, X"]
     end
 
     subgraph backing["Backing services"]
         pg[("PostgreSQL")]
-        s3[("S3 / MinIO<br/>object store")]
-        mq[["RabbitMQ<br/>(delayed exchange)"]]
-        sec{{"Secret store<br/>(BitWarden / Azure KV / Infisical / in-memory)"}}
+        s3[("S3-compatible<br/>object store (RustFS)")]
+        mq[["RabbitMQ"]]
+        sec{{"Secret store<br/>(Vault / Azure KV / BitWarden / Infisical / in-memory)"}}
         otel["OTel Collector"]
     end
 
-    ext["External platforms<br/>Discord · Telegram · Bluesky · Tumblr · FurAffinity · Toyhouse · X"]
+    ext["External platforms<br/>Discord · Telegram · Bluesky · Tumblr · Instagram · Fediverse ·<br/>FurAffinity · Toyhouse · Ko-fi · SoFurry · DeviantArt · Artconomy · X"]
     src["External event sources<br/>(signed webhooks)"]
 
     client --> edge --> core & post
     client -->|X-API-Key| core & post
 
-    core --> pg & sec
-    core -->|Node connector auth,targets| node
+    core --> pg & s3 & sec
+    core -->|Node connector auth, targets, OAuth| node
     post --> pg & s3
     post -->|publish generate| mq
     src -->|POST /api/webhooks/:source| post
@@ -77,15 +77,16 @@ flowchart TB
 
 | Component | Runtime | Responsibility |
 |-----------|---------|----------------|
-| **core-api** | ASP.NET Core (.NET 11) | Identity/API keys, service catalogue, connector CRUD + auth/target ops, templates, trigger registration. Applies EF migrations + seeds catalogue on boot. |
-| **post-api** | ASP.NET Core (.NET 11) | Post intake + status; inbound external-trigger webhook callbacks. Publishes pipeline commands. |
-| **posting-worker** | .NET Worker | Consumes `generate`/`deliver` queues; renders + delivers each target; owns retries/backoff/DLQ + status rollup. |
-| **connectors-node** | Node 24 / Fastify | Bluesky (`@atproto/api`), Tumblr (`tumblr.js`), FurAffinity and Toyhouse (authenticated HTML forms), X (`rettiwt-api` over a paired browser session), and Fediverse connectors behind an `IConnector`-shaped HTTP contract; internal-token auth; stateless. |
+| **core-api** | ASP.NET Core (.NET 11) | Identity/API keys, settings, account delegation, terms, admin, service catalogue, connector CRUD + auth/target/OAuth/cookie-pairing ops, media upload + Instagram staging, templates, tag presets, trigger registration. Applies EF migrations + seeds catalogue on boot. |
+| **post-api** | ASP.NET Core (.NET 11) | Post intake, drafts, status/history, cancel/delete, automations; inbound external-trigger webhook callbacks. Publishes pipeline commands. |
+| **posting-worker** | .NET Worker | Consumes `generate`/`deliver` queues; renders + delivers each target; owns retries/backoff/DLQ + status rollup. Hosts the retention, token-refresh and automation sweepers. |
+| **connectors-node** | Node 24 / Fastify | Every platform except Discord and Telegram (see section 6) behind an `IConnector`-shaped HTTP contract; internal-token auth; stateless. |
 | PostgreSQL | n/a | System of record. |
-| S3 / MinIO | n/a | Media, post payloads, Telegram MTProto sessions. |
-| RabbitMQ | n/a | Pipeline queues; delayed-message exchange for scheduling + retry backoff. |
-| Secret store | n/a | Per-user connector secrets, platform secrets, trigger signing secrets. Pluggable provider (BitWarden/VaultWarden, Azure Key Vault, Infisical, or in-memory) via the `adapters-secrets` library. |
-| oauth2-proxy + Keycloak | n/a | OIDC edge (opt-in `auth` compose profile); injects the trusted identity header. |
+| S3-compatible object store (RustFS) | n/a | Media, post payloads, Telegram MTProto sessions, Instagram staging. |
+| RabbitMQ | n/a | Pipeline queues (`generate`, `deliver`, `automation`); TTL holding queues for retry backoff. No plugins beyond the bundled Prometheus exporter. |
+| Secret store | n/a | Per-user connector secrets, platform secrets, trigger signing secrets. Pluggable provider (HashiCorp Vault, Azure Key Vault, BitWarden/VaultWarden, Infisical, or in-memory) via the `adapters-secrets` library. |
+| oauth2-proxy + Keycloak | n/a | OIDC edge, always on (including local compose); forwards the OIDC bearer token, which the APIs validate. Sessions in Redis/Valkey. |
+| nginx gateway | n/a | Path-routes the edge to core-api, post-api and the frontend; serves the maintenance page. |
 | OTel Collector | n/a | Traces + metrics sink (OTLP). |
 
 ---
@@ -114,8 +115,8 @@ flowchart LR
 |---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `PostyFox.Domain` | Entities + enums. No dependencies.                                                                                                                                                                                                 |
 | `PostyFox.Application` | Abstractions (`IAppDbContext`, `IObjectStore`, `IMessageBus`, `IConnector`, `ITelegramGateway`, `ITriggerSource`, …), services/use-cases, template engine, pipeline handlers, connector + trigger contracts, DTOs. Secrets use `ISecretsProvider` from the external `adapters-secrets` library. |
-| `PostyFox.Infrastructure` | EF Core `AppDbContext` + migrations, S3 object store, RabbitMQ bus + topology, secret-store provider wiring (`adapters-secrets`), connectors (Discord, Telegram/WTelegram, `HttpConnector`), catalogue seeder.                                                |
-| `PostyFox.Web` | Shared auth handlers (header + API key) and OpenTelemetry wiring.                                                                                                                                                                  |
+| `PostyFox.Infrastructure` | EF Core `AppDbContext` + migrations, S3 object store, RabbitMQ bus + topology, secret-store provider wiring (`adapters-secrets`), connectors (Discord, Telegram/WTelegram, `HttpConnector`), media processing (ImageSharp, FFMpegCore), SMTP email, catalogue seeder.                                                |
+| `PostyFox.Web` | Shared auth handlers (OIDC bearer, API key, test-only header) and OpenTelemetry wiring.                                                                                                                                                                  |
 | `PostyFox.Api.Core` / `PostyFox.Api.Post` | Minimal-API hosts + endpoint groups.                                                                                                                                                                                               |
 | `PostyFox.Worker.Posting` | Hosts the queue consumers.                                                                                                                                                                                                         |
 | `tests/*` | xUnit projects for C#. `connectors-node` has its own tests.                                                                                                                                                                        |
@@ -132,6 +133,8 @@ erDiagram
     users ||--o{ api_keys : owns
     users ||--o{ user_connectors : configures
     users ||--o{ templates : owns
+    users ||--o{ text_templates : owns
+    users ||--o{ tag_presets : owns
     users ||--o{ posts : creates
     users ||--o{ external_triggers : registers
     users ||--o{ account_invites : sends
@@ -139,7 +142,10 @@ erDiagram
     users ||--o{ terms_acceptances : accepts
     terms_of_service ||--o{ terms_acceptances : "accepted as"
     service_definitions ||--o{ user_connectors : "instance of"
+    user_connectors ||--o{ connector_destinations : exposes
+    user_connectors ||--o{ connector_cookie_pairings : "paired by"
     posts ||--o{ post_targets : "fans out to"
+    post_targets ||--o{ post_target_automations : schedules
     user_connectors ||--o{ post_targets : "delivered via"
 
     users {
@@ -191,6 +197,33 @@ erDiagram
         string Status
         string ExternalId
         int Attempts
+    }
+    post_target_automations {
+        guid Id PK
+        guid PostTargetId FK
+        string Action "Repost | Delete"
+        double DelayHours
+        datetime DueAt
+    }
+    connector_destinations {
+        guid Id PK
+        guid ConnectorId FK
+        string ExternalId
+        string Name
+    }
+    connector_cookie_pairings {
+        guid Id PK
+        guid ConnectorId FK
+        string TokenHash
+        datetime ExpiresAt
+    }
+    text_templates {
+        guid Id PK
+        string UserId
+    }
+    tag_presets {
+        guid Id PK
+        string UserId
     }
     external_triggers {
         guid Id PK
@@ -249,13 +282,13 @@ Notes:
   platform secrets (e.g. `TelegramApiID`/`TelegramApiHash` and
   `TumblrConsumerKey`/`TumblrConsumerSecret`, `SofurryClientId`/`SofurryClientSecret`, `DeviantartClientId`/`DeviantartClientSecret`) under their own names. The store is a
   pluggable `ISecretsProvider` (`adapters-secrets` library): in-memory for local/dev, and
-  BitWarden/VaultWarden, Azure Key Vault, or Infisical for deployments, selected via
+  HashiCorp Vault, BitWarden/VaultWarden, Azure Key Vault, or Infisical for deployments, selected via
   `Secrets:Provider`. There is no database table backing it. The fixed platform-secret catalogue is
   managed through `/api/admin/operational-secrets`, protected by the `postyfox-admin` Keycloak role;
   API responses expose configured status only, never values.
 - **Enums stored as strings** (`RootStatus`, `Status`) for readability.
 - **Object store**: `post/{postId}/{title|description|description-html}`, media manifest entries, and
-  `telegram/{userId}` MTProto session blobs.
+  `telegram/{userId}` MTProto session blobs, and short-lived `instagram-staging` objects.
 
 ---
 
@@ -286,7 +319,7 @@ flowchart LR
 - **Account delegation** (issue #409): after the scheme above resolves a `ClaimsPrincipal`, an
   `IClaimsTransformation` (`ActAsClaimsTransformation`) checks for an `X-Act-As` header naming an
   owner UserId. If an `AccountMember` row grants the caller access to that owner, `NameIdentifier`
-  is swapped to the owner's id for the rest of the request — every endpoint reads the current user
+  is swapped to the owner's id for the rest of the request: every endpoint reads the current user
   from that one claim, so nothing downstream needs to know delegation exists. A missing/invalid
   membership is ignored (the header is dropped, not rejected), since nothing is granted beyond what
   the membership check itself allows. Access is invited by email (`AccountInvite`, delivered by
@@ -322,9 +355,47 @@ the connector-ops endpoints never hard-code a platform.
 | SoFurry | connectors-node | Documented public API, OAuth2 + PKCE connect flow |
 | DeviantArt | connectors-node | Documented API (Sta.sh submit + publish), OAuth2 + PKCE connect flow |
 | Artconomy | connectors-node | Cookie-authenticated calls to the site's own JSON API |
+| Instagram | connectors-node | Content Publishing API (Business Login for Instagram), OAuth2 connect flow; fetches media by URL from core-api's staged-media route |
+| Fediverse (Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial, Hometown, Pixelfed) | connectors-node | `megalodon`, one generic connector; SNS auto-detected per instance; OAuth2 / MiAuth connect flow |
+
+Optional capabilities sit beside `IConnector` and are discovered by type: `IOAuthConnector`,
+`ILimitsConnector`, `IRefreshableConnector` (expiring tokens, renewed by `ConnectorTokenRefreshSweeper`
+and before use), and `IRepostConnector` / `IDeleteConnector` (used by post automations).
+
+**Cookie pairing (ADR-010).** Scraper-backed login is a one-click hand-off from the PostyFox Connect browser extension. Because the
+extension carries the user's own PostyFox session, it takes two calls and no user input:
+`GET /api/connectors/cookie-pairing/targets` (which connector, which cookies, which login page) then
+`POST /api/connectors/cookie-pairing/pair`. Only the cookie names the platform's `CookiePairingSpec`
+declares are read or stored, and the connector is created on the spot if the user has none. The
+five-minute one-use pairing token (`/cookie-pairing/start` → `/cookie-pairing/complete`, with public
+site metadata at `/cookie-pairing/sites`) remains as a fallback for a browser that cannot present a
+PostyFox session. See [`clients/postyfox-connect`](../clients/postyfox-connect/README.md).
+
+**Per-submission platform options.** Some platforms take choices that describe the *submission* rather
+than the account: FurAffinity's category, theme, species, gender and gallery folders; Toyhouse's
+character IDs, artist credit and privacy/watermark choices; every Fediverse platform's content
+warning. A connector declares these as field descriptors on
+`ConnectorDescriptor.PostOptionsSchema` (surfaced as `postOptionsSchema` on `GET /api/services`); the
+compose form renders them once per selected target and sends them as `targetOptions` on
+`POST /api/posts`, keyed by connector id. They are validated against the same schema at intake, stored
+on the `PostTarget`, and applied over the connector's config when delivery builds its
+`ConnectorContext`, so connectors keep reading a single config object. Options lists too large for a
+C# literal live in [`Persistence/Schemas`](../src/PostyFox.Infrastructure/Persistence/Schemas/README.md).
+
+**Content warnings (Fediverse).** Mastodon, Pleroma, Akkoma, Friendica, Iceshrimp, GoToSocial,
+Hometown and Pixelfed all support a click-to-reveal content warning (Mastodon's API calls this
+`spoiler_text`; megalodon maps it to Misskey's `cw` for the firefish driver Iceshrimp uses), declared via
+`ConnectorDescriptor.SupportsContentWarning` and surfaced as the "Content warning" capability badge on
+`GET /api/services`. It is an explicit, optional per-submission field (`ContentWarning` in
+`PostOptionsSchema`), **never** derived from the post title, which is an unrelated field most of these
+platforms don't even render. No other connector (Bluesky, Tumblr, FurAffinity, Toyhouse, Instagram,
+Discord, Telegram) has an equivalent mechanism.
+
+**Per-instance limits.** Fediverse instances each configure their own caps, so the static per-platform `MaxContentLength` is only a fallback hint. `GET /api/connectors/{id}/limits` reports the connector's real limits (`{ maxContentLength, maxMediaAttachments, supportedMimeTypes, imageSizeLimit, videoSizeLimit }`, sizes in bytes), fetched live from the instance (`getInstance()`) for Fediverse connectors via the optional `ILimitsConnector` capability, falling back to the descriptor value for others. Delivery **enforces** these limits and fails clearly (no silent truncation) if a post exceeds the instance's character count, attachment count, an unsupported media MIME type, or a media file-size cap.
 
 The C# **`HttpConnector`** adapter fulfils `IConnector` for Node-hosted platforms by forwarding to
-connectors-node over HTTP (`POST /connectors/{platform}/{is-authenticated|list-targets|deliver}`),
+connectors-node over HTTP (`POST /connectors/{platform}/{is-authenticated|list-targets|limits|deliver|repost|delete|refresh-token}`
+and the OAuth `request-token`/`access-token` pair),
 passing the resolved config + secret in the request body. All internal calls carry a shared
 `X-Internal-Token`. **Media is passed by reference** (`{container, key, contentType, alt}`). The
 Node service fetches the bytes from the shared object store itself (its own S3 client), so no media
@@ -395,7 +466,7 @@ sequenceDiagram
     participant C as Connector
     U->>P: POST /api/posts (targets, content, PostAt?)
     P->>P: persist Post + PostTarget[] (Queued), store payload
-    P->>Q: publish generate(target) [delay if scheduled]
+    P->>Q: publish generate(target) [immediate posts; scheduled ones wait for PostSchedulerSweeper]
     P-->>U: 202 { postId }
     Q->>W: generate(target)
     W->>W: render via template engine → Ready
@@ -416,13 +487,15 @@ sequenceDiagram
 Target states: `Queued → Generating → Ready → Delivering → Delivered | Failed`, plus `Cancelled`
 (user stopped it before it was sent). Root rollup: all delivered → `Delivered`; mixed terminal →
 `PartiallyFailed`; none delivered → `Failed`; all cancelled → `Cancelled`; otherwise
-`Delivering`/`Generating`/`Queued`. Retry count and base backoff are configured via
+`Delivering`/`Generating`/`Queued`. A root can also be `Draft`: saved but not submitted, with no
+queue activity until `POST /api/posts/{id}/publish`. `PUT /api/posts/{id}` edits a draft and returns
+409 once it is published. Retry count and base backoff are configured via
 `Pipeline:MaxDeliveryAttempts` / `Pipeline:RetryBaseSeconds`.
 
 **Cancel & delete.** `POST /api/posts/{id}/cancel` moves every not-yet-sent target
 (`Queued`/`Generating`/`Ready`) to `Cancelled`; already-delivered or in-flight (`Delivering`) targets
 are left as-is, so a partially-sent post keeps what went out. Cancellation is status-based, not a
-queue purge: a delayed generate/deliver message for a cancelled target no-ops when it fires (the
+queue purge: a queued or retrying generate/deliver message for a cancelled target no-ops when it fires (the
 handlers skip `Cancelled`). `DELETE /api/posts/{id}` hard-deletes a single post (row + cascade
 targets + stored payload/media via the shared `PostPayloadCleaner`): for history entries and for
 stale/orphaned queued rows; removing the row means any pending queue message for it finds no target
@@ -438,7 +511,13 @@ processing now" even after the user navigates away from the compose screen. Post
 configurable window (`Retention:PostRetentionDays`, default 30 days); a background
 `PostRetentionSweeper` hosted in the posting-worker hard-deletes older posts (targets cascade) along
 with their stored payloads and referenced media (`Retention:Enabled`, `SweepIntervalHours`,
-`SweepBatchSize`).
+`SweepBatchSize`). `DELETE /api/posts/history` clears every terminal post at once.
+
+**Automations (issue #323).** A target can carry repost or delete rules (`post_target_automations`)
+that fire a set number of hours after the target delivers. `DeliverTargetHandler` stamps `DueAt` on
+delivery and the worker's `PostAutomationSweeper` enqueues them when due, against connectors that
+implement `IRepostConnector` / `IDeleteConnector`. `DELETE /api/posts/{postId}/automations/{id}`
+cancels a pending rule.
 
 ---
 
@@ -475,12 +554,19 @@ posts get the same rendering, delivery, retry and status behaviour.
 
 ## 9. Messaging topology
 
-- One durable **`x-delayed-message`** exchange (`postyfox`, delegate type `direct`). The delay
-  header powers both scheduled posts and retry backoff.
-- Queues `generate` and `deliver`, each bound by routing key = queue name, each dead-lettering to
-  `postyfox.dlx` → `{queue}.dlq`.
+- One durable `direct` exchange (`postyfox`) plus `postyfox.dlx`. No delayed-message plugin: it is
+  unmaintained and incompatible with RabbitMQ 4.3+.
+- Queues `generate`, `deliver` and `automation`, each bound by routing key = queue name, each
+  dead-lettering to `postyfox.dlx` → `{queue}.dlq`.
+- Each queue has a `{queue}.retry` holding queue that is never consumed. A delayed re-publish lands
+  there with a per-message TTL (AMQP `expiration`) and dead-letters back into the main queue when it
+  expires. Only the short, bounded delivery retry backoff uses it, so head-of-line blocking is not a
+  concern.
+- Scheduling never uses bus delay. `PostSchedulerService` (run by `PostSchedulerSweeper`) claims
+  targets whose `PostAt` is due, in batches of `Pipeline:SchedulerBatchSize`, every
+  `Pipeline:SchedulerPollSeconds`. `PostAutomationSweeper` does the same for automations.
 - Publisher declares the queue before publishing so messages aren't lost if the worker is down.
-- Consumers ack on success; an unhandled exception nacks → DLQ (per-target *delivery* retries are
+- Consumers ack on success; an unhandled exception nacks → DLQ (per-target delivery retries are
   handled in the pipeline handler via delayed re-publish, not transport requeue).
 
 ---
@@ -493,10 +579,12 @@ posts get the same rendering, delivery, retry and status behaviour.
   user/IP, HTTP 429) and conservative **security response headers** on both APIs.
 - **Deployment**: three modes, all consuming the same published images
   (`{registry}/{repository}-{service}:{tag}`):
-  1. **docker-compose** (`deploy/docker-compose.yml`): full local stack; `auth` profile
-     adds Keycloak + oauth2-proxy.
-  2. **Helm chart** (`deploy/helm/postyfox`): the 4 services + config/secret/ingress for
-     any Kubernetes; backing services provided externally.
+  1. **docker-compose** (`deploy/docker-compose.yml`): full local stack, including Keycloak,
+     oauth2-proxy and the gateway. The dev server stack layers `docker-compose.server.yml` +
+     `docker-compose.dev.yml` on top.
+  2. **Helm chart** (`deploy/helm/postyfox`): the 4 services, gateway, oauth2-proxy and
+     config/secret/ingress for any Kubernetes; Postgres, RabbitMQ, Redis, Vault and the OTel collector
+     are optional bundles. Production runs this.
   3. **Terraform → Azure Container Apps** (`deploy/terraform-aca`): deploys the published
      images to ACA (external ingress for the APIs, internal for connectors-node, no ingress for the
      worker).
@@ -504,10 +592,11 @@ posts get the same rendering, delivery, retry and status behaviour.
   One templated `Dockerfile` builds each .NET service (build args select project + assembly);
   connectors-node has its own multi-stage Dockerfile. PR Validation (`.github/workflows/pr.yml`)
   builds + tests both stacks and lints the IaC; Build (`.github/workflows/build.yml`) reruns it on
-  `main` and builds/pushes images. The .NET build needs the
+  `main` and builds/pushes images; Deploy, Release and Publish Release are described in
+  [`../deploy/README.md`](../deploy/README.md#deployment-flow). The .NET build needs the
   ImageSharp licence, supplied from the `SIXLABORS_LICENSE_KEY` secret (env var for `dotnet build`,
-  build secret for images); see [`../README.md`](../README.md#imagesharp-licence).
-- **Config**: 12-factor env vars, nested with `__` (see [`../README.md`](../README.md#configuration-env-vars)).
+  build secret for images); see [`DEVELOPMENT.md`](./DEVELOPMENT.md#imagesharp-licence).
+- **Config**: 12-factor env vars, nested with `__` (see [`DEVELOPMENT.md`](./DEVELOPMENT.md#configuration)).
 - **Testing**: unit + integration tests per layer using in-memory SQLite / EF-InMemory and fakes for
   I/O. No Docker required. The pipeline is covered end-to-end via an in-process bus that drives the
   real handlers. Not covered: the live MTProto gateway and the live external-platform calls (need
@@ -523,7 +612,7 @@ See [FOLLOWUPS.md](./FOLLOWUPS.md) for the full list. Headlines:
   and video. Remaining omissions are around documents (pass-through), a normalized-variant cache, and
   pre-signed uploads. See [FOLLOWUPS.md](./FOLLOWUPS.md).
 - Telegram MTProto is stateful (single-writer routing) and not integration-tested (needs live creds).
-- No admin endpoint yet for platform-level secrets (Telegram api id/hash, trigger signing secrets).
-- Scheduling relies on the RabbitMQ delayed-message plugin; a durable scheduler is a follow-up.
-- Twitch was **descoped** and is intentionally absent; it is expected that if people want Twitch support, they will
-  use companion Twitch Tools project, which will support integration to PostyFox via the external-trigger framework.
+- Trigger signing secrets have no admin endpoint (connector operational secrets do, at
+  `/api/admin/operational-secrets`).
+- Twitch was descoped and is intentionally absent. Twitch support is expected to come from the
+  companion Twitch Tools project, integrating through the external-trigger framework.
