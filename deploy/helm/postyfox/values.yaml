@@ -3,7 +3,7 @@
 # provider details, and every third-party image/tag are values with sensible (but generic)
 # defaults. Override this file (or use --set / an extra -f values-<env>.yaml) per environment.
 #
-# Third-party image tags here MUST match ../../docker-compose*.yml and ../../rabbitmq/Dockerfile: bump
+# Third-party image tags here MUST match ../../docker-compose*.yml: bump
 # them together. See "Third-party image versions" in ../../README.md.
 #
 # Two deployment shapes are supported from the same chart:
@@ -149,9 +149,8 @@ postgres:
 
 # ---------------------------------------------------------------------------------------------
 # RabbitMQ - toggleable. Disable and point `secrets.externalRabbitMqHost/-User/-Password` at your
-# own broker instead. When enabled, the prometheus plugin is installed at container start via a
-# postStart hook, so this chart can use the stock upstream image rather than requiring a custom
-# one to be published. Scheduling/retry delay no longer depends on any plugin (see
+# own broker instead. The stock upstream image already enables the management and prometheus
+# (:15692, scraped by the otel-collector) plugins. Scheduling/retry delay needs no plugin (see
 # PostyFox.Infrastructure/Messaging/Topology.cs + PostSchedulerService), so the image can track
 # upstream RabbitMQ releases freely.
 # ---------------------------------------------------------------------------------------------

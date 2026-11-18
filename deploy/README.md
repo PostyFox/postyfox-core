@@ -361,7 +361,7 @@ When bumping one, update all of these in the same change:
 | Component | docker-compose.yml | docker-compose.server.yml | helm/postyfox/values.yaml | Other |
 |---|---|---|---|---|
 | Postgres (pgautoupgrade) | ✓ | ✓ | `postgres.image` | |
-| RabbitMQ | | | `rabbitmq.image` | `rabbitmq/Dockerfile` (compose builds from it) |
+| RabbitMQ | ✓ | ✓ | `rabbitmq.image` | |
 | Valkey | ✓ | ✓ | `redis.image` | |
 | Vault | ✓ | `VAULT_VERSION` default | `vault.image` | `VAULT_VERSION` in `.env*.example`, the dev/prod server `.env`, and the Vault section below |
 | OTel collector | ✓ | ✓ | `otelCollector.image` | |
@@ -372,7 +372,7 @@ When bumping one, update all of these in the same change:
 
 Deploys never touch the server-side `.env`, so a version set there (e.g. `VAULT_VERSION`) overrides
 the compose default until edited by hand on the host. Dependabot does not track these images.
-Check them when bumping any one: `grep -rnE 'image:|FROM|VAULT_VERSION|fluentBitImage' deploy/`.
+Check them when bumping any one: `grep -rnE 'image:|VAULT_VERSION|fluentBitImage' deploy/`.
 
 ## Kubernetes / Helm (Production)
 

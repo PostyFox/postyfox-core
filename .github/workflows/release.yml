@@ -54,7 +54,6 @@ jobs:
         deploy/oauth2-proxy
         deploy/otel
         deploy/fluent-bit
-        deploy/rabbitmq
         deploy/vault
       release_env: |
         IMAGE_REPOSITORY=ghcr.io/postyfox/postyfox-core

@@ -1,6 +1,6 @@
 # PostyFox local stack. Quick start:  docker compose up --build
 #
-# Third-party image tags are pinned and MUST match helm/postyfox/values.yaml (and rabbitmq/Dockerfile):
+# Third-party image tags are pinned and MUST match helm/postyfox/values.yaml:
 # bump them together. See "Third-party image versions" in README.md.
 #
 # Auth is the production-representative OIDC path: the stack always runs Keycloak + oauth2-proxy +
@@ -79,7 +79,8 @@ services:
       retries: 20
 
   rabbitmq:
-    build: ./rabbitmq
+    # Stock image: management and prometheus (:15692) plugins are enabled upstream; no other plugins needed.
+    image: rabbitmq:4.4.0-management
     ports: ["5672:5672", "15672:15672"]
     # Run directly as the rabbitmq user (uid 999). Under rootless podman the default root→rabbitmq
     # privilege drop left the freshly-written .erlang.cookie unreadable (eacces); starting as 999
