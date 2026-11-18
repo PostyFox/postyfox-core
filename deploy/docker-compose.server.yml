@@ -1,7 +1,7 @@
 # PostyFox single-host deployment stack.
 # Intended for CI/CD deployment with published app images.
 #
-# Third-party image tags are pinned and MUST match helm/postyfox/values.yaml (and rabbitmq/Dockerfile):
+# Third-party image tags are pinned and MUST match helm/postyfox/values.yaml:
 # bump them together. See "Third-party image versions" in README.md.
 #
 # - App services use prebuilt images from GHCR.
@@ -81,7 +81,8 @@ services:
     restart: unless-stopped
 
   rabbitmq:
-    build: ./rabbitmq
+    # Stock image: management and prometheus (:15692) plugins are enabled upstream; no other plugins needed.
+    image: rabbitmq:4.4.0-management
     environment:
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD}"

@@ -14,7 +14,7 @@ receivers:
       grpc: { endpoint: 0.0.0.0:4317 }
       http: { endpoint: 0.0.0.0:4318 }
 
-  # Infra metrics: scrape Prometheus endpoints. rabbitmq_prometheus plugin (:15692) and
+  # Infra metrics: scrape Prometheus endpoints. rabbitmq_prometheus plugin (:15692, on in the stock image) and
   # oauth2-proxy metrics endpoint (:44180) must be enabled: see docker-compose.server.yml.
   prometheus:
     config:

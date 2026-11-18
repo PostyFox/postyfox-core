@@ -1,6 +1,6 @@
 {{- if .Values.rabbitmq.enabled }}
-# Self-contained RabbitMQ instance, with the prometheus plugin enabled at container start via
-# postStart so the stock upstream image can be used as-is.
+# Self-contained RabbitMQ instance on the stock upstream image, which already enables the
+# management and prometheus plugins.
 # Disable (rabbitmq.enabled: false) and point secrets.externalRabbitMq* at your own broker instead.
 apiVersion: apps/v1
 kind: StatefulSet
@@ -28,15 +28,6 @@ spec:
             - { containerPort: 5672, name: amqp }
             - { containerPort: 15672, name: management }
             - { containerPort: 15692, name: prometheus }
-          lifecycle:
-            postStart:
-              exec:
-                command:
-                  - sh
-                  - -c
-                  - |
-                    until rabbitmqctl status >/dev/null 2>&1; do sleep 2; done
-                    rabbitmq-plugins enable --offline rabbitmq_prometheus || true
           readinessProbe:
             exec: { command: ["rabbitmq-diagnostics", "-q", "check_running"] }
             initialDelaySeconds: 15
